@@ -1,42 +1,67 @@
 <template>
   <div>
-    <div
-      id="mychart"
-      class="echartDemo"
-    />
+    <div id="mychart" class="echartDemo" />
   </div>
 </template>
 
 <script>
 import * as echarts from 'echarts'
-import { fetchEchartsData } from '@/api/devDataQuery'
+import { fetchEchartsData } from '@/api/devDataQuery' // 确保该路径正确
 const colors = ['#5470C6', '#EE6666']
+
 export default {
   name: 'EchartZheXian19',
-  components: {},
-  props: [],
   data() {
     return {
-      name: '张雪',
-      dataFromBack: [['2000-06-05', 116], ['2000-06-06', 129], ['2000-06-07', 135], ['2000-06-08', 86], ['2000-06-09', 73], ['2000-06-10', 85], ['2000-06-11', 73], ['2000-06-12', 68], ['2000-06-13', 92], ['2000-06-14', 130], ['2000-06-15', 245], ['2000-06-16', 139], ['2000-06-17', 115], ['2000-06-18', 111], ['2000-06-19', 309], ['2000-06-20', 206], ['2000-06-21', 137], ['2000-06-22', 128], ['2000-06-23', 85], ['2000-06-24', 94], ['2000-06-25', 71], ['2000-06-26', 106], ['2000-06-27', 84], ['2000-06-28', 93], ['2000-06-29', 85], ['2000-06-30', 73], ['2000-07-01', 83], ['2000-07-02', 125], ['2000-07-03', 107], ['2000-07-04', 82], ['2000-07-05', 44], ['2000-07-06', 72], ['2000-07-07', 106], ['2000-07-08', 107], ['2000-07-09', 66], ['2000-07-10', 91], ['2000-07-11', 92], ['2000-07-12', 113], ['2000-07-13', 107], ['2000-07-14', 131], ['2000-07-15', 111], ['2000-07-16', 64], ['2000-07-17', 69], ['2000-07-18', 88], ['2000-07-19', 77], ['2000-07-20', 83], ['2000-07-21', 111], ['2000-07-22', 57], ['2000-07-23', 55], ['2000-07-24', 60]],
-      dateList: [],
-      valueList: [],
+      // 查询参数
       queryParams: {
         universityNameChinese: '',
         universityTagsState: '',
         universityTags: '德国',
         rankVariant: 'usnews'
-      }, chartData: [],
-      legendData: []
+      },
+      // 存储从后端获取的数据
+      chartData: [],
+      legendData: [],
+      // 加载状态（可选）
+      listLoading: false
     }
   },
-  computed: {},
-  watch: {},
-  created() {
-    this.getList()
-  },
   mounted() {
-    const fetchDataAndInit = async() => {
+    this.fetchDataAndInit()
+  },
+  methods: {
+    /**
+     * 获取数据的方法
+     * 确保返回一个 Promise，以便在 mounted 中可以使用 await
+     */
+    getList() {
+      this.listLoading = true
+      return fetchEchartsData(this.queryParams)
+        .then(response => {
+          // 假设返回的数据结构包含 chartData 和 legendData
+          this.chartData = response.data.chartData
+          this.legendData = response.data.legendData
+          // 模拟延迟（可根据实际情况移除）
+          return new Promise(resolve => {
+            setTimeout(() => {
+              this.listLoading = false
+              resolve()
+            }, 1500)
+          })
+        })
+        .catch(error => {
+          this.listLoading = false
+          console.error('获取数据失败:', error)
+          // 抛出错误以便在 mounted 中捕获
+          throw error
+        })
+    },
+
+    /**
+     * 异步获取数据并初始化图表
+     */
+    async fetchDataAndInit() {
       try {
         await this.getList()
         this.initEcharts()
@@ -45,30 +70,24 @@ export default {
       } catch (error) {
         console.error('初始化图表失败:', error)
       }
-    }
-
-    fetchDataAndInit()
-  },
-  methods: {
-    getList() {
-      this.listLoading = true
-      fetchEchartsData(this.queryParams).then(response => {
-        this.chartData = response.chartData
-        this.legendData = response.legendData
-
-        // Just to simulate the time of the request
-        setTimeout(() => {
-          this.listLoading = false
-        }, 1.5 * 1000)
-      })
     },
+
+    /**
+     * 初始化 ECharts
+     */
     initEcharts() {
-      this.dateList = this.dataFromBack.map(function(item) {
-        return item[0]
-      })
-      this.valueList = this.dataFromBack.map(function(item) {
-        return item[1]
-      })
+      // 确保 chartData 有数据并且格式正确
+      if (!this.chartData || !Array.isArray(this.chartData) || this.chartData.length === 0) {
+        console.error('chartData 数据为空或格式不正确')
+        return
+      }
+
+      // 假设 chartData 的每一项包含 name 和 data
+      // 例如: [{ name: '系列1', type: 'line', data: [120, 132, 101, ...] }, ...]
+
+      // 提取 x 轴数据（假设所有系列的 x 轴数据相同，以第一个系列为准）
+      const xAxisData = this.chartData[0].data.map((item, index) => `类别${index + 1}`)
+
       const option = {
         color: colors,
         tooltip: {
@@ -87,6 +106,7 @@ export default {
         xAxis: {
           type: 'category',
           boundaryGap: false,
+          data: xAxisData,
           axisTick: {
             alignWithLabel: true
           },
@@ -100,57 +120,37 @@ export default {
               formatter: function(params) {
                 return (
                   params.seriesName +
-            '  ' +
-            params.value +
-            (params.seriesData.length ? '：' + params.seriesData[0].data : '')
+                  '  ' +
+                  params.value +
+                  (params.seriesData.length ? '：' + params.seriesData[0].data : '')
                 )
               }
             }
-          },
-          data: [
-            '2012',
-            '2013',
-            '2014',
-            '2015',
-            '2016',
-            '2017',
-            '2018',
-            '2019',
-            '2020',
-            '2021',
-            '2022',
-            '2023',
-            '2024',
-            '2025'
-          ]
+          }
         },
         yAxis: {
           type: 'value',
-          inverse: true, // 倒置 y 轴
-          name: '数值' // 可选：y 轴名称
-          // 可选：设置 y 轴的范围
-          // min: 0,
-          // max: 200,
-          // interval: 20
+          name: '数值'
         },
         series: this.chartData
       }
-      const myChart = echarts.init(document.getElementById('mychart'))// 图标初始化
-      // var chart = echarts.init(document.getElementById('mychart'), 'dark') // 黑暗模式
-      myChart.setOption(option)// 渲染页面
 
-      // 随着屏幕大小调节图表
-      window.onresize = function() {
+      // 初始化 ECharts 实例
+      const myChart = echarts.init(document.getElementById('mychart'))
+      myChart.setOption(option)
+
+      // 监听窗口大小变化，自动调整图表大小
+      window.onresize = () => {
         myChart.resize()
       }
     }
   }
 }
 </script>
+
 <style scoped>
 .echartDemo {
-  border: 1px;
-  border: black;
+  border: 1px solid black;
   background-color: #fff;
   display: inline-block;
   width: 100%;
