@@ -36,12 +36,18 @@ export default {
     this.getList()
   },
   mounted() {
-    // this.initEcharts()
-    this.getList().then(() => {
-      this.initEcharts()
-      console.log('chartData', this.chartData)
-      console.log('legendData', this.legendData)
-    })
+    const fetchDataAndInit = async() => {
+      try {
+        await this.getList()
+        this.initEcharts()
+        console.log('chartData', this.chartData)
+        console.log('legendData', this.legendData)
+      } catch (error) {
+        console.error('初始化图表失败:', error)
+      }
+    }
+
+    fetchDataAndInit()
   },
   methods: {
     getList() {
