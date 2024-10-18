@@ -52,28 +52,8 @@
 
     <!-- ECharts 图表区域 -->
     <el-card class="chart-card">
-      <v-chart :option="chartOption" autoresize style="width: 100%; height: 400px;" v-if="chartLoaded"></v-chart>
+      <v-chart :option="chartOption" autoresize style="width: 100%; height: 800px;" v-if="chartLoaded"></v-chart>
     </el-card>
-
-    <!-- 表格区域 -->
-    <el-card class="table-card">
-      <el-table :data="tableData" style="width: 100%" :loading="loading">
-        <el-table-column prop="universityNameChinese" label="大学名称" />
-        <el-table-column prop="rank" label="排名" />
-      </el-table>
-    </el-card>
-
-    <!-- 分页组件 -->
-    <div class="pagination">
-      <el-pagination
-        background
-        layout="prev, pager, next, jumper, ->, total"
-        v-model:current-page="currentPage"
-        :page-size="limit"
-        :total="total"
-        @current-change="handlePageChange"
-      />
-    </div>
   </div>
 </template>
 
@@ -111,7 +91,6 @@ export default {
   setup() {
     const searchFormRef = ref(null)
 
-    const tableData = ref([])
     const searchForm = ref({
       universityNameChinese: '',
       universityTagsState: '',
@@ -188,7 +167,7 @@ export default {
 
         // 构建 ECharts 配置
         chartOption.value = {
-          color: ['#5470C6', '#EE6666', '#91CC75', '#FAC858', '#73C0DE', '#3BA272', '#FC8452', '#9A60B4', '#EA7CCC'],
+          color: ['#5470C6', '#EE6666', '#91CC75', '#FAC858', '#73C0DE', '#3BA272', '#FC8452', '#9A60B4', '#EA7CCC', '#FF69B4', '#CD5C5C'], // 扩展颜色以支持更多系列
           tooltip: {
             trigger: 'axis',
             axisPointer: {
@@ -196,10 +175,16 @@ export default {
             }
           },
           legend: {
-            data: combinedLegend
+            type: 'scroll', // 使用滚动模式
+            orient: 'horizontal',
+            top: 'top', // 将图例放置在顶部
+            data: combinedLegend,
+            tooltip: {
+              show: true
+            }
           },
           grid: {
-            top: 50,
+            top: 80, // 增加 top 以避免与 legend 重叠
             bottom: 50
           },
           xAxis: {
@@ -223,16 +208,6 @@ export default {
 
         chartLoaded.value = true
 
-        // 组装表格数据
-        const allSeries = combinedSeries
-        total.value = allSeries.length
-
-        const start = (currentPage.value - 1) * limit.value
-        const end = start + limit.value
-        tableData.value = allSeries.slice(start, end).map(series => ({
-          universityNameChinese: series.name,
-          rank: series.data[0] // 可根据需求调整
-        }))
       } catch (error) {
         ElMessage.error(`获取数据失败: ${error.message}`)
         console.error(error)
@@ -254,17 +229,11 @@ export default {
       handleSearch()
     }
 
-    const handlePageChange = (page) => {
-      currentPage.value = page
-      fetchData()
-    }
-
     onMounted(() => {
       fetchData()
     })
 
     return {
-      tableData,
       searchForm,
       currentPage,
       limit,
@@ -272,7 +241,6 @@ export default {
       loading,
       handleSearch,
       resetSearch,
-      handlePageChange,
       chartOption,
       chartLoaded,
       searchFormRef,
@@ -290,20 +258,19 @@ export default {
 .chart-card {
   margin-bottom: 20px;
   padding: 20px;
-}
-
-.table-card {
-  margin-bottom: 20px;
-  padding: 20px;
-}
-
-.pagination {
-  text-align: right;
-  margin-top: 20px;
+  /* 增加图表区域的宽度，如需要可调整 */
+  width: 100%;
 }
 
 .el-table th,
 .el-table td {
   text-align: center;
+}
+
+/* 可选：调整图表的 Legend 样式 */
+.chart-card .echarts {
+  /* 确保 ECharts 组件充满整个容器 */
+  width: 100%;
+  height: 100%;
 }
 </style>
