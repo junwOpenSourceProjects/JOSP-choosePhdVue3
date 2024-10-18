@@ -2,7 +2,7 @@
  * @Author: junw wo1261931780@gmail.com
  * @Date: 2024-10-18 08:44:03
  * @LastEditors: junw wo1261931780@gmail.com
- * @LastEditTime: 2024-10-18 11:53:58
+ * @LastEditTime: 2024-10-18 14:14:58
  * @FilePath: \chooseCollegeVue\vitest.config.js
  * @Description: 1111
  *
@@ -15,6 +15,7 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import ElementPlus from 'unplugin-element-plus/vite'
+import vue from '@vitejs/plugin-vue'
 
 export default mergeConfig(
   viteConfig,
@@ -32,6 +33,14 @@ export default mergeConfig(
         resolvers: [ElementPlusResolver()],
       }),
       ElementPlus(),
+      vue()
     ],
+    proxy:{
+      '/api':{
+        target:'http://localhost:8081',
+        changeOrigin:true,
+        rewrite:(path)=>path.replace(/^\/api/, ''),
+      }
+    }
   })
 )
