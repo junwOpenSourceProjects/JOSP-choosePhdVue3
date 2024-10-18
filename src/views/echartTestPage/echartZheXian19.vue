@@ -7,7 +7,7 @@
 <script>
 import * as echarts from 'echarts'
 import { fetchEchartsData } from '@/api/devDataQuery' // 确保该路径正确
-const colors = ['#5470C6', '#EE6666']
+const colors = ['#5470C6', '#EE6666', '#73C0DE', '#3BA272', '#FC8452', '#9A60B4', '#F3A43B']
 
 export default {
   name: 'EchartZheXian19',
@@ -21,8 +21,22 @@ export default {
         rankVariant: 'usnews'
       },
       // 存储从后端获取的数据
-      chartData: [],
+      chartData: [{
+        series: {
+          name: 'Precipitation(2015)',
+          type: 'line',
+          xAxisIndex: 1,
+          smooth: true,
+          emphasis: {
+            focus: 'series'
+          },
+          data: [
+            2.6, 5.9, 9.0, 26.4, 28.7, 70.7, 175.6, 182.2, 48.7, 18.8, 6.0, 2.3
+          ]
+        }}
+      ],
       legendData: [],
+      xAxisData: [],
       // 加载状态（可选）
       listLoading: false
     }
@@ -31,17 +45,38 @@ export default {
     this.fetchDataAndInit()
   },
   methods: {
-    /**
-     * 获取数据的方法
-     * 确保返回一个 Promise，以便在 mounted 中可以使用 await
-     */
+  /**
+   * 获取数据的方法
+   * 确保返回一个 Promise，以便在 mounted 中可以使用 await
+   */
     getList() {
       this.listLoading = true
       return fetchEchartsData(this.queryParams)
         .then(response => {
-          // 假设返回的数据结构包含 chartData 和 legendData
-          this.chartData = response.data.chartData
-          this.legendData = response.data.legendData
+        // 检查响应结构
+          if (!response.chatData || !response.legendData) {
+            throw new Error('响应数据结构不正确')
+          }
+          // 设置数据
+          this.chartData = response.chartData.series
+          console.log('chartData', this.chartData)
+          this.legendData = response.legendData
+
+          // 计算所有系列中的最大数据长度
+          const maxLength = Math.max(...this.chartData.map(series => series.data.length))
+
+          // 生成统一的 x 轴标签
+          this.xAxisData = Array.from({ length: maxLength }, (_, i) => `类别${i + 1}`)
+
+          // 为每个系列的数据数组填充 null 以统一长度
+          this.chartData = this.chartData.map(series => {
+            const paddedData = [...series.data]
+            while (paddedData.length < maxLength) {
+              paddedData.push(0.0) // 使用 null 填充，ECharts 会处理这些缺失的数据点
+            }
+            return { ...series, data: paddedData }
+          })
+
           // 模拟延迟（可根据实际情况移除）
           return new Promise(resolve => {
             setTimeout(() => {
@@ -53,7 +88,9 @@ export default {
         .catch(error => {
           this.listLoading = false
           console.error('获取数据失败:', error)
-          // 抛出错误以便在 mounted 中捕获
+          // 可以在这里添加错误提示给用户
+          // 例如，使用 Element UI 的 Message 组件
+          // this.$message.error('获取数据失败，请稍后再试。');
           throw error
         })
     },
@@ -73,40 +110,39 @@ export default {
     },
 
     /**
-     * 初始化 ECharts
-     */
+   * 初始化 ECharts
+   */
     initEcharts() {
-      // 确保 chartData 有数据并且格式正确
+    // 确保 chartData 有数据并且格式正确
       if (!this.chartData || !Array.isArray(this.chartData) || this.chartData.length === 0) {
         console.error('chartData 数据为空或格式不正确')
         return
       }
 
-      // 假设 chartData 的每一项包含 name 和 data
-      // 例如: [{ name: '系列1', type: 'line', data: [120, 132, 101, ...] }, ...]
-
-      // 提取 x 轴数据（假设所有系列的 x 轴数据相同，以第一个系列为准）
-      const xAxisData = this.chartData[0].data.map((item, index) => `类别${index + 1}`)
-
+      // 配置图表选项
       const option = {
         color: colors,
         tooltip: {
-          trigger: 'axis',
-          axisPointer: {
-            type: 'cross'
-          }
+          trigger: 'axis'
+        // ,axisPointer: {
+        // type: 'cross'
+        // }
         },
         legend: {
           data: this.legendData
         },
-        grid: {
-          top: 70,
-          bottom: 50
-        },
+        grid: [
+          {
+            bottom: '60%'
+          },
+          {
+            top: '60%'
+          }
+        ],
         xAxis: {
           type: 'category',
           boundaryGap: false,
-          data: xAxisData,
+          data: this.xAxisData,
           axisTick: {
             alignWithLabel: true
           },
@@ -120,9 +156,9 @@ export default {
               formatter: function(params) {
                 return (
                   params.seriesName +
-                  '  ' +
-                  params.value +
-                  (params.seriesData.length ? '：' + params.seriesData[0].data : '')
+                '  ' +
+                params.value +
+                (params.seriesData.length ? '：' + params.seriesData[0].data : '')
                 )
               }
             }
@@ -154,6 +190,7 @@ export default {
   background-color: #fff;
   display: inline-block;
   width: 100%;
-  height: 400px;
+  height: 600px;
+  /* 根据需要调整高度 */
 }
 </style>
