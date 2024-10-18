@@ -1,12 +1,13 @@
 <template>
-  <div class="app-container">
-    <DemoContainer />
-  </div>
+  <!-- <div class="app-container"> -->
+    <!-- <DemoContainer /> -->
+  <!-- </div> -->
+  <router-view />
 </template>
-
+<!--
 <script setup>
 import DemoContainer from './views/DemoContainer.vue'
-</script>
+</script> -->
 
 <style>
 html, body, #app, .app-container {
