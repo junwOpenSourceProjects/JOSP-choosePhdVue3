@@ -1,149 +1,157 @@
-我有一个vue文件，使用vue3和elementPLus完成。代码如下：
-<!-- src/views/DemoContainer.vue -->
-<template>
-  <el-container class="layout-container-demo">
-    <!-- 顶部 Header -->
-    <el-header class="header">
-      <div class="toolbar">
-        <el-dropdown>
-          <el-icon class="dropdown-icon">
-            <Setting />
-          </el-icon>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item>View</el-dropdown-item>
-              <el-dropdown-item>Add</el-dropdown-item>
-              <el-dropdown-item>Delete</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-        <span>Tom</span>
-      </div>
-    </el-header>
+page2的页面布局也和home.vue类似，但是需要新增一个容器来放echarts的图表。
+从上到下的结构分别是：查询条件，echarts图表，表格数据。
+查询条件是：大学名称universityNameChinese，所在大洲universityTagsState，所在国家universityTags，排名类型rankVariant。
+所在国家和所在大洲之间最好进行一次输入校验。
+rankVariant只有四个值：qs，qs_cs,usnews,usnews_cs。
+echarts图表的参考：
+const colors = ['#5470C6', '#EE6666'];
+option = {
+  color: colors,
+  tooltip: {
+    trigger: 'none',
+    axisPointer: {
+      type: 'cross'
+    }
+  },
+  legend: {},
+  grid: {
+    top: 70,
+    bottom: 50
+  },
+  xAxis: [
+    {
+      type: 'category',
+      axisTick: {
+        alignWithLabel: true
+      },
+      axisLine: {
+        onZero: false,
+        lineStyle: {
+          color: colors[1]
+        }
+      },
+      axisPointer: {
+        label: {
+          formatter: function (params) {
+            return (
+              'Precipitation  ' +
+              params.value +
+              (params.seriesData.length ? '：' + params.seriesData[0].data : '')
+            );
+          }
+        }
+      },
+      // prettier-ignore
+      data: ['2016-1', '2016-2', '2016-3', '2016-4', '2016-5', '2016-6', '2016-7', '2016-8', '2016-9', '2016-10', '2016-11', '2016-12']
+    },
+    {
+      type: 'category',
+      axisTick: {
+        alignWithLabel: true
+      },
+      axisLine: {
+        onZero: false,
+        lineStyle: {
+          color: colors[0]
+        }
+      },
+      axisPointer: {
+        label: {
+          formatter: function (params) {
+            return (
+              'Precipitation  ' +
+              params.value +
+              (params.seriesData.length ? '：' + params.seriesData[0].data : '')
+            );
+          }
+        }
+      },
+      // prettier-ignore
+      data: ['2015-1', '2015-2', '2015-3', '2015-4', '2015-5', '2015-6', '2015-7', '2015-8', '2015-9', '2015-10', '2015-11', '2015-12']
+    }
+  ],
+  yAxis: [
+    {
+      type: 'value'
+    }
+  ],
+  series: [
+    {
+      name: 'Precipitation(2015)',
+      type: 'line',
+      xAxisIndex: 1,
+      smooth: true,
+      emphasis: {
+        focus: 'series'
+      },
+      data: [
+        2.6, 5.9, 9.0, 26.4, 28.7, 70.7, 175.6, 182.2, 48.7, 18.8, 6.0, 2.3
+      ]
+    },
+    {
+      name: 'Precipitation(2016)',
+      type: 'line',
+      smooth: true,
+      emphasis: {
+        focus: 'series'
+      },
+      data: [
+        3.9, 5.9, 11.1, 18.7, 48.3, 69.2, 231.6, 46.6, 55.4, 18.4, 10.3, 0.7
+      ]
+    }
+  ]
+};
+你需要将这个js和vue3组合式api的写法一起使用。
+其中，折线图的y轴只有一个，需要倒置y轴展示数据。
+x轴的坐标值是固定的。2012-2025.按年份递增。
 
-    <!-- 主体部分，包含侧边栏和主内容 -->
-    <el-container>
-      <!-- 侧边栏 -->
-      <el-aside width="200px" class="aside">
-        <el-scrollbar>
-          <el-menu :default-openeds="['1', '3']">
-            <el-sub-menu index="1">
-              <template #title>
-                <el-icon><Message /></el-icon>Navigator One
-              </template>
-              <el-menu-item-group>
-                <template #title>Group 1</template>
-                <el-menu-item index="1-1">Option 1</el-menu-item>
-                <el-menu-item index="1-2">Option 2</el-menu-item>
-              </el-menu-item-group>
-              <el-menu-item-group title="Group 2">
-                <el-menu-item index="1-3">Option 3</el-menu-item>
-              </el-menu-item-group>
-              <el-sub-menu index="1-4">
-                <template #title>Option4</template>
-                <el-menu-item index="1-4-1">Option 4-1</el-menu-item>
-              </el-sub-menu>
-            </el-sub-menu>
-          </el-menu>
-        </el-scrollbar>
-      </el-aside>
-
-      <!-- 主内容区 -->
-      <el-main class="main-content">
-        <el-scrollbar>
-          <el-table :data="tableData">
-            <el-table-column prop="date" label="Date" width="140" />
-            <el-table-column prop="name" label="Name" width="120" />
-            <el-table-column prop="address" label="Address" />
-          </el-table>
-        </el-scrollbar>
-      </el-main>
-    </el-container>
-  </el-container>
-</template>
-
-<script lang="ts" setup>
-import { ref } from 'vue'
-import { Menu as IconMenu, Message, Setting } from '@element-plus/icons-vue'
-
-const item = {
-  date: '2016-05-02',
-  name: 'Tom',
-  address: 'No. 189, Grove St, Los Angeles',
+series的数据从后端动态获取，发送请求的api是/query/queryPartEcharts加上请求参数。
+legend也是从后端动态获取。
+后端返回的数据结构类似于：
+{
+    "chatData": {
+        "series": [
+            {
+                "name": "上海交通大学",
+                "type": "line",
+                "smooth": true,
+                "emphasis": {
+                    "focus": "series"
+                },
+                "data": [
+                    0.0,
+                    70.0,
+                    61.0,
+                    62.0,
+                    59.0,
+                    60.0,
+                    47.0,
+                    50.0,
+                    46.0,
+                    51.0,
+                    45.0
+                ],
+                "xaxisIndex": null
+            },
+            {
+                "name": "东北大学，沈阳",
+                "type": "line",
+                "smooth": true,
+                "emphasis": {
+                    "focus": "series"
+                },
+                "data": [
+                    0.0,
+                    0.0
+                ],
+                "xaxisIndex": null
+            }
+        ]
+    },
+    "legendData": [
+        "上海交通大学",
+        "东北大学，沈阳"
+    ]
 }
-const tableData = ref(Array.from({ length: 20 }).fill(item))
-</script>
-
-<style scoped>
-.layout-container-demo {
-  height: 100vh; /* 使用视口高度，确保全屏 */
-}
-
-/* Header 样式 */
-.layout-container-demo .el-header {
-  background-color: var(--el-color-primary-light-7);
-  color: var(--el-text-color-primary);
-  display: flex;
-  align-items: center;
-  padding: 0 20px;
-}
-
-/* 侧边栏样式 */
-.layout-container-demo .el-aside {
-  background: var(--el-color-primary-light-8);
-  color: var(--el-text-color-primary);
-}
-
-/* 菜单样式 */
-.layout-container-demo .el-menu {
-  border-right: none;
-}
-
-/* 主内容区样式 */
-.layout-container-demo .el-main {
-  padding: 20px;
-  background-color: #f0f2f5;
-}
-
-/* 工具栏样式 */
-.toolbar {
-  display: flex;
-  align-items: center;
-}
-
-/* 下拉图标样式 */
-.dropdown-icon {
-  margin-right: 8px;
-  margin-top: 1px;
-}
-</style>
-
-
-我需要在页面渲染的时候，按照接受到的数据体来渲染el-table的内容。
-同时，我需要新增翻页组件和查询框组件，可以根据用户输入的查询条件来发送请求。
-
-我接收到的数据格式类似于：
-        {
-            "id": 1,
-            "universityNameChinese": "Charité-柏林大学医学院",
-            "universityNameEnglish": "Charité - Universitätsmedizin Berlin",
-            "universityTags": "德国",
-            "universityTagsState": "欧洲",
-            "rankingYear": "2015-01-01",
-            "currentRankIntegerQs": 0,
-            "currentRankIntegerQsCs": 0,
-            "currentRankIntegerUsnews": 177,
-            "currentRankIntegerUsnewsCs": 0
-        },
-        {
-            "id": 2,
-            "universityNameChinese": "Charité-柏林大学医学院",
-            "universityNameEnglish": "Charité - Universitätsmedizin Berlin",
-            "universityTags": "德国",
-            "universityTagsState": "欧洲",
-            "rankingYear": "2016-01-01",
-            "currentRankIntegerQs": 0,
-            "currentRankIntegerQsCs": 0,
-            "currentRankIntegerUsnews": 212,
-            "currentRankIntegerUsnewsCs": 0
-        },
+表格部分只需要展示两个数据，大学名称universityNameChinese，排名rank。
+排名rank就是每个series中的data值。

@@ -2,7 +2,7 @@
  * @Author: junw wo1261931780@gmail.com
  * @Date: 2024-10-18 08:44:03
  * @LastEditors: junw wo1261931780@gmail.com
- * @LastEditTime: 2024-10-18 09:26:25
+ * @LastEditTime: 2024-10-18 16:42:07
  * @FilePath: \chooseCollegeVue\src\main.js
  * @Description: 1111
  *
