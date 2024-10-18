@@ -53,7 +53,7 @@
         <el-card class="search-card">
           <el-form :inline="true" :model="searchForm" @submit.native.prevent="handleSearch">
             <el-form-item label="大学名称">
-              <el-input v-model="searchForm.universityName" placeholder="请输入大学名称"></el-input>
+              <el-input v-model="searchForm.universityNameChinese" placeholder="请输入大学名称"></el-input>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="handleSearch">查询</el-button>
@@ -84,7 +84,7 @@
             background
             layout="prev, pager, next, jumper, ->, total"
             :current-page.sync="currentPage"
-            :page-size="pageSize"
+            :page-size="limit"
             :total="total"
             @current-change="handlePageChange"
           />
@@ -119,7 +119,7 @@ interface UniversityData {
 
 // 定义搜索表单
 const searchForm = ref({
-  universityName: '',
+  universityNameChinese: '',
 })
 
 // 表格数据
@@ -127,7 +127,7 @@ const tableData = ref<UniversityData[]>([])
 
 // 分页相关
 const currentPage = ref(1)
-const pageSize = ref(10)
+const limit = ref(10)
 const total = ref(0)
 
 // 加载状态
@@ -140,12 +140,12 @@ const fetchData = async () => {
     // 构建查询参数
     const params = new URLSearchParams({
       page: String(currentPage.value),
-      pageSize: String(pageSize.value),
-      universityName: searchForm.value.universityName,
+      limit: String(limit.value),
+      universityNameChinese: searchForm.value.universityNameChinese,
     })
 
     // 发送请求
-    const response = await fetch(`/api/universities?${params.toString()}`, {
+    const response = await fetch(`/api/query/queryAll?${params.toString()}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -184,7 +184,7 @@ const handleSearch = () => {
 
 // 重置搜索
 const resetSearch = () => {
-  searchForm.value.universityName = ''
+  searchForm.value.universityNameChinese = ''
   handleSearch()
 }
 
