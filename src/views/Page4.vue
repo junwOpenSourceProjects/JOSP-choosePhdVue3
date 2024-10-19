@@ -248,7 +248,7 @@
       </el-form>
 
       <!-- 嵌套表格展示 -->
-      <el-table :data="[formData]">
+      <el-table :data="[formData, staticUniversity]">
         <el-table-column property="universityNameChinese" label="大学名称" />
         <el-table-column property="rankingQs" label="QS数据" />
         <el-table-column property="rankingQsCs" label="QS计算机科学数据" />
@@ -273,20 +273,20 @@ import { ElMessage } from 'element-plus'
 import type { TableInstance, TableColumnCtx } from 'element-plus'
 
 interface University {
-  id: number
+  id?: number
   universityNameChinese: string
-  universityTags: string | null
-  universityTagsState: string | null
-  rankingQs: string
-  rankingQsCs: string
-  rankingUsnews: string
-  rankingUsnewsCs: string
-  statusQs: number
-  statusQsCs: number
-  statusUsnews: number
-  statusUsnewsCs: number
-  statusTotal: number
-  consider: number
+  universityTags?: string | null
+  universityTagsState?: string | null
+  rankingQs: number[]
+  rankingQsCs: number[]
+  rankingUsnews: number[]
+  rankingUsnewsCs: number[]
+  statusQs?: number
+  statusQsCs?: number
+  statusUsnews?: number
+  statusUsnewsCs?: number
+  statusTotal?: number
+  consider?: number
 }
 
 const tableData = ref<University[]>([])
@@ -360,21 +360,21 @@ const getTagType = (tag: string | null) => {
 
 const editDrawerVisible = ref(false)
 const formData = reactive<University>({
-  id: 0,
   universityNameChinese: '',
-  universityTags: '',
-  universityTagsState: '',
-  rankingQs: '',
-  rankingQsCs: '',
-  rankingUsnews: '',
-  rankingUsnewsCs: '',
-  statusQs: 1,
-  statusQsCs: 1,
-  statusUsnews: 1,
-  statusUsnewsCs: 1,
-  statusTotal: 1,
-  consider: 1,
+  rankingQs: [],
+  rankingQsCs: [],
+  rankingUsnews: [],
+  rankingUsnewsCs: [],
 })
+
+const staticUniversity: University = {
+  universityNameChinese: '亚利桑那州立大学',
+  rankingQs: [330, 293, 294, 249, 222, 209, 212, 215, 220, 216, 219, 179, 200],
+  rankingQsCs: [0, 0, 201, 201, 151, 151, 151, 201, 151, 148, 151, 155, 0],
+  rankingUsnews: [0, 0, 143, 148, 121, 134, 145, 146, 146, 165, 156, 0, 179],
+  rankingUsnewsCs: [0, 0, 65, 72, 75, 89, 65, 78, 65, 89, 87, 0, 0],
+}
+
 const formRef = ref(null)
 
 const formRules = {
