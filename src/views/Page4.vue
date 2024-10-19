@@ -2,7 +2,7 @@
   <div>
     <!-- 查询卡片 -->
     <el-card class="search-card">
-      <el-form :inline="true" @submit.prevent="handleSearch" class="search-form">
+      <el-form :inline="true" class="search-form">
         <el-row :gutter="20" type="flex" justify="start" class="button-row">
           <el-col :span="6">
             <el-form-item>
@@ -49,6 +49,7 @@
           sortable
           :filters="nameFilters"
           :filter-method="filterHandler"
+          @filter-change="handleFilterChange"
         >
           <template #header>
             <el-input v-model="searchName" size="small" placeholder="搜索中文名" @input="handleSearch" />
@@ -65,6 +66,7 @@
           sortable
           :filters="countryFilters"
           :filter-method="filterHandler"
+          @filter-change="handleFilterChange"
         >
           <template #default="scope">
             <el-tag :type="getTagType(scope.row.universityTags)">{{ scope.row.universityTags || '无' }}</el-tag>
@@ -78,6 +80,7 @@
           sortable
           :filters="continentFilters"
           :filter-method="filterHandler"
+          @filter-change="handleFilterChange"
         >
           <template #default="scope">
             {{ scope.row.universityTagsState || '无' }}
@@ -264,7 +267,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import type { TableInstance, TableColumnCtx } from 'element-plus'
@@ -433,25 +436,55 @@ const submitForm = () => {
 
 const resetSearch = () => {
   searchName.value = ''
-  handleSearch()
   if (tableRef.value) {
     tableRef.value.clearFilter()
   }
   clearSelection()
+  fetchData() // 刷新数据
 }
 
 const handleSearch = async () => {
+  fetchData() // 调用数据获取
+}
+
+const fetchData = async () => {
+  loading.value = true
   try {
     const response = await axios.get('/api/status/queryRankingStatus', {
       params: {
-        // name: searchName.value
+        name: searchName.value
       }
     })
     tableData.value = response.data
+    updateFilters()
   } catch (error) {
     ElMessage.error('查询失败')
     console.error(error)
+  } finally {
+    loading.value = false
   }
+}
+
+const updateFilters = () => {
+  const nameSet = new Set<string>()
+  const countrySet = new Set<string>()
+  const continentSet = new Set<string>()
+
+  tableData.value.forEach(item => {
+    if (item.universityNameChinese) {
+      nameSet.add(item.universityNameChinese)
+    }
+    if (item.universityTags) {
+      countrySet.add(item.universityTags)
+    }
+    if (item.universityTagsState) {
+      continentSet.add(item.universityTagsState)
+    }
+  })
+
+  nameFilters.value = Array.from(nameSet).map(name => ({ text: name, value: name }))
+  countryFilters.value = Array.from(countrySet).map(country => ({ text: country, value: country }))
+  continentFilters.value = Array.from(continentSet).map(continent => ({ text: continent, value: continent }))
 }
 
 const selectable = (row: University) => {
@@ -499,6 +532,16 @@ const filteredData = computed(() => {
   }
   return data
 })
+
+const handleFilterChange = () => {
+  // 手动刷新数据以更新筛选后的视图
+  fetchData()
+}
+
+onMounted(() => {
+  fetchData()
+})
+
 </script>
 
 <style scoped>
