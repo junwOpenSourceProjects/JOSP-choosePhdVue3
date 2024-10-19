@@ -4,6 +4,7 @@
     <!-- 查询区域 -->
     <el-card class="search-card">
       <el-form :inline="true" :model="searchForm" ref="searchFormRef" label-width="100px">
+        <!-- 查询表单内容保持不变 -->
         <el-row :gutter="20">
           <el-col :span="6">
             <el-form-item label="大学名称">
@@ -44,6 +45,8 @@
             <el-form-item>
               <el-button type="primary" @click="handleSearch">查询</el-button>
               <el-button @click="resetSearch">重置</el-button>
+              <!-- 新增按钮：打开弹出表单 -->
+              <el-button type="success" @click="openFormDialog" style="margin-left: 10px;">新增数据</el-button>
             </el-form-item>
           </el-col>
         </el-row>
@@ -55,10 +58,11 @@
                 <el-checkbox
                   v-for="legend in allLegends"
                   :key="legend"
-                  :label="legend"
+                  :value="legend"
                   style="margin-right: 10px;">
                   {{ legend }}
                 </el-checkbox>
+                <!-- 从 :label 改为 :value -->
               </el-checkbox-group>
             </el-form-item>
           </el-col>
@@ -66,16 +70,51 @@
       </el-form>
     </el-card>
 
-    <!-- ECharts 图表区域 -->
+    <!-- ECharts 图表区域保持不变 -->
     <el-card class="chart-card">
       <v-chart :option="chartOption" autoresize style="width: 100%; height: 800px;" v-if="chartLoaded"></v-chart>
     </el-card>
+
+    <!-- 修改后的弹出表单对话框 -->
+     <!-- 使用 v-model 进行双向绑定 -->
+      <!-- 设置 before-close 方法 -->
+    <el-dialog
+      v-model="formDialogVisible"
+      title="新增/更新大学数据"
+      width="500px"
+      :before-close="handleDialogClose"
+      class="draggable-dialog"
+      ref="formDialog"
+      @open="enableDrag">
+      <el-form :model="formData" ref="formRef" label-width="120px" :rules="formRules" autocomplete="off">
+        <el-form-item label="大学中文名" prop="university_name_chinese">
+          <el-input v-model="formData.university_name_chinese" placeholder="请输入大学中文名"></el-input>
+        </el-form-item>
+
+        <!-- 动态生成状态单选按钮 -->
+        <template v-for="(status, key) in statuses" :key="key">
+          <el-form-item :label="status.label" :prop="key">
+            <el-radio-group v-model="formData[key]">
+              <el-radio :label="0">弱</el-radio>
+              <el-radio :label="1">中</el-radio>
+              <el-radio :label="2">强</el-radio>
+            </el-radio-group>
+          </el-form-item>
+        </template>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="handleCancel">取消</el-button>
+          <el-button type="primary" @click="submitForm">提交</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, computed, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import {
@@ -267,6 +306,196 @@ export default {
       fetchData()
     })
 
+    // 弹出表单相关逻辑
+
+    // 控制对话框的可见性
+    const formDialogVisible = ref(false)
+
+    // 表单数据
+    const formData = ref({
+      university_name_chinese: '',
+      status_qs: null,
+      status_qs_cs: null,
+      status_usnews: null,
+      status_usnews_cs: null,
+      status_total: null,
+      consider: null,
+    })
+
+    // 表单引用
+    const formRef = ref(null)
+
+    // 定义状态字段及其标签
+    const statuses = {
+      status_qs: { label: 'QS' },
+      status_qs_cs: { label: 'QS CS' },
+      status_usnews: { label: 'US News' },
+      status_usnews_cs: { label: 'US News CS' },
+      status_total: { label: '总计' },
+      consider: { label: '考虑' },
+    }
+
+    // 表单验证规则
+    const formRules = {
+      university_name_chinese: [
+        { required: true, message: '大学中文名不能为空', trigger: 'blur' }
+      ],
+      status_qs: [
+        { required: true, message: 'QS 状态不能为空', trigger: 'change' }
+      ],
+      status_qs_cs: [
+        { required: true, message: 'QS CS 状态不能为空', trigger: 'change' }
+      ],
+      status_usnews: [
+        { required: true, message: 'US News 状态不能为空', trigger: 'change' }
+      ],
+      status_usnews_cs: [
+        { required: true, message: 'US News CS 状态不能为空', trigger: 'change' }
+      ],
+      status_total: [
+        { required: true, message: '总计 状态不能为空', trigger: 'change' }
+      ],
+      consider: [
+        { required: true, message: '考虑 状态不能为空', trigger: 'change' }
+      ],
+    }
+
+    // 打开表单对话框
+    const openFormDialog = () => {
+      console.log('openFormDialog 被调用') // 调试日志
+      formDialogVisible.value = true
+      nextTick(() => {
+        // 聚焦到第一个输入框
+        if (formRef.value) {
+          const input = formRef.value.$el.querySelector('input')
+          if (input) {
+            input.focus()
+          }
+        }
+      })
+    }
+
+    // 重置表单数据
+    const resetForm = () => {
+      formData.value = {
+        university_name_chinese: '',
+        status_qs: null,
+        status_qs_cs: null,
+        status_usnews: null,
+        status_usnews_cs: null,
+        status_total: null,
+        consider: null,
+      }
+      if (formRef.value) {
+        formRef.value.resetFields()
+      }
+      formDialogVisible.value = false
+    }
+
+    // 处理取消按钮，增加确认提示
+    const handleCancel = () => {
+      ElMessageBox.confirm('是否确认取消并关闭表单？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }).then(() => {
+        resetForm()
+      }).catch(() => {
+        // 用户取消关闭，不做任何操作
+      })
+    }
+
+    // 处理关闭对话框前的确认
+    const handleDialogClose = (done) => {
+      if (formRef.value && formRef.value.hasChanged) { // 假设有一个标识表单是否更改的方法
+        ElMessageBox.confirm('表单内容未保存，是否确认关闭？', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning',
+        }).then(() => {
+          done()
+          resetForm()
+        }).catch(() => {
+          // 用户取消关闭，不做任何操作
+        })
+      } else {
+        done()
+      }
+    }
+
+    // 提交表单数据
+    const submitForm = () => {
+      formRef.value.validate(async (valid) => {
+        if (valid) {
+          try {
+            // 发送数据到后端
+            const response = await fetch('/api/query/addOrUpdateUniversityData', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(formData.value),
+            })
+
+            if (!response.ok) {
+              const errorText = await response.text()
+              throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
+            }
+
+            const result = await response.json()
+
+            // 假设后端返回 { message: 'inserted' } 或 { message: 'updated' }
+            if (result.message === 'inserted') {
+              ElMessage.success('数据已成功插入')
+            } else if (result.message === 'updated') {
+              ElMessage.success('数据已成功更新')
+            } else {
+              ElMessage.info(result.message)
+            }
+
+            // 关闭对话框并刷新数据
+            resetForm()
+            fetchData()
+
+          } catch (error) {
+            ElMessage.error(`提交失败: ${error.message}`)
+            console.error(error)
+          }
+        } else {
+          console.log('验证失败') // 调试日志
+          return false
+        }
+      })
+    }
+
+    // 实现对话框的拖动功能
+    const enableDrag = () => {
+      const dialogHeaderEl = document.querySelector('.el-dialog.draggable-dialog .el-dialog__header')
+      const dialogEl = document.querySelector('.el-dialog.draggable-dialog')
+
+      if (dialogHeaderEl && dialogEl) {
+        dialogHeaderEl.style.cursor = 'move'
+        dialogHeaderEl.onmousedown = (e) => {
+          e.preventDefault()
+          const disX = e.clientX - dialogEl.offsetLeft
+          const disY = e.clientY - dialogEl.offsetTop
+
+          const onMouseMove = (e) => {
+            dialogEl.style.left = (e.clientX - disX) + 'px'
+            dialogEl.style.top = (e.clientY - disY) + 'px'
+          }
+
+          const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove)
+            document.removeEventListener('mouseup', onMouseUp)
+          }
+
+          document.addEventListener('mousemove', onMouseMove)
+          document.addEventListener('mouseup', onMouseUp)
+        }
+      }
+    }
+
     return {
       searchForm,
       currentPage,
@@ -280,6 +509,18 @@ export default {
       searchFormRef,
       allLegends,
       selectedLegends,
+      // 新增返回的数据
+      formDialogVisible,
+      formData,
+      formRef,
+      statuses,
+      formRules,
+      openFormDialog,
+      resetForm,
+      submitForm,
+      handleCancel,       // 新增的取消处理方法
+      handleDialogClose,  // 新增的 before-close 处理方法
+      enableDrag,
     }
   },
 }
@@ -308,5 +549,14 @@ export default {
   /* 确保 ECharts 组件充满整个容器 */
   width: 100%;
   height: 100%;
+}
+
+/* 新增：调整对话框样式使其支持拖动 */
+.draggable-dialog>>>.el-dialog__header {
+  cursor: move;
+}
+
+.dialog-footer {
+  text-align: right;
 }
 </style>
