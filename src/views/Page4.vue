@@ -8,6 +8,9 @@
             <el-form-item>
               <el-button type="primary" @click="handleSearch">查询</el-button>
               <el-button @click="resetSearch">重置</el-button>
+              <el-button @click="toggleDataColumns" style="margin-left: 10px">
+                {{ showDataColumns ? '隐藏数据' : '展示数据' }}
+              </el-button>
             </el-form-item>
           </el-col>
         </el-row>
@@ -82,6 +85,7 @@
 
         <!-- QS数据列 -->
         <el-table-column
+          v-if="showDataColumns"
           prop="rankingQs"
           label="QS数据"
           sortable
@@ -103,6 +107,7 @@
 
         <!-- QS计算机科学数据列 -->
         <el-table-column
+          v-if="showDataColumns"
           prop="rankingQsCs"
           label="QS计算机科学数据"
           sortable
@@ -124,6 +129,7 @@
 
         <!-- US News数据列 -->
         <el-table-column
+          v-if="showDataColumns"
           prop="rankingUsnews"
           label="US News数据"
           sortable
@@ -145,6 +151,7 @@
 
         <!-- US News计算机科学数据列 -->
         <el-table-column
+          v-if="showDataColumns"
           prop="rankingUsnewsCs"
           label="US News计算机科学数据"
           sortable
@@ -193,9 +200,10 @@
         </el-table-column>
 
         <!-- 操作列 -->
-        <el-table-column label="操作" fixed="right" width="100">
+        <el-table-column label="操作" fixed="right" width="160">
           <template #default="scope">
             <el-button type="primary" size="small" @click="openEditDialog(scope.row)">修改</el-button>
+            <el-button type="warning" size="small" @click="hideRow(scope.row)" style="margin-left: 5px">隐藏</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -299,34 +307,18 @@ const filters = reactive({
   universityTagsState: '',
 })
 
-// 筛选选项
-const countryFilters = ref([
-  { text: '中国', value: '中国' },
-  { text: '美国', value: '美国' },
-  // 根据实际数据添加更多国家
-])
-
-const continentFilters = ref([
-  { text: '亚洲', value: '亚洲' },
-  { text: '欧洲', value: '欧洲' },
-  { text: '北美洲', value: '北美洲' },
-  { text: '南美洲', value: '南美洲' },
-  { text: '非洲', value: '非洲' },
-  { text: '大洋洲', value: '大洋洲' },
-  { text: '南极洲', value: '南极洲' },
-])
-
+// 筛选选项（动态生成）
+const countryFilters = ref<{ text: string; value: string }[]>([])
+const continentFilters = ref<{ text: string; value: string }[]>([])
 const statusFilters = ref([
   { text: '弱', value: 0 },
   { text: '中等', value: 1 },
   { text: '强', value: 2 },
 ])
-
 const considerFilters = ref([
   { text: '考虑', value: 1 },
   { text: '不考虑', value: 0 },
 ])
-
 const nameFilters = ref<{ text: string; value: string }[]>([]) // 动态生成大学中文名的筛选选项
 
 // 状态标签
@@ -344,6 +336,12 @@ const multipleTableRef = ref<TableInstance>()
 
 // 多选选中的行
 const multipleSelection = ref<University[]>([])
+
+// 用于隐藏行的ID集合
+const hiddenRowIds = ref<Set<number>>(new Set())
+
+// 用于控制数据列的显示与隐藏
+const showDataColumns = ref(false)
 
 // 筛选函数
 const filterHandler = (value: any, row: University, column: TableColumnCtx<University>) => {
@@ -480,7 +478,7 @@ const resetSearch = () => {
 // 处理搜索（重新获取数据）
 const handleSearch = () => {
   currentPage.value = 1
-  applyFilters()
+  // applyFilters()  --> 已经在 computed 中处理
 }
 
 // 处理分页变化
@@ -516,9 +514,22 @@ const clearSelection = () => {
   multipleTableRef.value.clearSelection()
 }
 
+// 切换数据列的显示与隐藏
+const toggleDataColumns = () => {
+  showDataColumns.value = !showDataColumns.value
+}
+
+// 隐藏某一行
+const hideRow = (row: University) => {
+  hiddenRowIds.value.add(row.id)
+}
+
 // 计算过滤后的数据（包括搜索和筛选）
 const filteredData = computed(() => {
   let data = tableData.value
+
+  // 排除隐藏的行
+  data = data.filter(row => !hiddenRowIds.value.has(row.id))
 
   // 搜索中文名
   if (searchName.value) {
@@ -545,6 +556,24 @@ const generateNameFilters = () => {
   nameFilters.value = Array.from(nameSet).map(name => ({ text: name, value: name }))
 }
 
+// 动态生成国家和大洲筛选选项
+const generateCountryAndContinentFilters = () => {
+  const countrySet = new Set<string>()
+  const continentSet = new Set<string>()
+
+  tableData.value.forEach(item => {
+    if (item.universityTags) {
+      countrySet.add(item.universityTags)
+    }
+    if (item.universityTagsState) {
+      continentSet.add(item.universityTagsState)
+    }
+  })
+
+  countryFilters.value = Array.from(countrySet).map(country => ({ text: country, value: country }))
+  continentFilters.value = Array.from(continentSet).map(continent => ({ text: continent, value: continent }))
+}
+
 // 获取数据的函数
 const fetchData = async () => {
   loading.value = true
@@ -554,8 +583,9 @@ const fetchData = async () => {
 
     tableData.value = response.data || []
 
-    // 生成大学中文名的筛选选项
+    // 生成筛选选项
     generateNameFilters()
+    generateCountryAndContinentFilters()
   } catch (error: any) {
     ElMessage.error(`获取数据失败: ${error.message}`)
     console.error(error)
@@ -611,7 +641,6 @@ const enableDrag = () => {
 
   header.addEventListener('mousedown', onMouseDown)
 }
-
 </script>
 
 <style scoped>
