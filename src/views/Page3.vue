@@ -117,6 +117,7 @@ import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
+import axios from 'axios' // 导入 axios
 import {
   CanvasRenderer
 } from 'echarts/renderers'
@@ -243,21 +244,14 @@ export default {
           rankVariant: searchForm.value.rankVariant,
         }
 
-        const queryString = new URLSearchParams(params).toString()
+        const response = await axios.get('/api/query/queryPartEcharts', { params })
 
-        const response = await fetch(`/api/query/queryPartEcharts?${queryString}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
-
-        if (!response.ok) {
-          const errorText = await response.text()
-          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
+        // 检查响应状态
+        if (response.status !== 200) {
+          throw new Error(`HTTP error! status: ${response.status}`)
         }
 
-        const data = await response.json()
+        const data = response.data
 
         // 确保 data.chatData.series 和 data.legendData 存在
         if (!data.chatData || !data.chatData.series || !data.legendData) {
@@ -313,7 +307,7 @@ export default {
 
     // 表单数据
     const formData = ref({
-      university_name_chinese: '',
+      university_name_chinese: '123',
       status_qs: null,
       status_qs_cs: null,
       status_usnews: null,
@@ -427,22 +421,21 @@ export default {
     const submitForm = () => {
       formRef.value.validate(async (valid) => {
         if (valid) {
+          console.log('Submitting formData:', formData.value) // 调试日志
           try {
             // 发送数据到后端
-            const response = await fetch('/api/query/addOrUpdateUniversityData', {
-              method: 'POST',
+            const response = await axios.post('/api/status/insertOrUpdate', formData.value, {
               headers: {
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify(formData.value),
             })
 
-            if (!response.ok) {
-              const errorText = await response.text()
+            if (response.status !== 200) {
+              const errorText = response.statusText || '未知错误'
               throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
             }
 
-            const result = await response.json()
+            const result = response.data
 
             // 假设后端返回 { message: 'inserted' } 或 { message: 'updated' }
             if (result.message === 'inserted') {
