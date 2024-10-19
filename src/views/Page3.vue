@@ -1,4 +1,3 @@
-<!-- src/views/Page3.vue -->
 <template>
   <div>
     <!-- 查询区域 -->
@@ -62,7 +61,6 @@
                   style="margin-right: 10px;">
                   {{ legend }}
                 </el-checkbox>
-                <!-- 从 :label 改为 :value -->
               </el-checkbox-group>
             </el-form-item>
           </el-col>
@@ -76,8 +74,6 @@
     </el-card>
 
     <!-- 修改后的弹出表单对话框 -->
-     <!-- 使用 v-model 进行双向绑定 -->
-      <!-- 设置 before-close 方法 -->
     <el-dialog
       v-model="formDialogVisible"
       title="新增/更新大学数据"
@@ -87,17 +83,17 @@
       ref="formDialog"
       @open="enableDrag">
       <el-form :model="formData" ref="formRef" label-width="120px" :rules="formRules" autocomplete="off">
-        <el-form-item label="大学中文名" prop="university_name_chinese">
-          <el-input v-model="formData.university_name_chinese" placeholder="请输入大学中文名"></el-input>
+        <el-form-item label="大学中文名" prop="universityNameChinese">
+          <el-input v-model="formData.universityNameChinese" placeholder="请输入大学中文名"></el-input>
         </el-form-item>
 
         <!-- 动态生成状态单选按钮 -->
         <template v-for="(status, key) in statuses" :key="key">
           <el-form-item :label="status.label" :prop="key">
             <el-radio-group v-model="formData[key]">
-              <el-radio :label="0">弱</el-radio>
-              <el-radio :label="1">中</el-radio>
-              <el-radio :label="2">强</el-radio>
+              <el-radio :value="0">弱</el-radio>
+              <el-radio :value="1">中</el-radio>
+              <el-radio :value="2">强</el-radio>
             </el-radio-group>
           </el-form-item>
         </template>
@@ -307,12 +303,12 @@ export default {
 
     // 表单数据
     const formData = ref({
-      university_name_chinese: '123',
-      status_qs: null,
-      status_qs_cs: null,
-      status_usnews: null,
-      status_usnews_cs: null,
-      status_total: null,
+      universityNameChinese: '',
+      statusQs: null,
+      statusQsCs: null,
+      statusUsnews: null,
+      statusUsnewsCs: null,
+      statusTotal: null,
       consider: null,
     })
 
@@ -321,32 +317,32 @@ export default {
 
     // 定义状态字段及其标签
     const statuses = {
-      status_qs: { label: 'QS' },
-      status_qs_cs: { label: 'QS CS' },
-      status_usnews: { label: 'US News' },
-      status_usnews_cs: { label: 'US News CS' },
-      status_total: { label: '总计' },
+      statusQs: { label: 'QS' },
+      statusQsCs: { label: 'QS CS' },
+      statusUsnews: { label: 'US News' },
+      statusUsnewsCs: { label: 'US News CS' },
+      statusTotal: { label: '总计' },
       consider: { label: '考虑' },
     }
 
     // 表单验证规则
     const formRules = {
-      university_name_chinese: [
+      universityNameChinese: [
         { required: true, message: '大学中文名不能为空', trigger: 'blur' }
       ],
-      status_qs: [
+      statusQs: [
         { required: true, message: 'QS 状态不能为空', trigger: 'change' }
       ],
-      status_qs_cs: [
+      statusQsCs: [
         { required: true, message: 'QS CS 状态不能为空', trigger: 'change' }
       ],
-      status_usnews: [
+      statusUsnews: [
         { required: true, message: 'US News 状态不能为空', trigger: 'change' }
       ],
-      status_usnews_cs: [
+      statusUsnewsCs: [
         { required: true, message: 'US News CS 状态不能为空', trigger: 'change' }
       ],
-      status_total: [
+      statusTotal: [
         { required: true, message: '总计 状态不能为空', trigger: 'change' }
       ],
       consider: [
@@ -372,12 +368,12 @@ export default {
     // 重置表单数据
     const resetForm = () => {
       formData.value = {
-        university_name_chinese: '',
-        status_qs: null,
-        status_qs_cs: null,
-        status_usnews: null,
-        status_usnews_cs: null,
-        status_total: null,
+        universityNameChinese: '',
+        statusQs: null,
+        statusQsCs: null,
+        statusUsnews: null,
+        statusUsnewsCs: null,
+        statusTotal: null,
         consider: null,
       }
       if (formRef.value) {
@@ -401,20 +397,10 @@ export default {
 
     // 处理关闭对话框前的确认
     const handleDialogClose = (done) => {
-      if (formRef.value && formRef.value.hasChanged) { // 假设有一个标识表单是否更改的方法
-        ElMessageBox.confirm('表单内容未保存，是否确认关闭？', '提示', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning',
-        }).then(() => {
-          done()
-          resetForm()
-        }).catch(() => {
-          // 用户取消关闭，不做任何操作
-        })
-      } else {
-        done()
-      }
+      // 检查表单是否有更改（可选：需要实现 hasChanged 的逻辑）
+      // 这里假设表单每次打开都会重置，因此无需额外判断
+      done()
+      resetForm()
     }
 
     // 提交表单数据
@@ -438,12 +424,12 @@ export default {
             const result = response.data
 
             // 假设后端返回 { message: 'inserted' } 或 { message: 'updated' }
-            if (result.message === 'inserted') {
-              ElMessage.success('数据已成功插入')
-            } else if (result.message === 'updated') {
-              ElMessage.success('数据已成功更新')
+            if (result.data === '成功') {
+              ElMessage.success('数据已成功提交')
+            } else if (result.data === '失败') {
+              ElMessage.error('数据提交失败')
             } else {
-              ElMessage.info(result.message)
+              ElMessage.info(result.data)
             }
 
             // 关闭对话框并刷新数据
@@ -545,7 +531,7 @@ export default {
 }
 
 /* 新增：调整对话框样式使其支持拖动 */
-.draggable-dialog>>>.el-dialog__header {
+.draggable-dialog >>> .el-dialog__header {
   cursor: move;
 }
 
