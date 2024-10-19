@@ -1,6 +1,6 @@
 <template>
   <div>
-    <!-- 查询卡片，仅保留查询和重置按钮 -->
+    <!-- 查询卡片 -->
     <el-card class="search-card">
       <el-form :inline="true" @submit.prevent="handleSearch" class="search-form">
         <el-row :gutter="20" type="flex" justify="start" class="button-row">
@@ -34,7 +34,6 @@
         :loading="loading"
         row-key="id"
         @selection-change="handleSelectionChange"
-        @filter-change="handleFilterChange"
       >
         <!-- 多选列 -->
         <el-table-column
@@ -43,7 +42,7 @@
           :selectable="selectable"
         />
 
-        <!-- 大学中文名列，带有自定义表头搜索 -->
+        <!-- 大学中文名列 -->
         <el-table-column
           prop="universityNameChinese"
           label="大学中文名"
@@ -59,7 +58,7 @@
           </template>
         </el-table-column>
 
-        <!-- 所在国家列，带有筛选 -->
+        <!-- 所在国家列 -->
         <el-table-column
           prop="universityTags"
           label="所在国家"
@@ -72,7 +71,7 @@
           </template>
         </el-table-column>
 
-        <!-- 所在大洲列，带有筛选 -->
+        <!-- 所在大洲列 -->
         <el-table-column
           prop="universityTagsState"
           label="所在大洲"
@@ -94,7 +93,7 @@
           :formatter="formatRanking"
         />
 
-        <!-- QS排名强弱列，带有筛选 -->
+        <!-- QS排名强弱列 -->
         <el-table-column
           prop="statusQs"
           label="QS排名强弱"
@@ -116,7 +115,7 @@
           :formatter="formatRanking"
         />
 
-        <!-- QS计算机排名强弱列，带有筛选 -->
+        <!-- QS计算机排名强弱列 -->
         <el-table-column
           prop="statusQsCs"
           label="QS计算机排名强弱"
@@ -138,7 +137,7 @@
           :formatter="formatRanking"
         />
 
-        <!-- US News排名强弱列，带有筛选 -->
+        <!-- US News排名强弱列 -->
         <el-table-column
           prop="statusUsnews"
           label="US News排名强弱"
@@ -160,7 +159,7 @@
           :formatter="formatRanking"
         />
 
-        <!-- US News计算机排名强弱列，带有筛选 -->
+        <!-- US News计算机排名强弱列 -->
         <el-table-column
           prop="statusUsnewsCs"
           label="US News计算机排名强弱"
@@ -173,7 +172,7 @@
           </template>
         </el-table-column>
 
-        <!-- 整体排名强弱列，带有筛选 -->
+        <!-- 整体排名强弱列 -->
         <el-table-column
           prop="statusTotal"
           label="整体排名强弱"
@@ -186,7 +185,7 @@
           </template>
         </el-table-column>
 
-        <!-- 是否考虑列，带有筛选 -->
+        <!-- 是否考虑列 -->
         <el-table-column
           prop="consider"
           label="是否考虑"
@@ -211,20 +210,6 @@
       </el-table>
     </el-scrollbar>
 
-    <!-- 分页组件 --> <!-- 删除分页组件 -->
-    <!--
-    <div class="pagination">
-      <el-pagination
-        background
-        layout="prev, pager, next, jumper, ->, total"
-        :current-page="currentPage"
-        :page-size="limit"
-        :total="filteredData.length"
-        @current-change="handlePageChange"
-      />
-    </div>
-    -->
-
     <!-- 修改抽屉 -->
     <el-drawer
       v-model="editDrawerVisible"
@@ -234,7 +219,6 @@
       :before-close="handleDrawerClose"
       class="draggable-drawer"
       ref="editDrawer"
-      @open="enableDragDrawer"
     >
       <el-form :model="formData" ref="formRef" label-width="120px" :rules="formRules" autocomplete="off">
         <el-form-item label="大学中文名" prop="universityNameChinese">
@@ -259,6 +243,16 @@
           </el-radio-group>
         </el-form-item>
       </el-form>
+
+      <!-- 嵌套表格展示 -->
+      <el-table :data="[formData]">
+        <el-table-column property="universityNameChinese" label="大学名称" />
+        <el-table-column property="rankingQs" label="QS数据" />
+        <el-table-column property="rankingQsCs" label="QS计算机科学数据" />
+        <el-table-column property="rankingUsnews" label="US News数据" />
+        <el-table-column property="rankingUsnewsCs" label="US News计算机科学数据" />
+      </el-table>
+
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="handleDrawerClose">取消</el-button>
@@ -270,9 +264,9 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, reactive, computed } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import axios from 'axios'
-import { ElMessage, ElDrawer, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import type { TableInstance, TableColumnCtx } from 'element-plus'
 
 interface University {
@@ -292,23 +286,14 @@ interface University {
   consider: number
 }
 
-// 表格数据
 const tableData = ref<University[]>([])
-
-// 搜索中文名
 const searchName = ref('')
-
-// 加载状态
 const loading = ref(false)
-
-// 筛选条件（仅用于自定义搜索）
 const filters = reactive({
   universityNameChinese: '',
   universityTags: '',
   universityTagsState: '',
 })
-
-// 筛选选项（动态生成）
 const countryFilters = ref<{ text: string; value: string }[]>([])
 const continentFilters = ref<{ text: string; value: string }[]>([])
 const statusFilters = ref([
@@ -320,9 +305,8 @@ const considerFilters = ref([
   { text: '考虑', value: 1 },
   { text: '不考虑', value: 0 },
 ])
-const nameFilters = ref<{ text: string; value: string }[]>([]) // 动态生成大学中文名的筛选选项
+const nameFilters = ref<{ text: string; value: string }[]>([])
 
-// 状态标签
 const statuses = {
   statusQs: { label: 'QS排名强弱' },
   statusQsCs: { label: 'QS计算机排名强弱' },
@@ -331,25 +315,16 @@ const statuses = {
   statusTotal: { label: '整体排名强弱' },
 }
 
-// 表格引用，用于操作筛选和多选
 const tableRef = ref<TableInstance>()
 const multipleTableRef = ref<TableInstance>()
-
-// 多选选中的行
 const multipleSelection = ref<University[]>([])
-
-// 用于隐藏行的ID集合
 const hiddenRowIds = ref<Set<number>>(new Set())
-
-// 用于控制数据列的显示与隐藏
 const showDataColumns = ref(false)
 
-// 筛选函数
 const filterHandler = (value: any, row: University, column: TableColumnCtx<University>) => {
   return row[column.property as keyof University] === value
 }
 
-// 获取状态标签文本
 const getStatusText = (status: number) => {
   switch (status) {
     case 0:
@@ -363,7 +338,6 @@ const getStatusText = (status: number) => {
   }
 }
 
-// 获取状态标签类型
 const getStatusTagType = (status: number) => {
   switch (status) {
     case 0:
@@ -377,16 +351,20 @@ const getStatusTagType = (status: number) => {
   }
 }
 
-// 获取所在国家标签类型（可根据需求自定义）
 const getTagType = (tag: string | null) => {
   return tag ? 'primary' : 'info'
 }
 
-// 打开修改抽屉
 const editDrawerVisible = ref(false)
-const formData = reactive({
+const formData = reactive<University>({
   id: 0,
   universityNameChinese: '',
+  universityTags: '',
+  universityTagsState: '',
+  rankingQs: '',
+  rankingQsCs: '',
+  rankingUsnews: '',
+  rankingUsnewsCs: '',
   statusQs: 1,
   statusQsCs: 1,
   statusUsnews: 1,
@@ -420,32 +398,19 @@ const formRules = {
   ],
 }
 
-// 打开编辑抽屉
 const openEditDrawer = (row: University) => {
-  Object.assign(formData, {
-    id: row.id,
-    universityNameChinese: row.universityNameChinese,
-    statusQs: row.statusQs,
-    statusQsCs: row.statusQsCs,
-    statusUsnews: row.statusUsnews,
-    statusUsnewsCs: row.statusUsnewsCs,
-    statusTotal: row.statusTotal,
-    consider: row.consider,
-  })
+  Object.assign(formData, row)
   editDrawerVisible.value = true
 }
 
-// 关闭抽屉
 const handleDrawerClose = () => {
   editDrawerVisible.value = false
 }
 
-// 提交表单
 const submitForm = () => {
   formRef.value.validate(async (valid: boolean) => {
     if (valid) {
       try {
-        // 发送更新请求到后端
         const response = await axios.post('/api/status/insertOrUpdate', formData)
 
         if (response.data.success) {
@@ -466,7 +431,6 @@ const submitForm = () => {
   })
 }
 
-// 重置搜索
 const resetSearch = () => {
   searchName.value = ''
   handleSearch()
@@ -476,45 +440,46 @@ const resetSearch = () => {
   clearSelection()
 }
 
-// 处理搜索（重新获取数据）
-const handleSearch = () => {
-  // applyFilters()  --> 已经在 computed 中处理
+const handleSearch = async () => {
+  try {
+    const response = await axios.get('/api/status/queryRankingStatus', {
+      params: {
+        // name: searchName.value
+      }
+    })
+    tableData.value = response.data
+  } catch (error) {
+    ElMessage.error('查询失败')
+    console.error(error)
+  }
 }
 
-// 选择不可选择的行
 const selectable = (row: University) => {
-  // 例如：不允许选择 id 为 1 和 2 的行
   return row.id !== 1 && row.id !== 2
 }
 
-// 处理多选变化
 const handleSelectionChange = (val: University[]) => {
   multipleSelection.value = val
 }
 
-// 切换选择状态
 const toggleSelection = (rows: University[], ignoreSelectable?: boolean) => {
   rows.forEach((row) => {
     multipleTableRef.value.toggleRowSelection(row, ignoreSelectable)
   })
 }
 
-// 清除所有选择
 const clearSelection = () => {
   multipleTableRef.value.clearSelection()
 }
 
-// 切换数据列的显示与隐藏
 const toggleDataColumns = () => {
   showDataColumns.value = !showDataColumns.value
 }
 
-// 隐藏某一行
 const hideRow = (row: University) => {
   hiddenRowIds.value.add(row.id)
 }
 
-// 隐藏选中的行
 const hideSelectedRows = () => {
   multipleSelection.value.forEach(row => {
     hiddenRowIds.value.add(row.id)
@@ -522,160 +487,28 @@ const hideSelectedRows = () => {
   clearSelection()
 }
 
-// 展示所有行
 const showAllRows = () => {
   hiddenRowIds.value.clear()
 }
 
-// 计算过滤后的数据（包括搜索和筛选）
 const filteredData = computed(() => {
   let data = tableData.value
-
-  // 排除隐藏的行
   data = data.filter(row => !hiddenRowIds.value.has(row.id))
-
-  // 搜索中文名
   if (searchName.value) {
     data = data.filter(row => row.universityNameChinese.toLowerCase().includes(searchName.value.toLowerCase()))
   }
-
   return data
 })
-
-// 格式化排名数据（将字符串转换为展示更友好的格式）
-const formatRanking = (row: University, column: any, cellValue: string) => {
-  // 这里简单地返回原始字符串，你可以根据需要进行格式化
-  return cellValue
-}
-
-// 获取动态生成的大学中文名筛选选项
-const generateNameFilters = () => {
-  const nameSet = new Set<string>()
-  tableData.value.forEach(item => {
-    if (item.universityNameChinese) {
-      nameSet.add(item.universityNameChinese)
-    }
-  })
-  nameFilters.value = Array.from(nameSet).map(name => ({ text: name, value: name }))
-}
-
-// 动态生成国家和大洲筛选选项
-const generateCountryAndContinentFilters = () => {
-  const countrySet = new Set<string>()
-  const continentSet = new Set<string>()
-
-  tableData.value.forEach(item => {
-    if (item.universityTags) {
-      countrySet.add(item.universityTags)
-    }
-    if (item.universityTagsState) {
-      continentSet.add(item.universityTagsState)
-    }
-  })
-
-  countryFilters.value = Array.from(countrySet).map(country => ({ text: country, value: country }))
-  continentFilters.value = Array.from(continentSet).map(continent => ({ text: continent, value: continent }))
-}
-
-// 获取数据的函数
-const fetchData = async () => {
-  loading.value = true
-  try {
-    // 使用 axios 调用查询接口，不传递任何参数
-    const response = await axios.get<University[]>('/api/status/queryRankingStatus')
-
-    tableData.value = response.data || []
-
-    // 生成筛选选项
-    generateNameFilters()
-    generateCountryAndContinentFilters()
-  } catch (error: any) {
-    ElMessage.error(`获取数据失败: ${error.message}`)
-    console.error(error)
-  } finally {
-    loading.value = false
-  }
-}
-
-// 初始化获取数据
-onMounted(() => {
-  fetchData()
-})
-
-// 可拖拽抽屉逻辑
-const enableDragDrawer = () => {
-  const drawer = document.querySelector('.draggable-drawer .el-drawer') as HTMLElement
-  if (!drawer) return
-
-  const header = drawer.querySelector('.el-drawer__header') as HTMLElement
-  if (!header) return
-
-  drawer.style.top = '100px'
-  header.style.cursor = 'move'
-
-  let isDragging = false
-  let startX = 0
-  let startY = 0
-  let initialX = 0
-  let initialY = 0
-
-  const onMouseDown = (e: MouseEvent) => {
-    isDragging = true
-    startX = e.clientX
-    startY = e.clientY
-    const rect = drawer.getBoundingClientRect()
-    initialX = rect.left
-    initialY = rect.top
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onMouseUp)
-  }
-
-  const onMouseMove = (e: MouseEvent) => {
-    if (isDragging) {
-      const dx = e.clientX - startX
-      const dy = e.clientY - startY
-      drawer.style.left = `${initialX + dx}px`
-      drawer.style.top = `${initialY + dy}px`
-    }
-  }
-
-  const onMouseUp = () => {
-    isDragging = false
-    document.removeEventListener('mousemove', onMouseMove)
-    document.removeEventListener('mouseup', onMouseUp)
-  }
-
-  header.addEventListener('mousedown', onMouseDown)
-}
 </script>
 
 <style scoped>
-/* 查询卡片样式 */
 .search-card {
   margin-bottom: 20px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
 }
-
-/* 搜索表单样式 */
-.search-form {
-  width: 100%;
-}
-
-/* 按钮行样式 */
 .button-row {
-  margin-top: 10px;
+  margin-bottom: 10px;
 }
-
-/* 表格内标签样式调整 */
-.el-table th,
-.el-table td {
-  text-align: center;
-}
-
-/* 可拖拽抽屉样式 */
-.draggable-drawer .el-drawer {
-  position: absolute;
+.dialog-footer {
+  text-align: right;
 }
 </style>
