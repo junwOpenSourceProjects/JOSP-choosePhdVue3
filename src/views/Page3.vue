@@ -62,14 +62,23 @@
                   {{ legend }}
                 </el-checkbox>
               </el-checkbox-group>
+              <!-- 新增：全选和清空选择按钮 -->
+              <div style="margin-top: 10px;">
+                <el-button size="mini" @click="selectAll">全选</el-button>
+                <el-button size="mini" @click="clearSelection" style="margin-left: 10px;">清空选择</el-button>
+              </div>
             </el-form-item>
           </el-col>
         </el-row>
       </el-form>
     </el-card>
 
-    <!-- ECharts 图表区域保持不变 -->
+    <!-- ECharts 图表区域 -->
     <el-card class="chart-card">
+      <!-- 新增：深色模式切换按钮 -->
+      <el-button @click="toggleDarkMode" size="mini" style="margin-bottom: 10px;">
+        {{ darkMode ? '浅色模式' : '深色模式' }}
+      </el-button>
       <v-chart :option="chartOption" autoresize style="width: 100%; height: 800px;" v-if="chartLoaded"></v-chart>
     </el-card>
 
@@ -171,28 +180,47 @@ export default {
     })
 
     // 默认数据
-    const defaultSeries = {
-      name: "亚利桑那州立大学",
+    // const defaultSeries = {
+    //   name: "亚利桑那州立大学",
+    //   type: "line",
+    //   smooth: true,
+    //   emphasis: {
+    //     focus: "series"
+    //   },
+    //   data: [
+    //     330.0, 293.0, 294.0, 249.0, 222.0, 209.0, 212.0, 215.0, 220.0, 216.0, 219.0, 179.0, 200.0, 210.0
+    //   ],
+    //   xaxisIndex: null
+    // }
+        const defaultSeries = {
+      name: "测试数据",
       type: "line",
       smooth: true,
       emphasis: {
         focus: "series"
       },
       data: [
-        330.0, 293.0, 294.0, 249.0, 222.0, 209.0, 212.0, 215.0, 220.0, 216.0, 219.0, 179.0, 200.0, 210.0
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
       ],
       xaxisIndex: null
     }
+
+    // 新增：深色模式状态
+    const darkMode = ref(false)
 
     // 更新图表选项
     const updateChartOption = () => {
       const filteredSeries = allSeries.value.filter(series => selectedLegends.value.includes(series.name))
       chartOption.value = {
+        backgroundColor: darkMode.value ? '#2c3e50' : '#ffffff', // 设置背景色
         color: ['#5470C6', '#EE6666', '#91CC75', '#FAC858', '#73C0DE', '#3BA272', '#FC8452', '#9A60B4', '#EA7CCC', '#FF69B4', '#CD5C5C'], // 扩展颜色以支持更多系列
         tooltip: {
           trigger: 'axis',
           axisPointer: {
             type: 'cross'
+          },
+          textStyle: {
+            color: darkMode.value ? '#ffffff' : '#000000'
           }
         },
         legend: {
@@ -200,6 +228,9 @@ export default {
           orient: 'horizontal',
           top: 'top', // 将图例放置在顶部
           data: allLegends.value,
+          textStyle: {
+            color: darkMode.value ? '#ffffff' : '#000000'
+          },
           tooltip: {
             show: true
           }
@@ -216,13 +247,24 @@ export default {
           },
           axisLine: {
             lineStyle: {
-              color: '#5470C6'
+              color: darkMode.value ? '#ffffff' : '#5470C6'
             }
+          },
+          axisLabel: {
+            color: darkMode.value ? '#ffffff' : '#000000'
           }
         },
         yAxis: {
           type: 'value',
-          inverse: true
+          inverse: true,
+          axisLine: {
+            lineStyle: {
+              color: darkMode.value ? '#ffffff' : '#000000'
+            }
+          },
+          axisLabel: {
+            color: darkMode.value ? '#ffffff' : '#000000'
+          }
         },
         series: filteredSeries
       }
@@ -475,6 +517,22 @@ export default {
       }
     }
 
+    // 新增：全选按钮处理方法
+    const selectAll = () => {
+      selectedLegends.value = [...allLegends.value]
+    }
+
+    // 新增：清空选择按钮处理方法
+    const clearSelection = () => {
+      selectedLegends.value = []
+    }
+
+    // 新增：深色模式切换处理方法
+    const toggleDarkMode = () => {
+      darkMode.value = !darkMode.value
+      updateChartOption()
+    }
+
     return {
       searchForm,
       currentPage,
@@ -500,6 +558,11 @@ export default {
       handleCancel,       // 新增的取消处理方法
       handleDialogClose,  // 新增的 before-close 处理方法
       enableDrag,
+      // 新增的方法和状态
+      selectAll,
+      clearSelection,
+      darkMode,
+      toggleDarkMode,
     }
   },
 }
@@ -537,5 +600,10 @@ export default {
 
 .dialog-footer {
   text-align: right;
+}
+
+/* 可选：根据深色模式调整整体背景色 */
+body {
+  background-color: var(--background-color);
 }
 </style>
