@@ -21,6 +21,8 @@
     <div style="margin-bottom: 20px;">
       <el-button @click="toggleSelection([tableData[0], tableData[1]])" type="primary" size="small">选择前两行</el-button>
       <el-button @click="clearSelection" type="danger" size="small">清除选择</el-button>
+      <el-button @click="hideSelectedRows" type="warning" size="small" style="margin-left: 10px">隐藏选中</el-button>
+      <el-button @click="showAllRows" type="success" size="small" style="margin-left: 5px">展示所有</el-button>
     </div>
 
     <!-- 表格区域 -->
@@ -202,14 +204,15 @@
         <!-- 操作列 -->
         <el-table-column label="操作" fixed="right" width="160">
           <template #default="scope">
-            <el-button type="primary" size="small" @click="openEditDialog(scope.row)">修改</el-button>
+            <el-button type="primary" size="small" @click="openEditDrawer(scope.row)">修改</el-button>
             <el-button type="warning" size="small" @click="hideRow(scope.row)" style="margin-left: 5px">隐藏</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-scrollbar>
 
-    <!-- 分页组件 -->
+    <!-- 分页组件 --> <!-- 删除分页组件 -->
+    <!--
     <div class="pagination">
       <el-pagination
         background
@@ -220,16 +223,18 @@
         @current-change="handlePageChange"
       />
     </div>
+    -->
 
-    <!-- 修改弹出对话框 -->
-    <el-dialog
-      v-model="formDialogVisible"
+    <!-- 修改抽屉 -->
+    <el-drawer
+      v-model="editDrawerVisible"
       title="修改大学数据"
-      width="500px"
-      :before-close="handleDialogClose"
-      class="draggable-dialog"
-      ref="formDialog"
-      @open="enableDrag"
+      direction="rtl"
+      size="50%"
+      :before-close="handleDrawerClose"
+      class="draggable-drawer"
+      ref="editDrawer"
+      @open="enableDragDrawer"
     >
       <el-form :model="formData" ref="formRef" label-width="120px" :rules="formRules" autocomplete="off">
         <el-form-item label="大学中文名" prop="universityNameChinese">
@@ -256,18 +261,18 @@
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="handleCancel">取消</el-button>
+          <el-button @click="handleDrawerClose">取消</el-button>
           <el-button type="primary" @click="submitForm">提交</el-button>
         </div>
       </template>
-    </el-dialog>
+    </el-drawer>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { ref, onMounted, reactive, computed } from 'vue'
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElDrawer, ElMessageBox } from 'element-plus'
 import type { TableInstance, TableColumnCtx } from 'element-plus'
 
 interface University {
@@ -292,10 +297,6 @@ const tableData = ref<University[]>([])
 
 // 搜索中文名
 const searchName = ref('')
-
-// 分页相关
-const currentPage = ref(1)
-const limit = ref(10)
 
 // 加载状态
 const loading = ref(false)
@@ -381,8 +382,8 @@ const getTagType = (tag: string | null) => {
   return tag ? 'primary' : 'info'
 }
 
-// 打开修改对话框
-const formDialogVisible = ref(false)
+// 打开修改抽屉
+const editDrawerVisible = ref(false)
 const formData = reactive({
   id: 0,
   universityNameChinese: '',
@@ -419,8 +420,8 @@ const formRules = {
   ],
 }
 
-// 打开编辑对话框
-const openEditDialog = (row: University) => {
+// 打开编辑抽屉
+const openEditDrawer = (row: University) => {
   Object.assign(formData, {
     id: row.id,
     universityNameChinese: row.universityNameChinese,
@@ -431,12 +432,12 @@ const openEditDialog = (row: University) => {
     statusTotal: row.statusTotal,
     consider: row.consider,
   })
-  formDialogVisible.value = true
+  editDrawerVisible.value = true
 }
 
-// 关闭对话框
-const handleDialogClose = () => {
-  formDialogVisible.value = false
+// 关闭抽屉
+const handleDrawerClose = () => {
+  editDrawerVisible.value = false
 }
 
 // 提交表单
@@ -449,7 +450,7 @@ const submitForm = () => {
 
         if (response.data.success) {
           ElMessage.success('更新成功')
-          formDialogVisible.value = false
+          editDrawerVisible.value = false
           fetchData()
         } else {
           throw new Error(response.data.message || '更新失败')
@@ -477,18 +478,7 @@ const resetSearch = () => {
 
 // 处理搜索（重新获取数据）
 const handleSearch = () => {
-  currentPage.value = 1
   // applyFilters()  --> 已经在 computed 中处理
-}
-
-// 处理分页变化
-const handlePageChange = (page: number) => {
-  currentPage.value = page
-}
-
-// 处理筛选变化
-const handleFilterChange = () => {
-  currentPage.value = 1
 }
 
 // 选择不可选择的行
@@ -522,6 +512,19 @@ const toggleDataColumns = () => {
 // 隐藏某一行
 const hideRow = (row: University) => {
   hiddenRowIds.value.add(row.id)
+}
+
+// 隐藏选中的行
+const hideSelectedRows = () => {
+  multipleSelection.value.forEach(row => {
+    hiddenRowIds.value.add(row.id)
+  })
+  clearSelection()
+}
+
+// 展示所有行
+const showAllRows = () => {
+  hiddenRowIds.value.clear()
 }
 
 // 计算过滤后的数据（包括搜索和筛选）
@@ -599,12 +602,15 @@ onMounted(() => {
   fetchData()
 })
 
-// 可拖拽对话框逻辑
-const enableDrag = () => {
-  const dialog = document.querySelector('.draggable-dialog .el-dialog') as HTMLElement
-  const header = dialog.querySelector('.el-dialog__header') as HTMLElement
-  dialog.style.top = '100px'
+// 可拖拽抽屉逻辑
+const enableDragDrawer = () => {
+  const drawer = document.querySelector('.draggable-drawer .el-drawer') as HTMLElement
+  if (!drawer) return
 
+  const header = drawer.querySelector('.el-drawer__header') as HTMLElement
+  if (!header) return
+
+  drawer.style.top = '100px'
   header.style.cursor = 'move'
 
   let isDragging = false
@@ -617,7 +623,7 @@ const enableDrag = () => {
     isDragging = true
     startX = e.clientX
     startY = e.clientY
-    const rect = dialog.getBoundingClientRect()
+    const rect = drawer.getBoundingClientRect()
     initialX = rect.left
     initialY = rect.top
     document.addEventListener('mousemove', onMouseMove)
@@ -628,8 +634,8 @@ const enableDrag = () => {
     if (isDragging) {
       const dx = e.clientX - startX
       const dy = e.clientY - startY
-      dialog.style.left = `${initialX + dx}px`
-      dialog.style.top = `${initialY + dy}px`
+      drawer.style.left = `${initialX + dx}px`
+      drawer.style.top = `${initialY + dy}px`
     }
   }
 
@@ -662,20 +668,14 @@ const enableDrag = () => {
   margin-top: 10px;
 }
 
-/* 分页样式 */
-.pagination {
-  margin-top: 20px;
-  text-align: right;
-}
-
 /* 表格内标签样式调整 */
 .el-table th,
 .el-table td {
   text-align: center;
 }
 
-/* 可拖拽对话框样式 */
-.draggable-dialog .el-dialog {
+/* 可拖拽抽屉样式 */
+.draggable-drawer .el-drawer {
   position: absolute;
 }
 </style>
