@@ -90,7 +90,7 @@
         universityName: '',
         universityTagsState: '', // 所在大洲
         universityTags: '',      // 所在国家
-        currentRank: '',         // QS排名高于某个值
+        currentRank: 10,         // QS排名高于某个值
       })
 
       // 分页相关

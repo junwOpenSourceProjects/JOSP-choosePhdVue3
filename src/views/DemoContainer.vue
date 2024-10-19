@@ -38,15 +38,15 @@
               </template>
               <el-menu-item-group>
                 <template #title>Group 1</template>
-                <el-menu-item index="page1">Option 1</el-menu-item>
-                <el-menu-item index="page2">Option 2</el-menu-item>
+                <el-menu-item index="page1">我是page1</el-menu-item>
+                <el-menu-item index="page2">我是page2</el-menu-item>
               </el-menu-item-group>
               <el-menu-item-group title="Group 2">
-                <el-menu-item index="page3">Option 3</el-menu-item>
+                <el-menu-item index="page3">我是page3</el-menu-item>
               </el-menu-item-group>
               <el-sub-menu index="1-4">
                 <template #title>Option4</template>
-                <el-menu-item index="page4">Option 4-1</el-menu-item>
+                <el-menu-item index="page4">我是page4</el-menu-item>
               </el-sub-menu>
             </el-sub-menu>
           </el-menu>
@@ -61,38 +61,29 @@
   </el-container>
 </template>
 
-<script>
+<script setup>
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Setting, Message } from '@element-plus/icons-vue'
 
-export default {
-  name: 'DemoContainer',
-  setup() {
-    const router = useRouter()
+const router = useRouter()
 
-    const handleSelect = (key, keyPath) => {
-      if (key === 'home') {
-        router.push('/')
-      } else {
-        router.push(`/${key}`).catch((err) => {
-          if (err.name !== 'NavigationDuplicated') {
-            ElMessage.error(err.message)
-          }
-        })
+const handleSelect = (key, keyPath) => {
+  if (key === 'home') {
+    router.push('/')
+  } else {
+    router.push(`/${key}`).catch((err) => {
+      if (err.name !== 'NavigationDuplicated') {
+        ElMessage.error(err.message)
       }
-    }
-
-    return {
-      handleSelect,
-    }
-  },
+    })
+  }
 }
 </script>
 
 <style scoped>
 .layout-container-demo {
-  height: 100vh; /* 使用视口高度，确保全屏 */
+  height: 100%; /* 使用视口高度，确保全屏 */
 }
 
 /* Header 样式 */

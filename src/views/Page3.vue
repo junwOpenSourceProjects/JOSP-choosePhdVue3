@@ -64,8 +64,8 @@
               </el-checkbox-group>
               <!-- 新增：全选和清空选择按钮 -->
               <div style="margin-top: 10px;">
-                <el-button size="mini" @click="selectAll">全选</el-button>
-                <el-button size="mini" @click="clearSelection" style="margin-left: 10px;">清空选择</el-button>
+                <el-button size="small" @click="selectAll">全选</el-button>
+                <el-button size="small" @click="clearSelection" style="margin-left: 10px;">清空选择</el-button>
               </div>
             </el-form-item>
           </el-col>
@@ -76,7 +76,7 @@
     <!-- ECharts 图表区域 -->
     <el-card class="chart-card">
       <!-- 新增：深色模式切换按钮 -->
-      <el-button @click="toggleDarkMode" size="mini" style="margin-bottom: 10px;">
+      <el-button @click="toggleDarkMode" size="small" style="margin-bottom: 10px;">
         {{ darkMode ? '浅色模式' : '深色模式' }}
       </el-button>
       <v-chart :option="chartOption" autoresize style="width: 100%; height: 800px;" v-if="chartLoaded"></v-chart>
@@ -476,7 +476,7 @@ export default {
 
             // 关闭对话框并刷新数据
             resetForm()
-            fetchData()
+            // fetchData()
 
           } catch (error) {
             ElMessage.error(`提交失败: ${error.message}`)
