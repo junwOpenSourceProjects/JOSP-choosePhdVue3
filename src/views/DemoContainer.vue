@@ -1,23 +1,36 @@
-<!-- src/views/DemoContainer.vue -->
 <template>
   <el-container class="layout-container-demo">
     <!-- 顶部 Header -->
     <el-header class="header">
-      <div class="toolbar">
-        <el-dropdown>
-          <el-icon class="dropdown-icon">
-            <Setting />
-          </el-icon>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item>View</el-dropdown-item>
-              <el-dropdown-item>Add</el-dropdown-item>
-              <el-dropdown-item>Delete</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-        <span>Tom</span>
-      </div>
+      <el-menu
+        :default-active="activeIndex"
+        class="el-menu-demo"
+        mode="horizontal"
+        :ellipsis="false"
+        @select="handleSelect"
+      >
+        <el-menu-item index="0">
+          <img
+            style="width: 100px"
+            src="/images/company-logo.png"
+            alt="Company logo"
+          />
+        </el-menu-item>
+        <el-menu-item index="1">Home</el-menu-item>
+        <el-sub-menu index="2">
+          <template #title>Pages</template>
+          <el-menu-item index="page1">Page 1</el-menu-item>
+          <el-menu-item index="page2">Page 2</el-menu-item>
+          <el-menu-item index="page3">Page 3</el-menu-item>
+          <el-menu-item index="page4">Page 4</el-menu-item>
+        </el-sub-menu>
+        <el-menu-item index="3">About</el-menu-item>
+        <el-menu-item index="4">Contact</el-menu-item>
+        <el-avatar
+          class="avatar"
+          src="https://via.placeholder.com/40"
+        ></el-avatar>
+      </el-menu>
     </el-header>
 
     <!-- 主体部分，包含侧边栏和主内容 -->
@@ -55,21 +68,65 @@
 
       <!-- 主内容区 -->
       <el-main class="main-content">
+        <el-page-header @back="onBack">
+          <template #breadcrumb>
+            <el-breadcrumb separator="/">
+              <el-breadcrumb-item :to="{ path: '/' }">homepage</el-breadcrumb-item>
+              <el-breadcrumb-item>Dashboard</el-breadcrumb-item>
+            </el-breadcrumb>
+          </template>
+          <template #content>
+            <div class="flex items-center">
+              <el-avatar
+                class="mr-3"
+                :size="32"
+                src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png"
+              />
+              <span class="text-large font-600 mr-3"> Dashboard </span>
+              <span class="text-sm mr-2" style="color: var(--el-text-color-regular)">
+                Overview of tasks
+              </span>
+              <el-tag>Active</el-tag>
+            </div>
+          </template>
+          <template #extra>
+            <div class="flex items-center">
+              <el-button>Print</el-button>
+              <el-button type="primary" class="ml-2">Edit</el-button>
+            </div>
+          </template>
+        </el-page-header>
+
+        <div v-if="loading">Loading tasks...</div>
+        <el-card v-for="(task, index) in tasks" :key="index" class="task-card">
+          <h3>{{ task }}</h3>
+        </el-card>
+
+        <h2>Project Description</h2>
+        <p>This project is designed to manage tasks efficiently and effectively...</p>
         <router-view />
       </el-main>
     </el-container>
+
+    <!-- 底部 Footer -->
+    <el-footer class="footer">
+      <span>© 2023 My App. All rights reserved.</span>
+    </el-footer>
   </el-container>
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Setting, Message } from '@element-plus/icons-vue'
+import axios from 'axios'
 
 const router = useRouter()
+const activeIndex = ref('1')
 
-const handleSelect = (key, keyPath) => {
-  if (key === 'home') {
+const handleSelect = (key) => {
+  if (key === '0') {
     router.push('/')
   } else {
     router.push(`/${key}`).catch((err) => {
@@ -79,48 +136,77 @@ const handleSelect = (key, keyPath) => {
     })
   }
 }
+
+const tasks = ref([])
+const loading = ref(true)
+
+const fetchTasks = async () => {
+  try {
+    const response = await axios.get('/api/tasks')
+    tasks.value = response.data
+  } catch (error) {
+    ElMessage.error('Failed to load tasks')
+  } finally {
+    loading.value = false
+  }
+}
+
+const onBack = () => {
+  ElMessage.info('Back')
+}
+
+onMounted(() => {
+  fetchTasks()
+})
 </script>
 
 <style scoped>
 .layout-container-demo {
-  height: 100%; /* 使用视口高度，确保全屏 */
+  height: 100%;
 }
 
 /* Header 样式 */
-.layout-container-demo .el-header {
-  background-color: var(--el-color-primary-light-7);
-  color: var(--el-text-color-primary);
-  display: flex;
-  align-items: center;
-  padding: 0 20px;
+.header {
+  background-color: var(--el-color-primary);
+  color: white;
+}
+
+.el-menu--horizontal > .el-menu-item:nth-child(1) {
+  margin-right: auto;
+}
+
+.avatar {
+  cursor: pointer;
+  position: absolute;
+  right: 20px;
+  top: 10px;
 }
 
 /* 侧边栏样式 */
-.layout-container-demo .el-aside {
+.aside {
   background: var(--el-color-primary-light-8);
   color: var(--el-text-color-primary);
 }
 
-/* 菜单样式 */
-.layout-container-demo .el-menu {
-  border-right: none;
-}
-
 /* 主内容区样式 */
-.layout-container-demo .el-main {
+.main-content {
   padding: 20px;
   background-color: #f0f2f5;
 }
 
-/* 工具栏样式 */
-.toolbar {
-  display: flex;
-  align-items: center;
+.task-card {
+  margin-bottom: 20px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  padding: 16px;
+  background-color: white;
 }
 
-/* 下拉图标样式 */
-.dropdown-icon {
-  margin-right: 8px;
-  margin-top: 1px;
+/* Footer 样式 */
+.footer {
+  background-color: var(--el-color-primary-dark-3);
+  color: white;
+  text-align: center;
+  padding: 10px 0;
 }
 </style>
