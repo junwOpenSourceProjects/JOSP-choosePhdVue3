@@ -46,6 +46,8 @@
               <el-button @click="resetSearch">重置</el-button>
               <!-- 新增按钮：打开弹出表单 -->
               <el-button type="success" @click="openFormDialog" style="margin-left: 10px;">新增数据</el-button>
+              <!-- 新增按钮：批量新增已选项 -->
+              <el-button type="warning" @click="batchAddSelected" style="margin-left: 10px;">批量新增已选项</el-button>
             </el-form-item>
           </el-col>
         </el-row>
@@ -180,19 +182,7 @@ export default {
     })
 
     // 默认数据
-    // const defaultSeries = {
-    //   name: "亚利桑那州立大学",
-    //   type: "line",
-    //   smooth: true,
-    //   emphasis: {
-    //     focus: "series"
-    //   },
-    //   data: [
-    //     330.0, 293.0, 294.0, 249.0, 222.0, 209.0, 212.0, 215.0, 220.0, 216.0, 219.0, 179.0, 200.0, 210.0
-    //   ],
-    //   xaxisIndex: null
-    // }
-        const defaultSeries = {
+    const defaultSeries = {
       name: "测试数据",
       type: "line",
       smooth: true,
@@ -489,6 +479,26 @@ export default {
       })
     }
 
+    // 批量新增已选项
+    const batchAddSelected = async () => {
+      try {
+        const response = await axios.post('/api/status/insertBatch', selectedLegends.value, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+
+        if (response.data === true) {
+          ElMessage.success('批量新增成功')
+        } else {
+          ElMessage.error('批量新增失败')
+        }
+      } catch (error) {
+        ElMessage.error(`批量新增失败: ${error.message}`)
+        console.error(error)
+      }
+    }
+
     // 实现对话框的拖动功能
     const enableDrag = () => {
       const dialogHeaderEl = document.querySelector('.el-dialog.draggable-dialog .el-dialog__header')
@@ -503,7 +513,7 @@ export default {
 
           const onMouseMove = (e) => {
             dialogEl.style.left = (e.clientX - disX) + 'px'
-            dialogEl.style.top = (e.clientY - disY) + 'px'
+            dialogEl.style.top = (e.clientY -          disY) + 'px'
           }
 
           const onMouseUp = () => {
@@ -546,7 +556,6 @@ export default {
       searchFormRef,
       allLegends,
       selectedLegends,
-      // 新增返回的数据
       formDialogVisible,
       formData,
       formRef,
@@ -555,14 +564,14 @@ export default {
       openFormDialog,
       resetForm,
       submitForm,
-      handleCancel,       // 新增的取消处理方法
-      handleDialogClose,  // 新增的 before-close 处理方法
+      handleCancel,
+      handleDialogClose,
       enableDrag,
-      // 新增的方法和状态
       selectAll,
       clearSelection,
       darkMode,
       toggleDarkMode,
+      batchAddSelected, // 新增批量添加方法
     }
   },
 }
@@ -577,7 +586,6 @@ export default {
 .chart-card {
   margin-bottom: 20px;
   padding: 20px;
-  /* 增加图表区域的宽度，如需要可调整 */
   width: 100%;
 }
 
@@ -586,14 +594,11 @@ export default {
   text-align: center;
 }
 
-/* 可选：调整图表的 Legend 样式 */
 .chart-card .echarts {
-  /* 确保 ECharts 组件充满整个容器 */
   width: 100%;
   height: 100%;
 }
 
-/* 新增：调整对话框样式使其支持拖动 */
 .draggable-dialog >>> .el-dialog__header {
   cursor: move;
 }
@@ -602,7 +607,6 @@ export default {
   text-align: right;
 }
 
-/* 可选：根据深色模式调整整体背景色 */
 body {
   background-color: var(--background-color);
 }
