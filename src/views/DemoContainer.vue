@@ -9,13 +9,6 @@
         :ellipsis="false"
         @select="handleSelect"
       >
-        <el-menu-item index="0">
-          <img
-            style="width: 100px"
-            src="/images/company-logo.png"
-            alt="Company logo"
-          />
-        </el-menu-item>
         <el-menu-item index="1">Home</el-menu-item>
         <el-sub-menu index="2">
           <template #title>Pages</template>
@@ -26,10 +19,6 @@
         </el-sub-menu>
         <el-menu-item index="3">About</el-menu-item>
         <el-menu-item index="4">Contact</el-menu-item>
-        <el-avatar
-          class="avatar"
-          src="https://via.placeholder.com/40"
-        ></el-avatar>
       </el-menu>
     </el-header>
 
@@ -77,22 +66,11 @@
           </template>
           <template #content>
             <div class="flex items-center">
-              <el-avatar
-                class="mr-3"
-                :size="32"
-                src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png"
-              />
               <span class="text-large font-600 mr-3"> Dashboard </span>
               <span class="text-sm mr-2" style="color: var(--el-text-color-regular)">
                 Overview of tasks
               </span>
               <el-tag>Active</el-tag>
-            </div>
-          </template>
-          <template #extra>
-            <div class="flex items-center">
-              <el-button>Print</el-button>
-              <el-button type="primary" class="ml-2">Edit</el-button>
             </div>
           </template>
         </el-page-header>
@@ -110,7 +88,7 @@
 
     <!-- 底部 Footer -->
     <el-footer class="footer">
-      <span>© 2023 My App. All rights reserved.</span>
+      <span>? 2023 My App. All rights reserved.</span>
     </el-footer>
   </el-container>
 </template>
@@ -119,7 +97,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Setting, Message } from '@element-plus/icons-vue'
+import { Message } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 const router = useRouter()
@@ -142,7 +120,7 @@ const loading = ref(true)
 
 const fetchTasks = async () => {
   try {
-    const response = await axios.get('/api/tasks')
+    const response = await axios.get('/api/status/tasks')
     tasks.value = response.data
   } catch (error) {
     ElMessage.error('Failed to load tasks')
@@ -171,15 +149,8 @@ onMounted(() => {
   color: white;
 }
 
-.el-menu--horizontal > .el-menu-item:nth-child(1) {
-  margin-right: auto;
-}
-
 .avatar {
-  cursor: pointer;
-  position: absolute;
-  right: 20px;
-  top: 10px;
+  display: none;
 }
 
 /* 侧边栏样式 */
