@@ -96,8 +96,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { Message } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 const router = useRouter()
