@@ -1,6 +1,15 @@
-# chooseCollegeVue
+# 🎓 JOSP-choosePhdVue3 - 大学排名查询系统前端
 
-Vue3博士选择系统前端应用
+![Vue](https://img.shields.io/badge/Vue-3.5.12-brightgreen?logo=vue.js)
+![Element Plus](https://img.shields.io/badge/Element%20Plus-2.8.5-blue?logo=element)
+![ECharts](https://img.shields.io/badge/ECharts-5.5.1-orange?logo=apacheecharts)
+![License](https://img.shields.io/badge/License-AGPL--3.0-blue)
+
+## 📖 项目简介
+
+JOSP-choosePhdVue3是一个大学排名查询系统的前端应用,基于Vue3 + Element Plus构建,提供世界大学排名数据的可视化查询和展示功能。支持QS、US News等排名数据的多维度筛选和图表展示。
+
+**关联后端项目**: [JOSP-choosePhdJava](../JOSP-choosePhdJava)
 
 ## 系统架构
 
