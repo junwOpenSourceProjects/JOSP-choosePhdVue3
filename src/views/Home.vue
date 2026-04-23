@@ -1,4 +1,5 @@
 <!-- src/views/Home.vue -->
+<!-- 首页：大学查询列表展示，包含搜索、分页功能 -->
 <template>
     <div>
       <!-- 查询区域 -->
@@ -76,6 +77,7 @@
   </template>
 
   <script>
+  // 首页：大学查询列表展示页面，包含搜索、分页功能
   import { ref, onMounted } from 'vue'
   import { ElMessage } from 'element-plus'
 

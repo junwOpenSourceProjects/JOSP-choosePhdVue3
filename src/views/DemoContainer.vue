@@ -94,6 +94,7 @@
 </template>
 
 <script setup>
+// 演示容器组件：侧边栏导航+主内容区+头部导航的经典布局
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'

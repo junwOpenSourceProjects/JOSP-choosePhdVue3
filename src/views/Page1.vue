@@ -89,7 +89,8 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+  // Page1页面：大学多条件查询，支持排名类型筛选
+  import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 
 export default {
