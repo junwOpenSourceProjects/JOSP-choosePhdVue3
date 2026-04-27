@@ -27,7 +27,7 @@
     "@vitest/eslint-plugin": "1.6.16",
     "@vue/eslint-config-prettier": "^10.2.0",
     "@vue/test-utils": "^2.4.8",
-    "axios": "^1.15.2",
+    "axios": "^1.15.0",
     "eslint": "^10.2.1",
     "eslint-plugin-vue": "^10.9.0",
     "jsdom": "^29.1.0",
@@ -42,7 +42,7 @@
   },
   "pnpm": {
     "overrides": {
-      "axios": "^1.15.2",
+      "axios": "^1.15.0",
       "defu": "^6.1.7",
       "vite": "^8.0.10",
       "lodash": "^4.17.21",
