@@ -45,6 +45,65 @@ src/
 └── utils/               # 工具函数
 ```
 
+## 🏛️ 系统架构
+
+```mermaid
+graph TB
+    subgraph 前端应用层
+        A[Vue 3 App] --> B[Element Plus UI]
+        A --> C[Vue Router]
+        A --> D[Pinia 状态管理]
+    end
+
+    subgraph 功能模块层
+        B --> E[院校列表模块<br/>Page1]
+        B --> F[院校详情模块<br/>Page2]
+        B --> G[专业分析模块<br/>Page3]
+        B --> H[数据可视化模块<br/>Page4]
+    end
+
+    subgraph 可视化层
+        H --> I[ECharts 图表]
+        H --> J[vue-echarts 封装]
+    end
+
+    subgraph 通信层
+        A --> K[Axios HTTP客户端]
+        K --> L[API 代理 /api/*]
+        L --> M[后端服务<br/>http://localhost:8081]
+    end
+
+    subgraph 基础设施层
+        N[Vite 构建工具]
+        O[TypeScript 类型系统]
+    end
+```
+
+```mermaid
+graph LR
+    subgraph 页面路由
+        "/" --> Home
+        "/page1" --> UniversityList
+        "/page2" --> UniversityDetail
+        "/page3" --> MajorAnalysis
+        "/page4" --> DataVisualization
+    end
+
+    subgraph 组件层级
+        App --> Layout
+        Layout --> NavBar
+        Layout --> PageContent
+    end
+
+    subgraph 数据流
+        PageContent -->|获取数据| API
+        API -->|返回数据| PageContent
+        PageContent -->|渲染| ECharts
+    end
+```
+
+## 🔌 后端集成
+
 ## 🚀 快速开始
 
 ### 安装依赖
