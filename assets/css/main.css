@@ -1,0 +1,18 @@
+/* MiniMax Design Tokens */
+:root {
+  --color-primary: #2563eb;
+  --color-secondary: #64748b;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #3b82f6;
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-bg-basic: #ffffff;
+  --color-bg-muted: #f8fafc;
+  --color-border: #e2e8f0;
+  --radius-base: 0.5rem;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}

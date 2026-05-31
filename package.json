@@ -1,54 +1,15 @@
 {
-  "name": "choosecollegevue",
-  "version": "0.0.0",
+  "name": "josp-choose-phd-nuxt",
+  "version": "1.0.0",
   "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test:unit": "vitest",
-    "lint": "eslint . --fix",
-    "format": "prettier --write src/"
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview"
   },
   "dependencies": {
-    "choosecollegevue": "file:",
-    "echarts": "^6.0.0",
-    "element-plus": "^2.13.7",
-    "pinia": "^3.0.4",
-    "vue": "^3.5.33",
-    "vue-echarts": "^8.0.1",
-    "vue-router": "^5.0.6"
-  },
-  "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@vitejs/plugin-vue": "^6.0.6",
-    "@vitejs/plugin-vue-jsx": "^5.1.5",
-    "@vitest/eslint-plugin": "1.6.16",
-    "@vue/eslint-config-prettier": "^10.2.0",
-    "@vue/test-utils": "^2.4.8",
-    "axios": "^1.15.0",
-    "eslint": "^10.2.1",
-    "eslint-plugin-vue": "^10.9.0",
-    "jsdom": "^29.1.0",
-    "prettier": "^3.8.3",
-    "sass-embedded": "^1.99.0",
-    "unplugin-auto-import": "^21.0.0",
-    "unplugin-element-plus": "^0.11.2",
-    "unplugin-vue-components": "^32.0.0",
-    "vite": "^8.0.10",
-    "vite-plugin-vue-devtools": "^8.1.1",
-    "vitest": "^4.1.5"
-  },
-  "pnpm": {
-    "overrides": {
-      "axios": "^1.15.0",
-      "defu": "^6.1.7",
-      "vite": "^8.0.10",
-      "lodash": "^4.17.21",
-      "follow-redirects": "^1.16.0",
-      "glob": "^11.0.0",
-      "postcss": "^8.5.0"
-    }
+    "nuxt": "^4.0.0",
+    "@nuxt/ui": "^4.0.0"
   }
 }
