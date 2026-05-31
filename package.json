@@ -1,15 +1,27 @@
 {
-  "name": "josp-choose-phd-nuxt",
+  "name": "josp-choosephd-nuxt",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "nuxt dev",
     "build": "nuxt build",
+    "dev": "nuxt dev",
     "generate": "nuxt generate",
-    "preview": "nuxt preview"
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@nuxt/ui": "^4.0.0",
     "nuxt": "^4.0.0",
-    "@nuxt/ui": "^4.0.0"
+    "vue": "^3.5.0",
+    "vue-router": "^4.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "vue": "^3.5.0"
+    }
   }
 }
