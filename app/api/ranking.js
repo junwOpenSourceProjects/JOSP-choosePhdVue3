@@ -1,6 +1,24 @@
 import request from '~/utils/request'
 
-export const queryRankingStatus = (params) => request.get('/status/queryRankingStatus', { params })
+/**
+ * Query ranking status (我的选校清单)
+ */
+export const queryRankingStatus = () => request.get('/status/queryRankingStatus')
+
+/**
+ * Insert or update ranking status of a single university
+ * body: UniversityConsider (含 id, universityNameChinese, statusQs, statusQsCs, statusUsnews, statusUsnewsCs, statusTotal, consider)
+ */
 export const insertOrUpdate = (data) => request.post('/status/insertOrUpdate', data)
-export const insertBatch = (data) => request.post('/status/insertBatch', data)
-export const drawerData = (data) => request.post('/status/drawerData', data)
+
+/**
+ * Batch insert
+ * body: string[] (大学中文名数组)
+ */
+export const insertBatch = (nameList) => request.post('/status/insertBatch', nameList)
+
+/**
+ * Get echarts drawer data for a single university
+ * body: string (大学中文名)
+ */
+export const drawerData = (name) => request.post('/status/drawerData', name)
