@@ -5,6 +5,10 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-01-01',
   devtools: { enabled: false },
 
+  // 项目结构是 root 布局,不用 Nuxt 4 默认的 srcDir='app/'
+  // 显式设 srcDir='.' 后, ~ / @ alias 必须显式配 (memory 06-18 billDesktop 立)
+  srcDir: '.',
+
   modules: ['@nuxt/ui'],
 
   alias: {
@@ -32,7 +36,7 @@ export default defineNuxtConfig({
   },
 
   // nuxt 4 + h3 1.15: routeRules.proxy 替代 nitro.devProxy
-  // target 必须包含被剥前缀 + /** 收尾 (memory 06-09 devDashboard 立)
+  // target 必须包含被剥前缀 + /** 收尾
   // 用 /api/v1/** narrow, 避免误伤 /api/_nuxt_icon/:collection
   routeRules: {
     '/api/v1/**': {

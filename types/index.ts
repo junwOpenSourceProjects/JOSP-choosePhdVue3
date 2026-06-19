@@ -137,6 +137,8 @@ export const CONSIDER_MAP: Record<number, { label: string; cls: string }> = {
   1: { label: '考虑', cls: 'status-chip--consider' }
 }
 
+export type ConsiderType = 0 | 1
+
 /** 排名变体显示名 */
 export const RANK_VARIANT_MAP: Record<RankVariant, string> = {
   qs: 'QS 世界大学排名',
