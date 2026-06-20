@@ -95,6 +95,54 @@ function rankTone(rank: number | null | undefined): 'primary' | 'secondary' | 'n
   return 'neutral'
 }
 
+function rankBadgeTier(rank: number | null | undefined): string {
+  if (rank == null) return 'rank-badge--normal'
+  if (rank <= 3) return 'rank-badge--gold'
+  if (rank <= 10) return 'rank-badge--silver'
+  if (rank <= 50) return 'rank-badge--bronze'
+  return 'rank-badge--normal'
+}
+
+// 区域色 token (与 universities 列表一致)
+const REGION_BAR_COLORS: Record<string, { bg: string; fg: string; dot: string }> = {
+  '亚洲': { bg: 'rgba(234, 94, 193, 0.10)', fg: '#be185d', dot: '#ea5ec1' },
+  '欧洲': { bg: 'rgba(20, 86, 240, 0.10)', fg: '#1d4ed8', dot: '#1456f0' },
+  '北美洲': { bg: 'rgba(245, 158, 11, 0.10)', fg: '#b45309', dot: '#f59e0b' },
+  '南美洲': { bg: 'rgba(34, 197, 94, 0.10)', fg: '#15803d', dot: '#22c55e' },
+  '大洋洲': { bg: 'rgba(168, 85, 247, 0.10)', fg: '#7c3aed', dot: '#a855f7' },
+  '非洲': { bg: 'rgba(239, 68, 68, 0.10)', fg: '#b91c1c', dot: '#ef4444' }
+}
+function regionStyle(r: string) {
+  const c = REGION_BAR_COLORS[r]
+  if (!c) return { background: 'rgba(0,0,0,0.04)', color: '#45515e' }
+  return { background: c.bg, color: c.fg }
+}
+function regionColor(r: string): string {
+  return REGION_BAR_COLORS[r]?.dot ?? '#8e8e93'
+}
+
+// 4 维排名 sparkline mini (SVG)
+function rankSparklinePath(data: number[], width = 100, height = 32): string {
+  if (!data || !data.length) return ''
+  const maxV = Math.max(...data, 10) * 1.1
+  const minV = 0
+  const xStep = data.length > 1 ? width / (data.length - 1) : 0
+  return data.map((v, i) => {
+    const x = i * xStep
+    const y = height - ((v - minV) / (maxV - minV)) * height
+    return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`
+  }).join(' ')
+}
+function getSeriesData(seriesName: string): number[] {
+  return chartData.value?.chatData?.series?.find((s: any) => s.name === seriesName)?.data ?? []
+}
+
+const isConsidering = ref(false)
+function toggleConsider() {
+  isConsidering.value = !isConsidering.value
+  // TODO: 接 insertOrUpdate API
+}
+
 function back() { router.back() }
 
 // 详情表: 行=维度, 列=年份
@@ -138,23 +186,39 @@ const detailTableRows = computed(() => {
     </UContainer>
 
     <UContainer class="pt-4 pb-2">
-      <h1
-        class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl"
-        :style="{ fontFamily: 'var(--font-display)' }"
-      >{{ name || '未知大学' }}</h1>
-      <div v-if="detail" class="mt-3 flex flex-wrap items-center gap-2">
-        <UBadge v-if="detail.universityTags" color="primary" variant="subtle" size="sm">
-          <UIcon name="i-lucide-map-pin" class="size-3" />
-          <span class="ml-1">{{ detail.universityTags }}</span>
-        </UBadge>
-        <UBadge v-if="detail.universityTagsState" color="neutral" variant="soft" size="sm">
-          <UIcon name="i-lucide-globe-2" class="size-3" />
-          <span class="ml-1">{{ detail.universityTagsState }}</span>
-        </UBadge>
-        <UBadge v-if="detail.rankingYear" color="neutral" variant="soft" size="sm">
-          <UIcon name="i-lucide-calendar" class="size-3" />
-          <span class="ml-1">{{ detail.rankingYear }} 年</span>
-        </UBadge>
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1
+            class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl"
+            :style="{ fontFamily: 'var(--font-display)' }"
+          >{{ name || '未知大学' }}</h1>
+          <div v-if="detail" class="mt-3 flex flex-wrap items-center gap-2">
+            <UBadge v-if="detail.universityTags" color="primary" variant="subtle" size="sm">
+              <UIcon name="i-lucide-map-pin" class="size-3" />
+              <span class="ml-1">{{ detail.universityTags }}</span>
+            </UBadge>
+            <span
+              v-if="detail.universityTagsState"
+              class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold"
+              :style="regionStyle(detail.universityTagsState)"
+            >
+              <span class="size-1.5 rounded-full" :style="{ background: regionColor(detail.universityTagsState) }" />
+              {{ detail.universityTagsState }}
+            </span>
+            <UBadge v-if="detail.rankingYear" color="neutral" variant="soft" size="sm">
+              <UIcon name="i-lucide-calendar" class="size-3" />
+              <span class="ml-1">{{ detail.rankingYear }} 年</span>
+            </UBadge>
+          </div>
+        </div>
+        <UButton
+          :icon="isConsidering ? 'i-lucide-bookmark-check' : 'i-lucide-bookmark'"
+          :color="isConsidering ? 'primary' : 'neutral'"
+          :variant="isConsidering ? 'solid' : 'outline'"
+          size="md"
+          :label="isConsidering ? '已加入考虑' : '加入考虑'"
+          @click="toggleConsider"
+        />
       </div>
     </UContainer>
 
@@ -167,7 +231,7 @@ const detailTableRows = computed(() => {
       />
     </UContainer>
 
-    <!-- 4 维排名卡 -->
+    <!-- 4 维排名卡 (rank-badge + sparkline mini) -->
     <UContainer class="py-6">
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <UCard
@@ -178,27 +242,37 @@ const detailTableRows = computed(() => {
             body: 'p-5 space-y-3'
           }"
         >
-          <div
-            class="inline-flex size-10 items-center justify-center rounded-xl"
-            :style="{ background: r.color + '15', color: r.color }"
-          >
-            <UIcon :name="r.icon" class="size-5" />
+          <div class="flex items-center justify-between">
+            <div
+              class="inline-flex size-9 items-center justify-center rounded-xl"
+              :style="{ background: r.color + '15', color: r.color }"
+            >
+              <UIcon :name="r.icon" class="size-4.5" />
+            </div>
+            <UBadge
+              v-if="r.rank != null"
+              :color="rankTone(r.rank)"
+              :variant="r.rank <= 10 ? 'solid' : 'subtle'"
+              size="xs"
+              :label="r.rank <= 10 ? 'Top 10' : r.rank <= 50 ? 'Top 50' : r.rank <= 100 ? 'Top 100' : `${r.rank}+`"
+            />
           </div>
-          <div class="text-[13px] text-muted">{{ r.label }}</div>
-          <div class="flex items-baseline gap-1.5">
-            <span
-              class="text-4xl font-semibold leading-none tracking-tight"
-              :style="{ fontFamily: 'var(--font-display)', color: r.color }"
-            >{{ r.rank ?? '—' }}</span>
-            <span class="text-[13px] text-subtle">/ 排名</span>
+          <div class="text-[12px] font-medium text-muted">{{ r.label }}</div>
+          <div class="flex items-end justify-between gap-2">
+            <span :class="['rank-badge', rankBadgeTier(r.rank)]" :style="{ minWidth: '44px', height: '32px', fontSize: '16px' }">
+              {{ r.rank ?? '—' }}
+            </span>
+            <svg v-if="r.rank" :width="100" :height="32" class="overflow-visible opacity-80">
+              <path
+                :d="rankSparklinePath(getSeriesData(r.label))"
+                fill="none"
+                :stroke="r.color"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
           </div>
-          <UBadge
-            v-if="r.rank != null"
-            :color="rankTone(r.rank)"
-            :variant="r.rank <= 10 ? 'solid' : 'subtle'"
-            size="xs"
-            :label="r.rank <= 10 ? 'Top 10' : r.rank <= 50 ? 'Top 50' : r.rank <= 100 ? 'Top 100' : `${r.rank}+`"
-          />
         </UCard>
       </div>
     </UContainer>
