@@ -191,6 +191,35 @@ function trendLabel(tone: string, trend: number): string {
   return '— 0'
 }
 
+// 排名徽章 tier (跟 universities 一致)
+function rankBadgeTier(rank: number): string {
+  if (rank <= 3) return 'rank-badge--gold'
+  if (rank <= 10) return 'rank-badge--silver'
+  if (rank <= 50) return 'rank-badge--bronze'
+  return 'rank-badge--normal'
+}
+
+// 地区色 token (跟 universities 一致, 6 大洲)
+const REGION_BAR_COLORS: Record<string, string> = {
+  '美国': '#1456f0',
+  '英国': '#3b82f6',
+  '中国': '#ea5ec1',
+  '中国大陆/港台': '#ea5ec1',
+  '瑞士': '#a855f7',
+  '日本': '#f59e0b',
+  '新加坡': '#22c55e',
+  '澳大利亚': '#10b981',
+  '加拿大': '#0ea5e9',
+  '德国': '#1d4ed8',
+  '法国': '#1d4ed8',
+  '韩国': '#ec4899',
+  '其他': '#8e8e93',
+  '未知': '#8e8e93'
+}
+function countryBarColor(country: string): string {
+  return REGION_BAR_COLORS[country] ?? '#1456f0'
+}
+
 // mini sparkline SVG path
 function sparklinePath(data: number[], width = 100, height = 28): string {
   if (!data.length) return ''
@@ -351,10 +380,7 @@ watch(currentRank, () => loadAll())
           :ui="{ th: 'text-[12px] font-medium text-muted', td: 'py-3 text-sm'}"
         >
           <template #rank-cell="{ row }">
-            <span
-              class="text-[16px] font-semibold"
-              :class="row.original.last <= 10 ? 'text-[var(--color-brand-900)]' : 'text-default'"
-            >{{ row.original.last }}</span>
+            <span :class="['rank-badge', rankBadgeTier(row.original.last)]">{{ row.original.last }}</span>
           </template>
           <template #name-cell="{ row }">
             <span class="text-default" :style="{ fontFamily: 'var(--font-display)' }">{{ row.original.name }}</span>
@@ -426,18 +452,21 @@ watch(currentRank, () => loadAll())
             :key="r.country"
             class="flex items-center gap-3"
           >
-            <div class="w-28 shrink-0 text-sm text-default">{{ r.country }}</div>
+            <div class="w-32 shrink-0 text-sm font-medium text-default">{{ r.country }}</div>
             <div class="relative h-7 flex-1 overflow-hidden rounded-full bg-[var(--color-surface-2)]">
               <div
-                class="absolute inset-y-0 left-0 rounded-full bg-[var(--color-brand-700)]"
-                :style="{ width: (r.count / regionDist[0].count * 100) + '%' }"
+                class="absolute inset-y-0 left-0 rounded-full"
+                :style="{
+                  width: (r.count / regionDist[0].count * 100) + '%',
+                  background: `linear-gradient(90deg, ${countryBarColor(r.country)} 0%, ${countryBarColor(r.country)}cc 100%)`
+                }"
               />
-              <div class="absolute inset-0 flex items-center justify-end pr-3 text-[12px] font-medium text-white mix-blend-difference">
+              <div class="absolute inset-0 flex items-center pl-3 text-[12px] font-semibold text-white">
                 {{ r.count }} 所
               </div>
             </div>
-            <div class="w-20 shrink-0 text-right text-[12px] text-muted">
-              均 {{ r.avgRank }}
+            <div class="w-20 shrink-0 text-right text-[12px] font-medium text-muted">
+              均 <span class="text-default">{{ r.avgRank }}</span>
             </div>
           </div>
         </div>
