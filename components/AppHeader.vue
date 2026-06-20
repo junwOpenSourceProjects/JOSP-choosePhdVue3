@@ -9,6 +9,8 @@ const navItems = [
   { label: '数据图表', to: '/charts' }
 ]
 
+const userRoute = { label: '登录', to: '/login' }
+
 function close() {
   open.value = false
 }
@@ -44,6 +46,13 @@ const isActive = (to: string) => {
         </NuxtLink>
       </nav>
 
+      <NuxtLink
+        :to="userRoute.to"
+        class="app-header__login"
+      >
+        {{ userRoute.label }}
+      </NuxtLink>
+
       <button
         type="button"
         class="app-header__menu-btn"
@@ -66,6 +75,13 @@ const isActive = (to: string) => {
           @click="close"
         >
           {{ item.label }}
+        </NuxtLink>
+        <NuxtLink
+          :to="userRoute.to"
+          class="app-header__mobile-item"
+          @click="close"
+        >
+          {{ userRoute.label }}
         </NuxtLink>
       </div>
     </Transition>
@@ -133,6 +149,20 @@ const isActive = (to: string) => {
   gap: 4px;
   flex: 1;
   justify-content: center;
+}
+
+.app-header__login {
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: var(--color-brand-900);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 200ms ease;
+}
+.app-header__login:hover {
+  background: var(--color-brand-700);
 }
 
 .app-header__menu-btn {
