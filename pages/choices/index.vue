@@ -30,7 +30,7 @@ const considerItems = [
 ]
 
 const levelItems = [
-  { value: 'all' as const, label: '全部强弱' },
+  { value: 'all' as const, label: '全部强度' },
   { value: 'strong' as const, label: '强' },
   { value: 'medium' as const, label: '中' },
   { value: 'weak' as const, label: '弱' }
@@ -204,11 +204,11 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
         </div>
         <div class="flex flex-wrap gap-2">
           <UButton
-            icon="i-lucide-database"
+            icon="i-lucide-refresh-cw"
             color="neutral"
             variant="outline"
             size="md"
-            label="初始化排名数据"
+            label="刷新最新排名"
             :loading="saving"
             @click="seedRankings"
           />
@@ -225,8 +225,25 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
       </div>
     </UContainer>
 
-    <!-- 4 stats -->
-    <UContainer>
+    <!-- 4 stats + stepper 流程叙事 -->
+    <UContainer class="pt-4">
+      <!-- 决策流程 stepper -->
+      <div class="stepper mb-4">
+        <div class="stepper__item stepper__item--done">
+          <span class="stepper__dot" />
+          <span>1. 导入</span>
+        </div>
+        <div class="stepper__divider" />
+        <div class="stepper__item stepper__item--active">
+          <span class="stepper__dot" />
+          <span>2. 评估</span>
+        </div>
+        <div class="stepper__divider" />
+        <div class="stepper__item">
+          <span class="stepper__dot" />
+          <span>3. 决策</span>
+        </div>
+      </div>
       <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <UCard
           v-for="s in [
@@ -321,7 +338,33 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
         icon="i-lucide-inbox"
         title="没有匹配的大学"
         description="尝试调整过滤条件, 或点击「一键初始化」导入全部大学"
-      />
+      >
+        <template #footer>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div class="rounded-2xl border border-default bg-[var(--color-surface-1)] p-4 text-left opacity-60">
+              <div class="mb-2 flex items-center gap-2">
+                <span class="rank-badge rank-badge--gold">1</span>
+                <span class="text-sm font-semibold text-default">麻省理工学院</span>
+              </div>
+              <div class="text-[11px] text-muted">示意卡 · 真实数据需初始化</div>
+            </div>
+            <div class="rounded-2xl border border-default bg-[var(--color-surface-1)] p-4 text-left opacity-60">
+              <div class="mb-2 flex items-center gap-2">
+                <span class="rank-badge rank-badge--silver">5</span>
+                <span class="text-sm font-semibold text-default">斯坦福大学</span>
+              </div>
+              <div class="text-[11px] text-muted">示意卡 · 真实数据需初始化</div>
+            </div>
+            <div class="rounded-2xl border border-default bg-[var(--color-surface-1)] p-4 text-left opacity-60">
+              <div class="mb-2 flex items-center gap-2">
+                <span class="rank-badge rank-badge--bronze">23</span>
+                <span class="text-sm font-semibold text-default">清华大学</span>
+              </div>
+              <div class="text-[11px] text-muted">示意卡 · 真实数据需初始化</div>
+            </div>
+          </div>
+        </template>
+      </UEmpty>
 
       <div v-else class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <UCard
