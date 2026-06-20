@@ -1,141 +1,94 @@
 <script setup lang="ts">
 const year = new Date().getFullYear()
+
+const dataSources = [
+  { label: 'QS World University Rankings', href: 'https://www.topuniversities.com/' },
+  { label: 'US News Global Universities', href: 'https://www.usnews.com/education/best-global-universities' }
+]
+
+const modules = [
+  { label: '学校库', to: '/universities' },
+  { label: '我的选校', to: '/choices' },
+  { label: '数据图表', to: '/charts' }
+]
+
+const project = [
+  { label: 'GitHub 源码', href: 'https://github.com/' },
+  { label: 'v1.0.0', muted: true }
+]
 </script>
 
 <template>
-  <footer class="app-footer">
-    <div class="app-footer__inner page-container">
-      <div class="app-footer__top">
-        <div class="app-footer__brand">
-          <div class="app-footer__logo">
+  <footer class="mt-20 bg-[#181e25] text-white/85">
+    <UContainer class="py-14">
+      <div class="grid grid-cols-1 gap-12 border-b border-white/10 pb-9 md:grid-cols-[1.2fr_2fr]">
+        <!-- 品牌区 -->
+        <div class="flex items-start gap-3">
+          <div
+            class="flex size-9 flex-shrink-0 items-center justify-center rounded-xl text-white"
+            :style="{ background: 'var(--color-brand-900)' }"
+          >
             <UIcon name="i-lucide-graduation-cap" class="size-5" />
           </div>
           <div>
-            <div class="app-footer__title">选校系统</div>
-            <div class="app-footer__desc">PhD 申请选校助手 · 多源排名数据 · 选校清单 · 趋势可视化</div>
+            <div
+              class="text-lg font-semibold text-white"
+              :style="{ fontFamily: 'var(--font-display)' }"
+            >选校系统</div>
+            <div class="mt-1.5 max-w-xs text-[13px] leading-relaxed text-white/60">
+              PhD 申请选校助手 · 多源排名数据 · 选校清单 · 趋势可视化
+            </div>
           </div>
         </div>
 
-        <div class="app-footer__columns">
-          <div class="app-footer__col">
-            <div class="app-footer__col-title">数据来源</div>
-            <a class="app-footer__link" href="https://www.topuniversities.com/" target="_blank" rel="noopener">QS World University Rankings</a>
-            <a class="app-footer__link" href="https://www.usnews.com/education/best-global-universities" target="_blank" rel="noopener">US News Global Universities</a>
+        <!-- 3 列 -->
+        <div class="grid grid-cols-1 gap-8 sm:grid-cols-3">
+          <div class="flex flex-col gap-2.5">
+            <div class="mb-1 text-[13px] font-semibold text-white">数据来源</div>
+            <a
+              v-for="d in dataSources"
+              :key="d.href"
+              :href="d.href"
+              target="_blank"
+              rel="noopener"
+              class="text-[13px] leading-relaxed text-white/60 transition-colors duration-200 hover:text-white"
+            >{{ d.label }}</a>
           </div>
-          <div class="app-footer__col">
-            <div class="app-footer__col-title">功能模块</div>
-            <NuxtLink to="/universities" class="app-footer__link">学校库</NuxtLink>
-            <NuxtLink to="/choices" class="app-footer__link">我的选校</NuxtLink>
-            <NuxtLink to="/charts" class="app-footer__link">数据图表</NuxtLink>
+
+          <div class="flex flex-col gap-2.5">
+            <div class="mb-1 text-[13px] font-semibold text-white">功能模块</div>
+            <NuxtLink
+              v-for="m in modules"
+              :key="m.to"
+              :to="m.to"
+              class="text-[13px] leading-relaxed text-white/60 transition-colors duration-200 hover:text-white"
+            >{{ m.label }}</NuxtLink>
           </div>
-          <div class="app-footer__col">
-            <div class="app-footer__col-title">项目</div>
-            <a class="app-footer__link" href="https://github.com/" target="_blank" rel="noopener">GitHub 源码</a>
-            <span class="app-footer__link is-muted">v1.0.0</span>
+
+          <div class="flex flex-col gap-2.5">
+            <div class="mb-1 text-[13px] font-semibold text-white">项目</div>
+            <template v-for="p in project" :key="p.label">
+              <a
+                v-if="p.href"
+                :href="p.href"
+                target="_blank"
+                rel="noopener"
+                class="text-[13px] leading-relaxed text-white/60 transition-colors duration-200 hover:text-white"
+              >{{ p.label }}</a>
+              <span
+                v-else
+                class="cursor-default text-[13px] leading-relaxed text-white/60"
+              >{{ p.label }}</span>
+            </template>
           </div>
         </div>
       </div>
 
-      <div class="app-footer__bottom">
+      <!-- 底部 -->
+      <div class="flex flex-col items-center justify-between gap-2 pt-6 text-xs text-white/40 sm:flex-row">
         <span>© {{ year }} 选校系统. All rights reserved.</span>
         <span>Built with Nuxt 4 + @nuxt/ui v4</span>
       </div>
-    </div>
+    </UContainer>
   </footer>
 </template>
-
-<style scoped>
-.app-footer {
-  margin-top: 80px;
-  background: var(--color-surface-dark);
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.app-footer__inner {
-  padding: 56px 24px 28px;
-}
-
-.app-footer__top {
-  display: grid;
-  grid-template-columns: 1.2fr 2fr;
-  gap: 48px;
-  padding-bottom: 36px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.app-footer__brand {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-.app-footer__logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--color-brand-900);
-  color: #fff;
-  flex-shrink: 0;
-}
-.app-footer__title {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 600;
-  color: #fff;
-}
-.app-footer__desc {
-  font-size: 13px;
-  line-height: 1.5;
-  margin-top: 6px;
-  color: rgba(255, 255, 255, 0.6);
-  max-width: 320px;
-}
-
-.app-footer__columns {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 32px;
-}
-
-.app-footer__col {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.app-footer__col-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #fff;
-  margin-bottom: 4px;
-}
-.app-footer__link {
-  font-size: 13px;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.6);
-  text-decoration: none;
-  transition: color 160ms ease;
-}
-.app-footer__link:hover {
-  color: #fff;
-}
-.app-footer__link.is-muted {
-  cursor: default;
-}
-
-.app-footer__bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 24px;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-@media (max-width: 768px) {
-  .app-footer__top { grid-template-columns: 1fr; gap: 32px; }
-  .app-footer__columns { grid-template-columns: repeat(2, 1fr); gap: 24px; }
-  .app-footer__bottom { flex-direction: column; gap: 8px; text-align: center; }
-}
-</style>
