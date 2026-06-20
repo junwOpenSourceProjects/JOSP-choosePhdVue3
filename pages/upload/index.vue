@@ -23,6 +23,7 @@ const historyTotal = ref(0)
 const historyPage = ref(1)
 const historyPageSize = 20
 const historyLoading = ref(false)
+const historyError = ref<'history' | 'generic' | null>(null)
 
 // 总量
 const totalGroups = ref(0)
@@ -51,6 +52,9 @@ const previewData = ref<{
 const previewLoading = ref(false)
 
 // ============ 上传 ============
+// 拖拽状态
+const isDragging = ref(false)
+
 function onFilesChange(files: File[] | null | undefined) {
   if (!files) {
     pendingFiles.value = []
@@ -164,9 +168,16 @@ async function loadHistory() {
     const res: any = await listHistory({ page: historyPage.value, pageSize: historyPageSize })
     historyRows.value = res?.data?.records ?? []
     historyTotal.value = res?.data?.total ?? 0
+    historyError.value = null
   } catch (e: any) {
     console.warn('[upload] history load failed', e?.message)
-    error.value = '历史加载失败: ' + (e?.message || '后端不可达')
+    // 401 是 admin endpoint, 未登录是正常的, 显示友好提示不暴露 endpoint
+    const msg = e?.message || e?.data?.msg || ''
+    if (msg.includes('401') || msg.includes('Unauthorized') || msg.includes('登录')) {
+      historyError.value = 'history'  // 标记, 模板展示"登录后查看"友好提示
+    } else {
+      historyError.value = 'generic'  // 其他错误
+    }
   } finally {
     historyLoading.value = false
   }
@@ -252,9 +263,14 @@ function formatSize(bytes: number): string {
           </div>
 
           <div
-            class="relative flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-default bg-[var(--color-surface-1)] p-8 transition-colors hover:border-[var(--color-brand-700)]"
-            @dragover.prevent
-            @drop.prevent="onFilesChange(Array.from($event.dataTransfer?.files ?? []))"
+            class="relative flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-8 transition-all duration-200"
+            :class="isDragging
+              ? 'border-[var(--color-brand-900)] bg-[rgba(20,86,240,0.08)] scale-[1.01]'
+              : 'border-default bg-[var(--color-surface-1)] hover:border-[var(--color-brand-700)]'"
+            @dragenter.prevent="isDragging = true"
+            @dragover.prevent="isDragging = true"
+            @dragleave.prevent="isDragging = false"
+            @drop.prevent="(e: DragEvent) => { isDragging = false; onFilesChange(Array.from(e.dataTransfer?.files ?? [])) }"
           >
             <UIcon name="i-lucide-upload-cloud" class="size-10 text-muted" />
             <div class="text-sm text-default">拖拽文件到此处</div>
@@ -488,6 +504,30 @@ function formatSize(bytes: number): string {
           </template>
           <template #empty>
             <UEmpty
+              v-if="historyError === 'history'"
+              icon="i-lucide-lock"
+              title="需要登录"
+              description="导入历史为管理员功能，请先登录账号"
+            >
+              <template #footer>
+                <UButton
+                  to="/login"
+                  icon="i-lucide-log-in"
+                  color="primary"
+                  variant="solid"
+                  size="sm"
+                  label="去登录"
+                />
+              </template>
+            </UEmpty>
+            <UEmpty
+              v-else-if="historyError === 'generic'"
+              icon="i-lucide-wifi-off"
+              title="历史加载失败"
+              description="后端不可达，请稍后重试"
+            />
+            <UEmpty
+              v-else
               icon="i-lucide-database"
               title="还没有任何导入记录"
               description="上传 .txt 文件或一键扫描本地目录"
