@@ -5,6 +5,7 @@ const open = ref(false)
 const navItems = [
   { label: '首页', to: '/', icon: 'i-lucide-home' },
   { label: '学校库', to: '/universities', icon: 'i-lucide-library-big' },
+  { label: '上传中心', to: '/upload', icon: 'i-lucide-upload' },
   { label: '我的选校', to: '/choices', icon: 'i-lucide-bookmark-check' },
   { label: '数据图表', to: '/charts', icon: 'i-lucide-line-chart' }
 ]
