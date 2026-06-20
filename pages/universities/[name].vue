@@ -76,15 +76,15 @@ function generateMockChart(_n: string) {
 
 onMounted(load)
 
-// 4 维排名数据
+// 4 维排名数据 - 4 色区分配色 (金/银/铜/普通 不用于 4 维, 用 4 色 token)
 const rankCards = computed(() => {
   if (!detail.value) return []
   const d = detail.value
   return [
-    { label: 'QS 综合', rank: d.currentQsAllRank, icon: 'i-lucide-globe-2', color: '#1456f0' },
-    { label: 'QS 计算机', rank: d.currentQsComputerRank, icon: 'i-lucide-cpu', color: '#1d4ed8' },
-    { label: 'US News 综合', rank: d.currentUsnewsAllRank, icon: 'i-lucide-award', color: '#17437d' },
-    { label: 'US News 计算机', rank: d.currentUsnewsComputerRank, icon: 'i-lucide-code-2', color: '#3b82f6' }
+    { label: 'QS 综合', rank: d.currentQsAllRank, icon: 'i-lucide-globe-2', color: '#1456f0', sparkColor: '#1456f0' },
+    { label: 'QS 计算机', rank: d.currentQsComputerRank, icon: 'i-lucide-cpu', color: '#3b82f6', sparkColor: '#3b82f6' },
+    { label: 'US News 综合', rank: d.currentUsnewsAllRank, icon: 'i-lucide-award', color: '#ea5ec1', sparkColor: '#ea5ec1' },
+    { label: 'US News 计算机', rank: d.currentUsnewsComputerRank, icon: 'i-lucide-code-2', color: '#a855f7', sparkColor: '#a855f7' }
   ]
 })
 
@@ -262,16 +262,19 @@ const detailTableRows = computed(() => {
             <span :class="['rank-badge', rankBadgeTier(r.rank)]" :style="{ minWidth: '44px', height: '32px', fontSize: '16px' }">
               {{ r.rank ?? '—' }}
             </span>
-            <svg v-if="r.rank" :width="100" :height="32" class="overflow-visible opacity-80">
+            <svg v-if="getSeriesData(r.label).length > 1" :width="100" :height="32" class="overflow-visible opacity-80">
               <path
                 :d="rankSparklinePath(getSeriesData(r.label))"
                 fill="none"
-                :stroke="r.color"
+                :stroke="r.sparkColor"
                 stroke-width="1.5"
                 stroke-linecap="round"
                 stroke-linejoin="round"
               />
             </svg>
+            <div v-else class="flex h-8 w-[100px] items-center justify-center text-[10px] text-subtle opacity-60">
+              暂无趋势数据
+            </div>
           </div>
         </UCard>
       </div>
