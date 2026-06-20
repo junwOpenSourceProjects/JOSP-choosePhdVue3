@@ -9,10 +9,9 @@ const totalUniversities = ref(0)
 const myChoicesCount = ref(0)
 const consideredCount = ref(0)
 const trackedSeries = ref(0)
-const loaded = ref(false)
 
 async function loadStats() {
-  if (import.meta.server) return  // SSR 跳过
+  if (import.meta.server) return // SSR 跳过
   try {
     const [qs, status, echarts] = await Promise.all([
       queryAll({ page: 1, limit: 1 }).catch(() => null),
@@ -27,8 +26,6 @@ async function loadStats() {
     trackedSeries.value = echarts?.series?.length ?? 0
   } catch (e) {
     console.warn('[home] stats load failed', e)
-  } finally {
-    loaded.value = true
   }
 }
 
@@ -92,257 +89,149 @@ const features = [
 <template>
   <div>
     <!-- Hero -->
-    <section class="hero">
-      <div class="page-container">
-        <div class="hero__inner">
-          <div class="hero__badge">
-            <UIcon name="i-lucide-sparkles" class="size-3" />
-            <span>PhD 申请 · 数据驱动 · 选校决策</span>
-          </div>
-          <h1 class="hero__heading">
+    <section class="bg-white py-20 md:py-24">
+      <UContainer>
+        <div class="mx-auto max-w-3xl text-center">
+          <UBadge
+            color="primary"
+            variant="subtle"
+            size="md"
+            class="mb-6"
+          >
+            <UIcon name="i-lucide-sparkles" class="size-3.5" />
+            <span class="ml-1.5">PhD 申请 · 数据驱动 · 选校决策</span>
+          </UBadge>
+
+          <h1
+            class="text-4xl font-medium leading-[1.1] tracking-tight text-default sm:text-5xl md:text-[64px]"
+            :style="{ fontFamily: 'var(--font-display)' }"
+          >
             多源排名数据<br />
-            让 PhD 选校 <span class="hero__highlight">一目了然</span>
+            让 PhD 选校 <span class="bg-gradient-to-r from-[#1456f0] to-[#60a5fa] bg-clip-text text-transparent">一目了然</span>
           </h1>
-          <p class="hero__sub">
+
+          <p class="mt-4 text-lg font-medium leading-relaxed text-muted md:text-xl">
             整合 QS 世界大学排名、US News 全球大学排名,按综合 / 计算机科学双维度对比,
             结合历年趋势图表,助你高效做出选校决策。
           </p>
-          <div class="hero__cta">
-            <NuxtLink to="/universities" class="cta is-blue">
-              <UIcon name="i-lucide-search" class="size-4" />
-              <span style="margin-left: 8px">立即查询大学</span>
-            </NuxtLink>
-            <NuxtLink to="/charts" class="cta" style="background: #fff; color: #181e25; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05)">
-              <UIcon name="i-lucide-bar-chart-3" class="size-4" />
-              <span style="margin-left: 8px">查看趋势</span>
-            </NuxtLink>
+
+          <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <UButton
+              to="/universities"
+              color="primary"
+              variant="solid"
+              size="lg"
+              icon="i-lucide-search"
+            >立即查询大学</UButton>
+            <UButton
+              to="/charts"
+              color="neutral"
+              variant="outline"
+              size="lg"
+              icon="i-lucide-bar-chart-3"
+            >查看趋势</UButton>
           </div>
         </div>
-      </div>
+      </UContainer>
     </section>
 
     <!-- Stat grid -->
-    <section class="page-container" style="margin-top: -24px">
-      <div class="stats-grid">
+    <UContainer class="-mt-6">
+      <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="监控大学"
           :value="totalUniversities"
           hint="覆盖 QS + US News 双榜"
           icon="i-lucide-globe-2"
+          tone="primary"
         />
         <StatCard
           label="选校清单"
           :value="myChoicesCount"
           hint="已添加的大学数"
           icon="i-lucide-clipboard-list"
+          tone="neutral"
         />
         <StatCard
           label="正在考虑"
           :value="consideredCount"
           hint="标记为「考虑」"
           icon="i-lucide-bookmark-check"
+          tone="success"
         />
         <StatCard
           label="趋势曲线"
           :value="trackedSeries"
           hint="可视化对比序列"
           icon="i-lucide-line-chart"
+          tone="primary"
         />
       </div>
-    </section>
+    </UContainer>
 
     <!-- 4 Module Entry -->
-    <section class="modules page-container">
-      <div class="modules__head">
-        <h2 class="section-title">四大核心模块</h2>
-        <p class="section-subtitle">从查询到选校到趋势分析,一站式覆盖</p>
+    <UContainer class="mt-20">
+      <div class="mb-8 text-center">
+        <h2
+          class="text-3xl font-semibold leading-tight text-default md:text-[31px]"
+          :style="{ fontFamily: 'var(--font-display)' }"
+        >四大核心模块</h2>
+        <p class="mt-2 text-base text-muted">从查询到选校到趋势分析,一站式覆盖</p>
       </div>
-      <div class="modules__grid">
+      <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
         <NuxtLink
           v-for="m in modules"
           :key="m.to"
           :to="m.to"
-          class="module-card"
+          class="group flex flex-col gap-3 rounded-2xl border border-default bg-white p-7 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-transparent"
+          :style="{ boxShadow: 'rgba(0,0,0,0.08) 0px 4px 6px' }"
         >
-          <div class="module-card__icon">
+          <div
+            class="inline-flex size-11 items-center justify-center rounded-xl"
+            :style="{ background: 'rgba(20, 86, 240, 0.08)', color: 'var(--color-brand-900)' }"
+          >
             <UIcon :name="m.icon" class="size-6" />
           </div>
-          <div class="module-card__title">{{ m.title }}</div>
-          <div class="module-card__desc">{{ m.desc }}</div>
-          <div class="module-card__cta">
+          <div
+            class="text-[22px] font-semibold leading-tight text-default"
+            :style="{ fontFamily: 'var(--font-display)' }"
+          >{{ m.title }}</div>
+          <div class="flex-1 text-sm leading-relaxed text-muted">{{ m.desc }}</div>
+          <div class="mt-1 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--color-brand-900)]">
             <span>{{ m.cta }}</span>
-            <UIcon name="i-lucide-arrow-right" class="size-4" />
+            <UIcon name="i-lucide-arrow-right" class="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
           </div>
         </NuxtLink>
       </div>
-    </section>
+    </UContainer>
 
     <!-- Features -->
-    <section class="features page-container">
-      <div class="features__head">
-        <h2 class="section-title">平台特色</h2>
-        <p class="section-subtitle">为 PhD 申请者量身打造</p>
+    <UContainer class="mt-20">
+      <div class="mb-8 text-center">
+        <h2
+          class="text-3xl font-semibold leading-tight text-default md:text-[31px]"
+          :style="{ fontFamily: 'var(--font-display)' }"
+        >平台特色</h2>
+        <p class="mt-2 text-base text-muted">为 PhD 申请者量身打造</p>
       </div>
-      <div class="features__grid">
-        <div v-for="f in features" :key="f.title" class="feature-card">
-          <div class="feature-card__icon">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div
+          v-for="f in features"
+          :key="f.title"
+          class="flex flex-col gap-2.5 rounded-2xl bg-[var(--color-surface-1)] p-5 transition-all duration-200 hover:bg-white hover:shadow-sm"
+        >
+          <div
+            class="inline-flex size-9 items-center justify-center rounded-[10px] bg-white text-[var(--color-brand-900)]"
+          >
             <UIcon :name="f.icon" class="size-5" />
           </div>
-          <div class="feature-card__title">{{ f.title }}</div>
-          <div class="feature-card__desc">{{ f.desc }}</div>
+          <div
+            class="text-base font-semibold text-default"
+            :style="{ fontFamily: 'var(--font-display)' }"
+          >{{ f.title }}</div>
+          <div class="text-[13px] leading-relaxed text-muted">{{ f.desc }}</div>
         </div>
       </div>
-    </section>
+    </UContainer>
   </div>
 </template>
-
-<style scoped>
-.hero__inner {
-  max-width: 800px;
-  text-align: center;
-  margin: 0 auto;
-  padding: 16px 0;
-}
-
-.hero__badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: 9999px;
-  background: rgba(20, 86, 240, 0.08);
-  color: var(--color-brand-900);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  margin-bottom: 24px;
-}
-
-.hero__highlight {
-  background: linear-gradient(120deg, #1456f0 0%, #60a5fa 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.hero__cta {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-top: 32px;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-}
-@media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 480px)  { .stats-grid { grid-template-columns: 1fr; } }
-
-.modules { margin-top: 80px; }
-.modules__head { text-align: center; margin-bottom: 32px; }
-.modules__grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
-}
-@media (max-width: 768px) { .modules__grid { grid-template-columns: 1fr; } }
-
-.module-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 28px;
-  background: #fff;
-  border-radius: 20px;
-  border: 1px solid var(--color-border-light);
-  box-shadow: rgba(0, 0, 0, 0.08) 0px 4px 6px;
-  text-decoration: none;
-  color: inherit;
-  transition: all 240ms ease;
-}
-.module-card:hover {
-  transform: translateY(-2px);
-  box-shadow: rgba(44, 30, 116, 0.16) 0px 0px 15px;
-  border-color: transparent;
-}
-.module-card__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: rgba(20, 86, 240, 0.08);
-  color: var(--color-brand-900);
-}
-.module-card__title {
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--color-ink-1000);
-  line-height: 1.5;
-}
-.module-card__desc {
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--color-ink-700);
-  flex: 1;
-}
-.module-card__cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-brand-900);
-  margin-top: 4px;
-}
-
-.features { margin-top: 80px; }
-.features__head { text-align: center; margin-bottom: 32px; }
-.features__grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-@media (max-width: 1024px) { .features__grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 480px)  { .features__grid { grid-template-columns: 1fr; } }
-
-.feature-card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 22px;
-  background: var(--color-surface-1);
-  border-radius: 16px;
-  transition: background 200ms ease;
-}
-.feature-card:hover {
-  background: #fff;
-  box-shadow: rgba(0, 0, 0, 0.08) 0px 4px 6px;
-}
-.feature-card__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: #fff;
-  color: var(--color-brand-900);
-}
-.feature-card__title {
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-ink-1000);
-}
-.feature-card__desc {
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--color-ink-700);
-}
-</style>
