@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { queryAllEcharts } from '~/lib/api/university'
+import { trendAllVariants, listEchartsUniversities } from '~/lib/api/ranking'
 
 useHead({ title: '数据图表 · 选校系统' })
 
@@ -67,6 +68,8 @@ const rankingBoard = computed(() => {
       else if (trend > 3) tone = 'down'
       return {
         name: s.name,
+        country: s.country,
+        region: s.region,
         data,
         last,
         max,
@@ -83,7 +86,8 @@ const rankingBoard = computed(() => {
 const regionDist = computed(() => {
   const buckets: Record<string, { count: number; totalRank: number; names: string[] }> = {}
   for (const r of rankingBoard.value) {
-    const country = guessCountry(r.name)
+    // 优先用后端返的 country 字段 (从 university_tags 来), 后端没返时降级用启发式
+    const country = (r.country && r.country.trim()) || guessCountry(r.name) || '未知'
     if (!buckets[country]) buckets[country] = { count: 0, totalRank: 0, names: [] }
     buckets[country].count += 1
     buckets[country].totalRank += r.last
