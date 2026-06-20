@@ -187,10 +187,17 @@ onMounted(() => {
   <div>
     <!-- Page Hero -->
     <UContainer class="py-12">
-      <h1
-        class="text-4xl font-semibold leading-tight tracking-tight text-default"
-        :style="{ fontFamily: 'var(--font-display)' }"
-      >学校库</h1>
+      <div class="flex items-center gap-3">
+        <h1
+          class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl"
+          :style="{ fontFamily: 'var(--font-display)' }"
+        >学校库</h1>
+        <span
+          class="mt-3 size-2 shrink-0 rounded-full"
+          :style="{ background: 'var(--color-brand-pink)' }"
+          aria-hidden="true"
+        />
+      </div>
       <p class="mt-2 text-base text-muted">多源排名 · 多维过滤 · 一目了然</p>
     </UContainer>
 
@@ -303,7 +310,7 @@ onMounted(() => {
           ]"
           :ui="{
             wrapper: 'min-h-[200px]',
-            th: 'text-xs font-semibold uppercase tracking-wider text-muted',
+            th: 'text-[12px] font-medium text-muted',
             td: 'py-3.5 text-sm'
           }"
         >

@@ -201,10 +201,17 @@ function formatSize(bytes: number): string {
 <template>
   <div>
     <UContainer class="py-10">
-      <h1
-        class="text-4xl font-semibold leading-tight tracking-tight text-default"
-        :style="{ fontFamily: 'var(--font-display)' }"
-      >上传中心</h1>
+      <div class="flex items-center gap-3">
+        <h1
+          class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl"
+          :style="{ fontFamily: 'var(--font-display)' }"
+        >上传中心</h1>
+        <span
+          class="mt-3 size-2 shrink-0 rounded-full"
+          :style="{ background: 'var(--color-brand-pink)' }"
+          aria-hidden="true"
+        />
+      </div>
       <p class="mt-2 text-base text-muted">手动上传或一键扫描 · 解析后入库 · 全程幂等</p>
     </UContainer>
 
@@ -212,25 +219,25 @@ function formatSize(bytes: number): string {
     <UContainer>
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-5' }">
-          <div class="text-[11px] font-semibold uppercase tracking-wider text-muted">已入库排名组数</div>
+          <div class="text-[12px] font-medium text-muted">已入库排名组数</div>
           <div
-            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-[var(--color-brand-900)]"
+            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-default"
             :style="{ fontFamily: 'var(--font-display)' }"
           >{{ totalGroups }}</div>
           <div class="mt-2 text-[12px] text-subtle">按 (排名类型, 年份) 分组</div>
         </UCard>
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-5' }">
-          <div class="text-[11px] font-semibold uppercase tracking-wider text-muted">待上传文件</div>
+          <div class="text-[12px] font-medium text-muted">待上传文件</div>
           <div
-            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-[var(--color-brand-900)]"
+            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-default"
             :style="{ fontFamily: 'var(--font-display)' }"
           >{{ pendingFiles.length }}</div>
           <div class="mt-2 text-[12px] text-subtle">.txt 排名文件</div>
         </UCard>
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-5' }">
-          <div class="text-[11px] font-semibold uppercase tracking-wider text-muted">最近一次更新</div>
+          <div class="text-[12px] font-medium text-muted">最近一次更新</div>
           <div
-            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-[var(--color-brand-900)]"
+            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-default"
             :style="{ fontFamily: 'var(--font-display)' }"
           >{{ latestYear ?? '—' }}</div>
           <div class="mt-2 text-[12px] text-subtle">
@@ -427,7 +434,7 @@ function formatSize(bytes: number): string {
             { id: 'status', header: '状态', meta: { class: { th: 'w-[100px]', td: 'w-[100px]' } } },
             { id: 'msg', header: '消息' }
           ]"
-          :ui="{ th: 'text-xs font-semibold uppercase tracking-wider text-muted', td: 'py-3 text-sm' }"
+          :ui="{ th: 'text-[12px] font-medium text-muted', td: 'py-3 text-sm' }"
         >
           <template #name-cell="{ row }">
             <div class="flex items-center gap-2">
@@ -478,7 +485,7 @@ function formatSize(bytes: number): string {
             { id: 'variant', header: '排名类型', accessorKey: 'rankVariant' },
             { id: 'year', header: '年份', meta: { class: { th: 'w-[120px]', td: 'w-[120px] font-[var(--font-data)]' } } }
           ]"
-          :ui="{ th: 'text-xs font-semibold uppercase tracking-wider text-muted', td: 'py-3 text-sm' }"
+          :ui="{ th: 'text-[12px] font-medium text-muted', td: 'py-3 text-sm' }"
         >
           <template #variant-cell="{ row }">
             <UBadge color="primary" variant="subtle" size="sm" :label="row.original.rankVariant || '—'" />
@@ -531,7 +538,7 @@ function formatSize(bytes: number): string {
                   <th
                     v-for="(h, i) in previewData.headers"
                     :key="i"
-                    class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted"
+                    class="px-3 py-2 text-left text-[12px] font-medium text-muted"
                   >{{ h }}</th>
                 </tr>
               </thead>

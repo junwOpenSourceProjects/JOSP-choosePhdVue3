@@ -215,10 +215,17 @@ watch(currentRank, () => loadAll())
     <UContainer class="py-10">
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1
-            class="text-4xl font-semibold leading-tight tracking-tight text-default"
-            :style="{ fontFamily: 'var(--font-display)' }"
-          >数据图表</h1>
+          <div class="flex items-center gap-2.5">
+            <h1
+              class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl"
+              :style="{ fontFamily: 'var(--font-display)' }"
+            >数据图表</h1>
+            <span
+              class="mt-3 size-2 shrink-0 rounded-full"
+              :style="{ background: 'var(--color-brand-pink)' }"
+              aria-hidden="true"
+            />
+          </div>
           <p class="mt-2 text-base text-muted">趋势 · 对比 · 洞察 · 让选校决策有数</p>
         </div>
         <UFieldGroup size="sm">
@@ -252,7 +259,7 @@ watch(currentRank, () => loadAll())
           :key="k.label"
           :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-5' }"
         >
-          <div class="text-[11px] font-semibold uppercase tracking-wider text-muted">{{ k.label }}</div>
+          <div class="text-[12px] font-medium text-muted">{{ k.label }}</div>
           <div
             class="mt-2 text-[36px] font-semibold leading-none tracking-tight"
             :style="{ color: k.color, fontFamily: 'var(--font-display)' }"
@@ -348,7 +355,7 @@ watch(currentRank, () => loadAll())
             { id: 'trend', header: '趋势', meta: { class: { th: 'w-[120px]', td: 'w-[120px]' } } },
             { id: 'action', header: '', meta: { class: { th: 'w-[140px]', td: 'w-[140px]' } } }
           ]"
-          :ui="{ th: 'text-xs font-semibold uppercase tracking-wider text-muted', td: 'py-3 text-sm' }"
+          :ui="{ th: 'text-[12px] font-medium text-muted', td: 'py-3 text-sm'}"
         >
           <template #rank-cell="{ row }">
             <span
