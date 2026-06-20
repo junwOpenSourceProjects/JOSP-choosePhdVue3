@@ -49,6 +49,41 @@ const sortByItems = [
   { value: 'country', label: '按国家' }
 ]
 
+// 派生: 排序指示
+const sortByLabel = computed(() => sortByItems.find(s => s.value === sortBy.value)?.label ?? '按排名')
+const sortIcon = computed(() => {
+  if (sortBy.value === 'rank') return 'i-lucide-arrow-up-narrow-wide'
+  if (sortBy.value === 'name') return 'i-lucide-arrow-down-a-z'
+  return 'i-lucide-map-pin'
+})
+
+// 排名徽章 tier (金/银/铜/普通)
+function rankBadgeTier(rank: number | null | undefined): string {
+  if (rank == null) return 'rank-badge--normal'
+  if (rank <= 3) return 'rank-badge--gold'
+  if (rank <= 10) return 'rank-badge--silver'
+  if (rank <= 50) return 'rank-badge--bronze'
+  return 'rank-badge--normal'
+}
+
+// 洲颜色 token (DESIGN 6 大洲, 视觉差异化)
+const REGION_COLORS: Record<string, { bg: string; fg: string; dot: string }> = {
+  '亚洲': { bg: 'rgba(234, 94, 193, 0.10)', fg: '#be185d', dot: '#ea5ec1' },
+  '欧洲': { bg: 'rgba(20, 86, 240, 0.10)', fg: '#1d4ed8', dot: '#1456f0' },
+  '北美洲': { bg: 'rgba(245, 158, 11, 0.10)', fg: '#b45309', dot: '#f59e0b' },
+  '南美洲': { bg: 'rgba(34, 197, 94, 0.10)', fg: '#15803d', dot: '#22c55e' },
+  '大洋洲': { bg: 'rgba(168, 85, 247, 0.10)', fg: '#7c3aed', dot: '#a855f7' },
+  '非洲': { bg: 'rgba(239, 68, 68, 0.10)', fg: '#b91c1c', dot: '#ef4444' }
+}
+function regionColor(region: string): string {
+  return REGION_COLORS[region]?.dot ?? '#8e8e93'
+}
+function regionStyle(region: string) {
+  const c = REGION_COLORS[region]
+  if (!c) return { background: 'rgba(0,0,0,0.04)', color: '#45515e' }
+  return { background: c.bg, color: c.fg }
+}
+
 // 派生: 过滤选项
 const tagOptions = computed(() => {
   if (!tagState.value) return []
@@ -258,13 +293,11 @@ onMounted(() => {
             size="md"
             class="min-w-[120px]"
           />
-          <USelectMenu
-            v-model="sortBy"
-            :items="sortByItems"
-            value-key="value"
-            size="md"
-            class="min-w-[120px]"
-          />
+          <div class="inline-flex items-center gap-1 rounded-full border border-default bg-white px-3 py-1.5 text-[13px]">
+            <span class="text-muted">排序</span>
+            <span class="font-semibold text-default">{{ sortByLabel }}</span>
+            <UIcon :name="sortIcon" class="size-3.5 text-[var(--color-brand-900)]" />
+          </div>
           <div class="ml-auto text-[13px] text-muted">
             共 <strong class="text-default">{{ total }}</strong> 所大学
           </div>
@@ -304,17 +337,14 @@ onMounted(() => {
           :ui="{
             wrapper: 'min-h-[200px]',
             th: 'text-[12px] font-medium text-muted',
-            td: 'py-3.5 text-sm'
+            td: 'py-3.5 text-sm transition-colors duration-200 group-hover:bg-[var(--color-surface-1)]',
+            tr: 'group transition-colors duration-200'
           }"
         >
           <template #rank-cell="{ row }">
-            <UBadge
-              :color="rankBadgeColor(getRankField(row.original, 'all'))"
-              :variant="rankBadgeVariant(getRankField(row.original, 'all'))"
-              size="sm"
-              variant="solid"
-              :label="String(getRankField(row.original, 'all') ?? '—')"
-            />
+            <span
+              :class="['rank-badge', rankBadgeTier(getRankField(row.original, 'all'))]"
+            >{{ getRankField(row.original, 'all') ?? '—' }}</span>
           </template>
           <template #name-cell="{ row }">
             <NuxtLink
@@ -325,48 +355,39 @@ onMounted(() => {
           <template #country-cell="{ row }">
             <div class="flex flex-col leading-tight">
               <span class="text-[13px] text-default">{{ row.original.universityTags || '—' }}</span>
-              <span v-if="row.original.universityTagsState" class="mt-0.5 text-[11px] text-subtle">{{ row.original.universityTagsState }}</span>
+              <span
+                v-if="row.original.universityTagsState"
+                class="mt-1 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                :style="regionStyle(row.original.universityTagsState)"
+              >
+                <span class="size-1.5 rounded-full" :style="{ background: regionColor(row.original.universityTagsState) }" />
+                {{ row.original.universityTagsState }}
+              </span>
             </div>
           </template>
           <template #qsAll-cell="{ row }">
-            <UBadge
-              :color="rankBadgeColor(row.original.currentQsAllRank)"
-              :variant="rankBadgeVariant(row.original.currentQsAllRank)"
-              size="sm"
-              variant="subtle"
-              :label="String(row.original.currentQsAllRank ?? '—')"
-              class="font-[var(--font-data)]"
-            />
+            <span
+              :class="['rank-badge', rankBadgeTier(row.original.currentQsAllRank), rankBadgeTier(row.original.currentQsAllRank) === 'rank-badge--normal' ? 'opacity-70' : '']"
+              :style="{ minWidth: '36px', height: '28px', fontSize: '13px' }"
+            >{{ row.original.currentQsAllRank ?? '—' }}</span>
           </template>
           <template #qsCs-cell="{ row }">
-            <UBadge
-              :color="rankBadgeColor(row.original.currentQsComputerRank)"
-              :variant="rankBadgeVariant(row.original.currentQsComputerRank)"
-              size="sm"
-              variant="subtle"
-              :label="String(row.original.currentQsComputerRank ?? '—')"
-              class="font-[var(--font-data)]"
-            />
+            <span
+              :class="['rank-badge', rankBadgeTier(row.original.currentQsComputerRank), rankBadgeTier(row.original.currentQsComputerRank) === 'rank-badge--normal' ? 'opacity-70' : '']"
+              :style="{ minWidth: '36px', height: '28px', fontSize: '13px' }"
+            >{{ row.original.currentQsComputerRank ?? '—' }}</span>
           </template>
           <template #usAll-cell="{ row }">
-            <UBadge
-              :color="rankBadgeColor(row.original.currentUsnewsAllRank)"
-              :variant="rankBadgeVariant(row.original.currentUsnewsAllRank)"
-              size="sm"
-              variant="subtle"
-              :label="String(row.original.currentUsnewsAllRank ?? '—')"
-              class="font-[var(--font-data)]"
-            />
+            <span
+              :class="['rank-badge', rankBadgeTier(row.original.currentUsnewsAllRank), rankBadgeTier(row.original.currentUsnewsAllRank) === 'rank-badge--normal' ? 'opacity-70' : '']"
+              :style="{ minWidth: '36px', height: '28px', fontSize: '13px' }"
+            >{{ row.original.currentUsnewsAllRank ?? '—' }}</span>
           </template>
           <template #usCs-cell="{ row }">
-            <UBadge
-              :color="rankBadgeColor(row.original.currentUsnewsComputerRank)"
-              :variant="rankBadgeVariant(row.original.currentUsnewsComputerRank)"
-              size="sm"
-              variant="subtle"
-              :label="String(row.original.currentUsnewsComputerRank ?? '—')"
-              class="font-[var(--font-data)]"
-            />
+            <span
+              :class="['rank-badge', rankBadgeTier(row.original.currentUsnewsComputerRank), rankBadgeTier(row.original.currentUsnewsComputerRank) === 'rank-badge--normal' ? 'opacity-70' : '']"
+              :style="{ minWidth: '36px', height: '28px', fontSize: '13px' }"
+            >{{ row.original.currentUsnewsComputerRank ?? '—' }}</span>
           </template>
           <template #action-cell="{ row }">
             <UButton
