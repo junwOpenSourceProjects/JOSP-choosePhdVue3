@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { queryAllQs, drawerData } from '~/lib/api/university'
+import { queryAllQs } from '~/lib/api/university'
+import { drawerData } from '~/lib/api/ranking'
 import type { UniversityAllDTO } from '~/types'
 
 const route = useRoute()

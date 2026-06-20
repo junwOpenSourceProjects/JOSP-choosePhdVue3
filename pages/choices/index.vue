@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { queryRankingStatus, insertOrUpdate, insertBatch, drawerData } from '~/lib/api/ranking'
+import { queryRankingStatus, insertOrUpdate, insertBatch, drawerData, initFromQs } from '~/lib/api/ranking'
 import { insertChoosePhd } from '~/lib/api/choosePhd'
 import type { RankingStatusDTO } from '~/types'
 
@@ -88,6 +88,27 @@ async function batchInit() {
   }
 }
 
+async function seedRankings() {
+  if (!confirm('确认从 QS 数据初始化汇总表和 ECharts 数据?\n需要管理员登录。')) return
+  saving.value = true
+  error.value = null
+  try {
+    const res: any = await initFromQs()
+    info.value = res?.data || '初始化成功'
+    setTimeout(() => info.value = null, 3000)
+  } catch (e: any) {
+    const msg = e?.data?.msg || e?.message || '后端不可达'
+    if (msg.includes('登录') || msg.includes('401')) {
+      error.value = '请先登录管理员账号'
+      await navigateTo('/login')
+    } else {
+      error.value = '初始化失败: ' + msg
+    }
+  } finally {
+    saving.value = false
+  }
+}
+
 async function openDrawer(name: string) {
   drawerName.value = name
   drawerOpen.value = true
@@ -157,6 +178,10 @@ function statusClass(v: number | null | undefined): string {
           <p class="page-hero__sub">标记 · 评估 · 决策</p>
         </div>
         <div class="page-hero__actions">
+          <button class="cta is-secondary" @click="seedRankings" :disabled="saving">
+            <UIcon name="i-lucide-database" class="size-4" />
+            <span style="margin-left: 6px">初始化排名数据</span>
+          </button>
           <button class="cta" @click="batchInit" :disabled="saving">
             <UIcon name="i-lucide-zap" class="size-4" />
             <span style="margin-left: 6px">一键初始化</span>
