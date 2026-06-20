@@ -27,6 +27,16 @@ const historyLoading = ref(false)
 // 总量
 const totalGroups = ref(0)
 
+// 最近一次更新 (从 historyRows 取最大年份)
+const latestYear = computed(() => {
+  if (historyRows.value.length === 0) return null
+  const years = historyRows.value
+    .map(r => parseInt(r.rankingYear, 10))
+    .filter(y => !isNaN(y))
+  if (years.length === 0) return null
+  return String(Math.max(...years))
+})
+
 // 自定义路径
 const customPath = ref<string | undefined>(undefined)
 
@@ -201,29 +211,32 @@ function formatSize(bytes: number): string {
     <!-- 总览 + scanLocal 大按钮 -->
     <UContainer>
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-4' }">
-          <div class="text-xs text-muted">已入库排名组数</div>
+        <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-5' }">
+          <div class="text-[11px] font-semibold uppercase tracking-wider text-muted">已入库排名组数</div>
           <div
-            class="mt-1 text-[28px] font-semibold leading-none text-default"
+            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-[var(--color-brand-900)]"
             :style="{ fontFamily: 'var(--font-display)' }"
           >{{ totalGroups }}</div>
-          <div class="mt-1 text-[11px] text-subtle">按 (排名类型, 年份) 分组</div>
+          <div class="mt-2 text-[12px] text-subtle">按 (排名类型, 年份) 分组</div>
         </UCard>
-        <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-4' }">
-          <div class="text-xs text-muted">待上传文件</div>
+        <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-5' }">
+          <div class="text-[11px] font-semibold uppercase tracking-wider text-muted">待上传文件</div>
           <div
-            class="mt-1 text-[28px] font-semibold leading-none text-default"
+            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-[var(--color-brand-900)]"
             :style="{ fontFamily: 'var(--font-display)' }"
           >{{ pendingFiles.length }}</div>
-          <div class="mt-1 text-[11px] text-subtle">.txt 排名文件</div>
+          <div class="mt-2 text-[12px] text-subtle">.txt 排名文件</div>
         </UCard>
-        <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-4' }">
-          <div class="text-xs text-muted">最近一次扫描</div>
+        <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-5' }">
+          <div class="text-[11px] font-semibold uppercase tracking-wider text-muted">最近一次更新</div>
           <div
-            class="mt-1 text-[28px] font-semibold leading-none text-default"
+            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-[var(--color-brand-900)]"
             :style="{ fontFamily: 'var(--font-display)' }"
-          >{{ lastResult?.totalRecords ?? 0 }}</div>
-          <div class="mt-1 text-[11px] text-subtle">{{ lastResult?.filesScanned ?? 0 }} 文件 · {{ lastResult ? '已记录' : '尚未执行' }}</div>
+          >{{ latestYear ?? '—' }}</div>
+          <div class="mt-2 text-[12px] text-subtle">
+            <span v-if="latestYear">最新年份 · 来自历史导入</span>
+            <span v-else>尚未执行</span>
+          </div>
         </UCard>
       </div>
     </UContainer>
@@ -367,7 +380,7 @@ function formatSize(bytes: number): string {
           <UAlert
             color="info"
             variant="subtle"
-            title="幂等: 同 (大学+年份+排名类型) 会被覆盖, 不会重复入库"
+            title="幂等原则: 同 (大学+年份+排名类型) 会被覆盖, 不会重复入库"
             icon="i-lucide-info"
           />
         </UCard>
@@ -471,7 +484,7 @@ function formatSize(bytes: number): string {
             <UBadge color="primary" variant="subtle" size="sm" :label="row.original.rankVariant || '—'" />
           </template>
           <template #year-cell="{ row }">
-            <span class="font-mono text-default">{{ row.original.rankingYear }}</span>
+            <span class="font-mono text-[14px] text-default">{{ row.original.rankingYear }}</span>
           </template>
           <template #empty>
             <UEmpty
