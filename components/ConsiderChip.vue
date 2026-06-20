@@ -2,7 +2,7 @@
 import type { ConsiderType } from '~/types'
 
 const props = defineProps<{
-  value: number | null | undefined
+  value: ConsiderType | number | null | undefined
   size?: 'sm' | 'md'
 }>()
 
@@ -12,22 +12,17 @@ const label = computed(() => {
   return '—'
 })
 
-const cls = computed(() => {
-  if (props.value === 1) return 'status-chip status-chip--consider'
-  if (props.value === 0) return 'status-chip status-chip--skip'
-  return 'status-chip status-chip--weak'
+const color = computed<'success' | 'error' | 'neutral'>(() => {
+  if (props.value === 1) return 'success'
+  if (props.value === 0) return 'error'
+  return 'neutral'
 })
 </script>
 
 <template>
-  <span :class="[cls, size === 'sm' ? 'is-sm' : '']">
-    {{ label }}
-  </span>
+  <UBadge
+    :color="color"
+    :variant="value === 1 ? 'subtle' : 'soft'"
+    :size="size === 'sm' ? 'xs' : 'sm'"
+  >{{ label }}</UBadge>
 </template>
-
-<style scoped>
-.is-sm {
-  font-size: 11px;
-  padding: 2px 8px;
-}
-</style>

@@ -2,7 +2,7 @@
 import type { StatusLevel } from '~/types'
 
 const props = defineProps<{
-  level: StatusLevel | null | undefined
+  level: StatusLevel | number | null | undefined
   size?: 'sm' | 'md'
 }>()
 
@@ -13,23 +13,23 @@ const label = computed(() => {
   return '强'
 })
 
-const cls = computed(() => {
-  if (props.level === null || props.level === undefined) return 'status-chip status-chip--weak'
-  if (props.level === 0) return 'status-chip status-chip--weak'
-  if (props.level === 1) return 'status-chip status-chip--medium'
-  return 'status-chip status-chip--strong'
+const color = computed<'primary' | 'secondary' | 'success' | 'neutral'>(() => {
+  if (props.level === null || props.level === undefined) return 'neutral'
+  if (props.level === 0) return 'neutral'
+  if (props.level === 1) return 'secondary'
+  return 'primary'
+})
+
+const variant = computed<'subtle' | 'soft' | 'solid'>(() => {
+  if (props.level === 2) return 'solid'
+  return 'subtle'
 })
 </script>
 
 <template>
-  <span :class="[cls, size === 'sm' ? 'is-sm' : '']">
-    {{ label }}
-  </span>
+  <UBadge
+    :color="color"
+    :variant="variant"
+    :size="size === 'sm' ? 'xs' : 'sm'"
+  >{{ label }}</UBadge>
 </template>
-
-<style scoped>
-.is-sm {
-  font-size: 11px;
-  padding: 2px 8px;
-}
-</style>
