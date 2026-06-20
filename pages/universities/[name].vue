@@ -138,18 +138,10 @@ const detailTableRows = computed(() => {
     </UContainer>
 
     <UContainer class="pt-4 pb-2">
-      <div class="flex items-center gap-3">
-        <h1
-          class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl"
-          :style="{ fontFamily: 'var(--font-display)' }"
-        >{{ name || '未知大学' }}</h1>
-        <span
-          v-if="detail"
-          class="mt-3 size-2 shrink-0 rounded-full"
-          :style="{ background: 'var(--color-brand-pink)' }"
-          aria-hidden="true"
-        />
-      </div>
+      <h1
+        class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl"
+        :style="{ fontFamily: 'var(--font-display)' }"
+      >{{ name || '未知大学' }}</h1>
       <div v-if="detail" class="mt-3 flex flex-wrap items-center gap-2">
         <UBadge v-if="detail.universityTags" color="primary" variant="subtle" size="sm">
           <UIcon name="i-lucide-map-pin" class="size-3" />

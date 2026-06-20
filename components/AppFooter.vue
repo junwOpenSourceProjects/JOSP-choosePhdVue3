@@ -30,7 +30,7 @@ const project = [
           >
             <UIcon name="i-lucide-graduation-cap" class="size-5" />
           </div>
-          <div>
+          <div class="flex-1">
             <div
               class="text-lg font-semibold text-white"
               :style="{ fontFamily: 'var(--font-display)' }"

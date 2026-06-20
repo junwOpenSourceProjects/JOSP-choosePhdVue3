@@ -201,17 +201,10 @@ function formatSize(bytes: number): string {
 <template>
   <div>
     <UContainer class="py-10">
-      <div class="flex items-center gap-3">
-        <h1
-          class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl"
-          :style="{ fontFamily: 'var(--font-display)' }"
-        >上传中心</h1>
-        <span
-          class="mt-3 size-2 shrink-0 rounded-full"
-          :style="{ background: 'var(--color-brand-pink)' }"
-          aria-hidden="true"
-        />
-      </div>
+      <h1
+        class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl"
+        :style="{ fontFamily: 'var(--font-display)' }"
+      >上传中心</h1>
       <p class="mt-2 text-base text-muted">手动上传或一键扫描 · 解析后入库 · 全程幂等</p>
     </UContainer>
 

@@ -109,11 +109,6 @@ const features = [
             多源排名数据<br />
             让 PhD 选校 <span class="bg-gradient-to-r from-[#1456f0] to-[#60a5fa] bg-clip-text text-transparent">一目了然</span>
           </h1>
-          <span
-            class="mx-auto mt-2 size-2 shrink-0 rounded-full"
-            :style="{ background: 'var(--color-brand-pink)' }"
-            aria-hidden="true"
-          />
 
           <p class="mt-4 text-lg font-medium leading-relaxed text-muted md:text-xl">
             整合 QS 世界大学排名、US News 全球大学排名,按综合 / 计算机科学双维度对比,

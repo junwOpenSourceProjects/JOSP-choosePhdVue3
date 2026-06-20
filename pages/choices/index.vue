@@ -197,7 +197,7 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1
-            class="text-4xl font-semibold leading-tight tracking-tight text-default"
+            class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl"
             :style="{ fontFamily: 'var(--font-display)' }"
           >我的选校</h1>
           <p class="mt-2 text-base text-muted">标记 · 评估 · 决策</p>
