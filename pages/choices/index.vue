@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { queryRankingStatus, insertOrUpdate, insertBatch, drawerData, initFromQs } from '~/lib/api/ranking'
+import { queryRankingStatus, insertOrUpdate, drawerData, initFromQs } from '~/lib/api/ranking'
 import { insertChoosePhd } from '~/lib/api/choosePhd'
 import type { RankingStatusDTO } from '~/types'
 
@@ -14,14 +14,40 @@ const saving = ref(false)
 
 const filterConsider = ref<'all' | 'yes' | 'no'>('all')
 const filterLevel = ref<'all' | 'strong' | 'medium' | 'weak'>('all')
-const search = ref('')
+const search = ref<string | undefined>(undefined)
 const sortBy = ref<'name' | 'qs' | 'total'>('total')
 
-// 抽屉
+// 抽屉 (UDrawer)
 const drawerOpen = ref(false)
 const drawerName = ref('')
 const drawerChart = ref<any>(null)
 const drawerLoading = ref(false)
+
+const considerItems = [
+  { value: 'all' as const, label: '全部' },
+  { value: 'yes' as const, label: '考虑' },
+  { value: 'no' as const, label: '不考虑' }
+]
+
+const levelItems = [
+  { value: 'all' as const, label: '全部强弱' },
+  { value: 'strong' as const, label: '强' },
+  { value: 'medium' as const, label: '中' },
+  { value: 'weak' as const, label: '弱' }
+]
+
+const sortByItems = [
+  { value: 'total' as const, label: '按整体强度' },
+  { value: 'qs' as const, label: '按 QS 强度' },
+  { value: 'name' as const, label: '按名称' }
+]
+
+const statusLevelItems = [
+  { value: null, label: '—' },
+  { value: 0, label: '弱' },
+  { value: 1, label: '中' },
+  { value: 2, label: '强' }
+]
 
 async function load() {
   loading.value = true
@@ -31,7 +57,7 @@ async function load() {
     items.value = Array.isArray(res) ? res : []
   } catch (e: any) {
     console.warn('[choices] load failed', e?.message)
-    error.value = '后端不可达,显示示例数据'
+    error.value = '后端不可达, 显示示例数据'
     items.value = generateMock()
   } finally {
     loading.value = false
@@ -125,7 +151,6 @@ async function openDrawer(name: string) {
   }
 }
 
-// 过滤
 const filteredItems = computed(() => {
   let arr = [...items.value]
   if (filterConsider.value === 'yes') arr = arr.filter(i => i.consider === 1)
@@ -137,7 +162,6 @@ const filteredItems = computed(() => {
     const kw = search.value.toLowerCase()
     arr = arr.filter(i => i.universityNameChinese?.toLowerCase().includes(kw))
   }
-  // 排序
   if (sortBy.value === 'name') {
     arr.sort((a, b) => (a.universityNameChinese || '').localeCompare(b.universityNameChinese || '', 'zh'))
   } else if (sortBy.value === 'qs') {
@@ -148,7 +172,6 @@ const filteredItems = computed(() => {
   return arr
 })
 
-// 统计
 const stats = computed(() => {
   const total = items.value.length
   const considered = items.value.filter(i => i.consider === 1).length
@@ -159,524 +182,263 @@ const stats = computed(() => {
 
 onMounted(load)
 
-// 把状态值 (0/1/2/null) 映射到 'strong'/'medium'/'weak'/'none' 供样式
-function statusClass(v: number | null | undefined): string {
-  if (v == null) return 'none'
-  if (v === 2) return 'strong'
-  if (v === 1) return 'medium'
-  if (v === 0) return 'weak'
-  return 'none'
+function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'neutral' {
+  if (v == null) return 'neutral'
+  if (v === 2) return 'primary'
+  if (v === 1) return 'secondary'
+  return 'neutral'
 }
 </script>
 
 <template>
   <div>
-    <section class="page-hero page-container">
-      <div class="page-hero__row">
+    <!-- Hero + 顶部 actions -->
+    <UContainer class="py-10">
+      <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 class="page-hero__title">我的选校</h1>
-          <p class="page-hero__sub">标记 · 评估 · 决策</p>
+          <h1
+            class="text-4xl font-semibold leading-tight tracking-tight text-default"
+            :style="{ fontFamily: 'var(--font-display)' }"
+          >我的选校</h1>
+          <p class="mt-2 text-base text-muted">标记 · 评估 · 决策</p>
         </div>
-        <div class="page-hero__actions">
-          <button class="cta is-secondary" @click="seedRankings" :disabled="saving">
-            <UIcon name="i-lucide-database" class="size-4" />
-            <span style="margin-left: 6px">初始化排名数据</span>
-          </button>
-          <button class="cta" @click="batchInit" :disabled="saving">
-            <UIcon name="i-lucide-zap" class="size-4" />
-            <span style="margin-left: 6px">一键初始化</span>
-          </button>
+        <div class="flex flex-wrap gap-2">
+          <UButton
+            icon="i-lucide-database"
+            color="neutral"
+            variant="outline"
+            size="md"
+            label="初始化排名数据"
+            :loading="saving"
+            @click="seedRankings"
+          />
+          <UButton
+            icon="i-lucide-zap"
+            color="primary"
+            variant="solid"
+            size="md"
+            label="一键初始化"
+            :loading="saving"
+            @click="batchInit"
+          />
         </div>
       </div>
-    </section>
+    </UContainer>
 
     <!-- 4 stats -->
-    <section class="page-container stats-section">
-      <div class="stat-row">
-        <div class="stat-mini">
-          <div class="stat-mini__label">清单总数</div>
-          <div class="stat-mini__value">{{ stats.total }}</div>
-        </div>
-        <div class="stat-mini">
-          <div class="stat-mini__label">正在考虑</div>
-          <div class="stat-mini__value stat-mini__value--brand">{{ stats.considered }}</div>
-        </div>
-        <div class="stat-mini">
-          <div class="stat-mini__label">强校 (2)</div>
-          <div class="stat-mini__value">{{ stats.strong }}</div>
-        </div>
-        <div class="stat-mini">
-          <div class="stat-mini__label">中校 (1)</div>
-          <div class="stat-mini__value">{{ stats.medium }}</div>
-        </div>
+    <UContainer>
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <UCard
+          v-for="s in [
+            { key: 'total', label: '清单总数', value: stats.total, brand: false },
+            { key: 'considered', label: '正在考虑', value: stats.considered, brand: true },
+            { key: 'strong', label: '强校 (2)', value: stats.strong, brand: false },
+            { key: 'medium', label: '中校 (1)', value: stats.medium, brand: false }
+          ]"
+          :key="s.key"
+          :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-4' }"
+        >
+          <div class="text-xs text-muted">{{ s.label }}</div>
+          <div
+            class="mt-1 text-[28px] font-semibold leading-none"
+            :class="s.brand ? 'text-[var(--color-brand-900)]' : 'text-default'"
+            :style="{ fontFamily: 'var(--font-display)' }"
+          >{{ s.value }}</div>
+        </UCard>
       </div>
-    </section>
+    </UContainer>
 
     <!-- Filter toolbar -->
-    <section class="page-container toolbar-section">
-      <div class="toolbar">
-        <div class="toolbar__search">
-          <UIcon name="i-lucide-search" class="size-4 text-muted" />
-          <input v-model="search" type="text" class="toolbar__input" placeholder="搜索大学名称..." />
+    <UContainer class="pt-4">
+      <UCard
+        :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-4 sm:p-5 space-y-3' }"
+      >
+        <div class="flex flex-wrap items-center gap-3">
+          <UInput
+            v-model="search"
+            icon="i-lucide-search"
+            placeholder="搜索大学名称..."
+            size="md"
+            class="flex-1 min-w-[200px]"
+          />
+          <UFieldGroup size="sm">
+            <UButton
+              v-for="c in considerItems"
+              :key="c.value"
+              :color="filterConsider === c.value ? 'primary' : 'neutral'"
+              :variant="filterConsider === c.value ? 'solid' : 'outline'"
+              :label="c.label"
+              size="sm"
+              @click="filterConsider = c.value"
+            />
+          </UFieldGroup>
+          <UFieldGroup size="sm">
+            <UButton
+              v-for="c in levelItems"
+              :key="c.value"
+              :color="filterLevel === c.value ? 'primary' : 'neutral'"
+              :variant="filterLevel === c.value ? 'solid' : 'outline'"
+              :label="c.label"
+              size="sm"
+              @click="filterLevel = c.value"
+            />
+          </UFieldGroup>
+          <USelectMenu
+            v-model="sortBy"
+            :items="sortByItems"
+            value-key="value"
+            size="md"
+            class="ml-auto min-w-[160px]"
+          />
         </div>
 
-        <div class="toolbar__pills">
-          <button class="pill" :class="{ 'is-active': filterConsider === 'all' }" @click="filterConsider = 'all'">全部</button>
-          <button class="pill" :class="{ 'is-active': filterConsider === 'yes' }" @click="filterConsider = 'yes'">考虑</button>
-          <button class="pill" :class="{ 'is-active': filterConsider === 'no' }" @click="filterConsider = 'no'">不考虑</button>
-        </div>
-
-        <div class="toolbar__pills">
-          <button class="pill" :class="{ 'is-active': filterLevel === 'all' }" @click="filterLevel = 'all'">全部强弱</button>
-          <button class="pill" :class="{ 'is-active': filterLevel === 'strong' }" @click="filterLevel = 'strong'">强</button>
-          <button class="pill" :class="{ 'is-active': filterLevel === 'medium' }" @click="filterLevel = 'medium'">中</button>
-          <button class="pill" :class="{ 'is-active': filterLevel === 'weak' }" @click="filterLevel = 'weak'">弱</button>
-        </div>
-
-        <label class="filter-label" style="margin-left: auto">
-          <span>排序</span>
-          <select v-model="sortBy" class="filter-select">
-            <option value="total">按整体强度</option>
-            <option value="qs">按 QS 强度</option>
-            <option value="name">按名称</option>
-          </select>
-        </label>
-      </div>
-
-      <div v-if="error" class="banner-warn"><UIcon name="i-lucide-alert-circle" class="size-4" /><span>{{ error }}</span></div>
-      <div v-if="info" class="banner-info"><UIcon name="i-lucide-check-circle" class="size-4" /><span>{{ info }}</span></div>
-    </section>
+        <UAlert
+          v-if="error"
+          color="warning"
+          variant="subtle"
+          :title="error"
+          icon="i-lucide-alert-circle"
+        />
+        <UAlert
+          v-if="info"
+          color="success"
+          variant="subtle"
+          :title="info"
+          icon="i-lucide-check-circle"
+        />
+      </UCard>
+    </UContainer>
 
     <!-- Cards grid -->
-    <section class="page-container cards-section">
-      <div v-if="loading" class="loading-state">
+    <UContainer class="py-6">
+      <div v-if="loading" class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-default bg-white p-20 text-muted">
         <UIcon name="i-lucide-loader" class="size-6 animate-spin" />
-        <span>加载中...</span>
+        <span class="text-sm">加载中…</span>
       </div>
 
-      <div v-else-if="filteredItems.length === 0" class="empty-state">
-        <UIcon name="i-lucide-inbox" class="size-10" />
-        <div class="empty-state__title">没有匹配的大学</div>
-        <div class="empty-state__desc">尝试调整过滤条件,或点击「一键初始化」导入全部大学</div>
-      </div>
+      <UEmpty
+        v-else-if="filteredItems.length === 0"
+        icon="i-lucide-inbox"
+        title="没有匹配的大学"
+        description="尝试调整过滤条件, 或点击「一键初始化」导入全部大学"
+      />
 
-      <div v-else class="cards-grid">
-        <div
+      <div v-else class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <UCard
           v-for="item in filteredItems"
           :key="item.universityNameChinese"
-          class="choice-card"
-          :class="{ 'is-consider': item.consider === 1 }"
+          :ui="{
+            root: 'rounded-2xl border border-default bg-white shadow-sm transition-shadow duration-200 hover:shadow-md',
+            body: 'p-5 space-y-4'
+          }"
         >
           <!-- Header -->
-          <div class="choice-card__head">
-            <div class="choice-card__title">
-              <h3 class="choice-card__name">{{ item.universityNameChinese }}</h3>
-              <div class="choice-card__meta">
-                <span class="meta-chip">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3
+                class="text-lg font-semibold leading-tight text-default"
+                :style="{ fontFamily: 'var(--font-display)' }"
+              >{{ item.universityNameChinese }}</h3>
+              <div class="mt-1.5 flex items-center gap-1.5">
+                <UBadge color="neutral" variant="soft" size="xs">
                   <UIcon name="i-lucide-map-pin" class="size-3" />
-                  {{ item.universityTags || '—' }}
-                </span>
+                  <span class="ml-1">{{ item.universityTags || '—' }}</span>
+                </UBadge>
               </div>
             </div>
-            <button
-              class="consider-toggle"
-              :class="{ 'is-on': item.consider === 1 }"
-              :title="item.consider === 1 ? '点击改为不考虑' : '点击改为考虑'"
+            <UButton
+              :icon="item.consider === 1 ? 'i-lucide-bookmark-check' : 'i-lucide-bookmark'"
+              :color="item.consider === 1 ? 'primary' : 'neutral'"
+              :variant="item.consider === 1 ? 'solid' : 'outline'"
+              size="sm"
+              :label="item.consider === 1 ? '考虑' : '不考虑'"
               @click="toggleConsider(item)"
-            >
-              <UIcon :name="item.consider === 1 ? 'i-lucide-bookmark-check' : 'i-lucide-bookmark'" class="size-4" />
-              <span>{{ item.consider === 1 ? '考虑' : '不考虑' }}</span>
-            </button>
+            />
           </div>
 
-          <!-- 4 status fields -->
-          <div class="choice-card__status">
-            <div class="status-field">
-              <div class="status-field__label">QS 综合</div>
-              <select
-                class="status-field__select"
-                :class="`is-${statusClass(item.statusQs)}`"
-                :value="item.statusQs ?? ''"
-                @change="updateField(item, 'statusQs', $event.target.value === '' ? null : Number($event.target.value))"
-              >
-                <option value="">—</option>
-                <option value="0">弱</option>
-                <option value="1">中</option>
-                <option value="2">强</option>
-              </select>
-            </div>
-            <div class="status-field">
-              <div class="status-field__label">QS CS</div>
-              <select
-                class="status-field__select"
-                :class="`is-${statusClass(item.statusQsCs)}`"
-                :value="item.statusQsCs ?? ''"
-                @change="updateField(item, 'statusQsCs', $event.target.value === '' ? null : Number($event.target.value))"
-              >
-                <option value="">—</option>
-                <option value="0">弱</option>
-                <option value="1">中</option>
-                <option value="2">强</option>
-              </select>
-            </div>
-            <div class="status-field">
-              <div class="status-field__label">US News</div>
-              <select
-                class="status-field__select"
-                :class="`is-${statusClass(item.statusUsnews)}`"
-                :value="item.statusUsnews ?? ''"
-                @change="updateField(item, 'statusUsnews', $event.target.value === '' ? null : Number($event.target.value))"
-              >
-                <option value="">—</option>
-                <option value="0">弱</option>
-                <option value="1">中</option>
-                <option value="2">强</option>
-              </select>
-            </div>
-            <div class="status-field">
-              <div class="status-field__label">US News CS</div>
-              <select
-                class="status-field__select"
-                :class="`is-${statusClass(item.statusUsnewsCs)}`"
-                :value="item.statusUsnewsCs ?? ''"
-                @change="updateField(item, 'statusUsnewsCs', $event.target.value === '' ? null : Number($event.target.value))"
-              >
-                <option value="">—</option>
-                <option value="0">弱</option>
-                <option value="1">中</option>
-                <option value="2">强</option>
-              </select>
-            </div>
-            <div class="status-field status-field--total">
-              <div class="status-field__label">整体</div>
-              <select
-                class="status-field__select status-field__select--total"
-                :class="`is-${statusClass(item.statusTotal)}`"
-                :value="item.statusTotal ?? ''"
-                @change="updateField(item, 'statusTotal', $event.target.value === '' ? null : Number($event.target.value))"
-              >
-                <option value="">—</option>
-                <option value="0">弱</option>
-                <option value="1">中</option>
-                <option value="2">强</option>
-              </select>
+          <!-- 4 status fields + overall -->
+          <div class="grid grid-cols-5 gap-2">
+            <div v-for="f in [
+              { key: 'statusQs', label: 'QS 综合' },
+              { key: 'statusQsCs', label: 'QS CS' },
+              { key: 'statusUsnews', label: 'US News' },
+              { key: 'statusUsnewsCs', label: 'US CS' },
+              { key: 'statusTotal', label: '整体', primary: true }
+            ]" :key="f.key" class="space-y-1.5">
+              <div class="text-[11px] font-medium text-muted">{{ f.label }}</div>
+              <USelectMenu
+                :model-value="(item as any)[f.key]"
+                :items="statusLevelItems"
+                value-key="value"
+                size="xs"
+                :ui="{ base: 'w-full' }"
+                @update:model-value="(v: any) => updateField(item, f.key as any, v)"
+              />
+              <UBadge
+                v-if="(item as any)[f.key] != null"
+                :color="statusColor((item as any)[f.key])"
+                :variant="(item as any)[f.key] === 2 ? 'solid' : 'subtle'"
+                size="xs"
+                :label="(item as any)[f.key] === 2 ? '强' : (item as any)[f.key] === 1 ? '中' : '弱'"
+                block
+              />
             </div>
           </div>
 
-          <!-- Footer -->
-          <div class="choice-card__footer">
-            <NuxtLink :to="`/universities/${encodeURIComponent(item.universityNameChinese)}`" class="card-link">
-              <UIcon name="i-lucide-info" class="size-3" />
-              详情
-            </NuxtLink>
-            <button class="card-link" @click="openDrawer(item.universityNameChinese)">
-              <UIcon name="i-lucide-line-chart" class="size-3" />
-              趋势
-            </button>
+          <!-- Footer actions -->
+          <div class="flex items-center gap-2 border-t border-default pt-3">
+            <UButton
+              :to="`/universities/${encodeURIComponent(item.universityNameChinese)}`"
+              icon="i-lucide-info"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              label="详情"
+            />
+            <UButton
+              icon="i-lucide-line-chart"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              label="趋势"
+              @click="openDrawer(item.universityNameChinese)"
+            />
           </div>
-        </div>
+        </UCard>
       </div>
-    </section>
+    </UContainer>
 
-    <!-- Drawer -->
-    <Teleport to="body">
-      <Transition name="drawer-fade">
-        <div v-if="drawerOpen" class="drawer-mask" @click.self="drawerOpen = false">
-          <div class="drawer">
-            <div class="drawer__head">
-              <h2 class="drawer__title">{{ drawerName }} · 趋势</h2>
-              <button class="drawer__close" @click="drawerOpen = false">
-                <UIcon name="i-lucide-x" class="size-5" />
-              </button>
-            </div>
-            <div class="drawer__body">
-              <div v-if="drawerLoading" class="drawer__loading">
-                <UIcon name="i-lucide-loader" class="size-6 animate-spin" />
-              </div>
-              <div v-else-if="drawerChart?.error" class="drawer__error">
-                <UIcon name="i-lucide-alert-circle" class="size-5" />
-                <span>{{ drawerChart.error }}</span>
-              </div>
-              <div v-else-if="drawerChart?.chatData" class="drawer__chart">
-                <p class="text-muted">趋势数据来自后端 {{ drawerChart.chatData.series.length }} 条曲线</p>
-                <pre class="drawer__pre">{{ JSON.stringify(drawerChart, null, 2) }}</pre>
-              </div>
+    <!-- Drawer (UDrawer) -->
+    <UDrawer v-model:open="drawerOpen" direction="right" :ui="{ content: 'w-full sm:max-w-2xl' }">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <h2
+            class="text-lg font-semibold text-default"
+            :style="{ fontFamily: 'var(--font-display)' }"
+          >{{ drawerName }} · 趋势</h2>
+        </div>
+      </template>
+      <template #body>
+        <div class="space-y-4 p-2">
+          <div v-if="drawerLoading" class="flex h-40 items-center justify-center text-muted">
+            <UIcon name="i-lucide-loader" class="size-6 animate-spin" />
+            <span class="ml-2 text-sm">加载中…</span>
+          </div>
+          <UAlert
+            v-else-if="drawerChart?.error"
+            color="warning"
+            variant="subtle"
+            :title="drawerChart.error"
+            icon="i-lucide-alert-circle"
+          />
+          <div v-else-if="drawerChart?.chatData" class="space-y-3">
+            <p class="text-sm text-muted">趋势数据来自后端 {{ drawerChart.chatData.series.length }} 条曲线</p>
+            <div class="rounded-xl bg-[var(--color-surface-1)] p-4">
+              <ChartSvgChart :chart="drawerChart" :height="300" />
             </div>
           </div>
         </div>
-      </Transition>
-    </Teleport>
+      </template>
+    </UDrawer>
   </div>
 </template>
-
-<style scoped>
-.page-hero { padding: 56px 0 24px; }
-.page-hero__row { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
-.page-hero__title { font-family: var(--font-display); font-size: 40px; font-weight: 600; color: var(--color-ink-1000); margin: 0; line-height: 1.1; letter-spacing: -0.02em; }
-.page-hero__sub { font-size: 16px; color: var(--color-ink-700); margin: 8px 0 0; }
-.page-hero__actions { display: flex; gap: 8px; }
-
-.stats-section { padding: 8px 24px 0; }
-.stat-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-}
-@media (max-width: 768px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
-
-.stat-mini {
-  padding: 16px 20px;
-  background: #fff;
-  border: 1px solid var(--color-border-light);
-  border-radius: 16px;
-  box-shadow: rgba(0, 0, 0, 0.08) 0px 4px 6px;
-}
-.stat-mini__label { font-size: 12px; color: var(--color-ink-700); }
-.stat-mini__value { font-family: var(--font-display); font-size: 28px; font-weight: 600; color: var(--color-ink-1000); margin-top: 4px; line-height: 1.1; }
-.stat-mini__value--brand { color: var(--color-brand-900); }
-
-.toolbar-section { padding: 16px 24px 0; }
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 16px 20px;
-  background: #fff;
-  border-radius: 20px;
-  border: 1px solid var(--color-border-light);
-  box-shadow: rgba(0, 0, 0, 0.08) 0px 4px 6px;
-}
-.toolbar__search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--color-surface-1);
-  border-radius: 12px;
-  flex: 1;
-  min-width: 200px;
-}
-.toolbar__input { flex: 1; border: 0; background: transparent; outline: none; font-size: 14px; }
-.toolbar__input::placeholder { color: var(--color-ink-500); }
-
-.toolbar__pills { display: flex; gap: 4px; padding: 4px; background: var(--color-surface-1); border-radius: 9999px; }
-.toolbar__pills .pill { background: transparent; padding: 6px 12px; font-size: 12px; }
-.toolbar__pills .pill:hover { background: rgba(0, 0, 0, 0.04); }
-.toolbar__pills .pill.is-active { background: var(--color-brand-900); color: #fff; }
-
-.filter-label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-ink-700); }
-.filter-select {
-  padding: 6px 10px;
-  border: 1px solid var(--color-border);
-  background: #fff;
-  border-radius: 8px;
-  font-size: 13px;
-  color: var(--color-ink-1000);
-  outline: none;
-  cursor: pointer;
-}
-
-.banner-warn, .banner-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  margin-top: 12px;
-}
-.banner-warn { background: #fef3c7; color: #92400e; }
-.banner-info { background: var(--color-success-bg); color: #15803d; }
-
-.cards-section { padding: 20px 24px 40px; }
-.loading-state, .empty-state {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 12px; padding: 80px 24px; background: #fff; border-radius: 20px; border: 1px solid var(--color-border-light);
-  text-align: center; color: var(--color-ink-500);
-}
-.empty-state__title { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--color-ink-1000); }
-.empty-state__desc { font-size: 13px; }
-
-.cards-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-auto-rows: 1fr;
-  gap: 16px;
-}
-@media (max-width: 1280px) { .cards-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 960px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 640px) { .cards-grid { grid-template-columns: 1fr; } }
-
-.choice-card {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  gap: 16px;
-  padding: 20px;
-  background: #fff;
-  border-radius: 20px;
-  border: 1px solid var(--color-border-light);
-  box-shadow: rgba(0, 0, 0, 0.08) 0px 4px 6px;
-  transition: all 240ms ease;
-}
-.choice-card.is-consider { border-color: var(--color-brand-200); box-shadow: rgba(20, 86, 240, 0.1) 0px 4px 12px; }
-.choice-card:hover { transform: translateY(-2px); box-shadow: rgba(44, 30, 116, 0.16) 0px 0px 15px; }
-
-.choice-card__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-.choice-card__title { flex: 1; min-width: 0; }
-.choice-card__name {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--color-ink-1000);
-  margin: 0;
-  line-height: 1.3;
-}
-.choice-card__meta { display: flex; gap: 6px; margin-top: 6px; }
-.meta-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 8px; background: var(--color-surface-2); border-radius: 9999px;
-  font-size: 11px; color: var(--color-ink-700);
-}
-
-.consider-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border: 1px solid var(--color-border);
-  background: #fff;
-  border-radius: 9999px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-ink-700);
-  cursor: pointer;
-  transition: all 160ms ease;
-  flex-shrink: 0;
-}
-.consider-toggle:hover { border-color: var(--color-brand-300); }
-.consider-toggle.is-on {
-  background: var(--color-brand-900);
-  border-color: var(--color-brand-900);
-  color: #fff;
-}
-
-.choice-card__status {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-}
-.status-field { display: flex; flex-direction: column; gap: 4px; }
-.status-field--total .status-field__label { color: var(--color-brand-900); font-weight: 600; }
-.status-field__label { font-size: 11px; color: var(--color-ink-700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.status-field__select {
-  padding: 6px 8px;
-  border: 1px solid var(--color-border);
-  background: #fff;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-ink-1000);
-  outline: none;
-  cursor: pointer;
-  transition: all 160ms ease;
-  text-align: center;
-}
-.status-field__select:hover { border-color: var(--color-brand-300); }
-.status-field__select:focus { border-color: var(--color-brand-900); box-shadow: 0 0 0 3px rgba(20, 86, 240, 0.12); }
-.status-field__select--total {
-  background: var(--color-brand-900);
-  color: #fff;
-  border-color: var(--color-brand-900);
-}
-
-/* 强/中/弱 三色语义化 */
-.status-field__select.is-strong {
-  background: #15803d;
-  color: #fff;
-  border-color: #15803d;
-}
-.status-field__select.is-medium {
-  background: #d97706;
-  color: #fff;
-  border-color: #d97706;
-}
-.status-field__select.is-weak {
-  background: #b91c1c;
-  color: #fff;
-  border-color: #b91c1c;
-}
-.status-field__select.is-none {
-  background: #f3f4f6;
-  color: var(--color-ink-500);
-  border-color: var(--color-border);
-}
-
-.choice-card__footer {
-  display: flex;
-  gap: 12px;
-  padding-top: 12px;
-  margin-top: auto;
-  border-top: 1px solid var(--color-border-light);
-}
-.card-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 0;
-  background: transparent;
-  border: 0;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-brand-900);
-  text-decoration: none;
-  cursor: pointer;
-  transition: opacity 160ms ease;
-}
-.card-link:hover { opacity: 0.7; }
-
-/* Drawer */
-.drawer-mask {
-  position: fixed; inset: 0; z-index: 100;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex; justify-content: flex-end;
-}
-.drawer {
-  width: 560px; max-width: 100vw;
-  background: #fff;
-  display: flex; flex-direction: column;
-  box-shadow: rgba(0, 0, 0, 0.16) 0px 12px 32px;
-}
-.drawer__head {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--color-border-light);
-}
-.drawer__title { font-family: var(--font-display); font-size: 18px; font-weight: 600; margin: 0; }
-.drawer__close { background: transparent; border: 0; padding: 6px; border-radius: 8px; cursor: pointer; color: var(--color-ink-700); }
-.drawer__close:hover { background: rgba(0, 0, 0, 0.05); }
-.drawer__body { flex: 1; padding: 24px; overflow-y: auto; }
-.drawer__loading { display: flex; justify-content: center; padding: 40px; color: var(--color-ink-500); }
-.drawer__error { display: flex; align-items: center; gap: 8px; padding: 16px; background: #fef3c7; color: #92400e; border-radius: 12px; font-size: 13px; }
-.drawer__chart { display: flex; flex-direction: column; gap: 12px; }
-.drawer__pre {
-  padding: 12px; background: var(--color-surface-1); border-radius: 8px;
-  font-size: 11px; overflow: auto; max-height: 400px;
-}
-
-.drawer-fade-enter-active, .drawer-fade-leave-active { transition: opacity 200ms ease; }
-.drawer-fade-enter-from, .drawer-fade-leave-to { opacity: 0; }
-.drawer-fade-enter-active .drawer, .drawer-fade-leave-active .drawer { transition: transform 200ms ease; }
-.drawer-fade-enter-from .drawer, .drawer-fade-leave-to .drawer { transform: translateX(100%); }
-
-@media (max-width: 768px) {
-  .choice-card__status { grid-template-columns: repeat(2, 1fr); }
-  .status-field--total { grid-column: span 2; }
-  .drawer { width: 100vw; }
-  .toolbar { flex-direction: column; align-items: stretch; }
-  .toolbar__pills { width: 100%; justify-content: space-between; }
-  .toolbar__search { min-width: 0; }
-  .filter-label { margin-left: 0 !important; }
-}
-</style>

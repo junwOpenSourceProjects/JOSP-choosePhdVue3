@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { login } from '~/lib/api/user'
 
-definePageMeta({ layout: 'default' })
-
 useHead({ title: '登录 · 选校系统' })
 
-const username = ref('')
-const password = ref('')
+const username = ref<string | undefined>(undefined)
+const password = ref<string | undefined>(undefined)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const router = useRouter()
@@ -34,106 +32,63 @@ async function onSubmit() {
 </script>
 
 <template>
-  <div class="login-page">
-    <div class="login-card">
-      <h1 class="login-title">管理员登录</h1>
-      <p class="login-sub">登录后可执行数据初始化等管理操作</p>
-      <form class="login-form" @submit.prevent="onSubmit">
-        <div class="login-field">
-          <label>用户名</label>
-          <input v-model="username" type="text" placeholder="admin" />
+  <div class="flex min-h-[60vh] items-center justify-center px-4 py-10">
+    <UCard
+      :ui="{
+        root: 'w-full max-w-md rounded-2xl border border-default bg-white shadow-sm',
+        body: 'p-8 space-y-6'
+      }"
+    >
+      <div>
+        <div class="mb-2 inline-flex size-10 items-center justify-center rounded-xl bg-[var(--color-brand-900)] text-white">
+          <UIcon name="i-lucide-log-in" class="size-5" />
         </div>
-        <div class="login-field">
-          <label>密码</label>
-          <input v-model="password" type="password" placeholder="admin" />
-        </div>
-        <div v-if="error" class="login-error">
-          {{ error }}
-        </div>
-        <button type="submit" class="login-submit" :disabled="loading">
-          {{ loading ? '登录中...' : '登录' }}
-        </button>
+        <h1
+          class="text-2xl font-semibold leading-tight text-default"
+          :style="{ fontFamily: 'var(--font-display)' }"
+        >管理员登录</h1>
+        <p class="mt-1.5 text-sm text-muted">登录后可执行数据初始化等管理操作</p>
+      </div>
+
+      <form class="space-y-4" @submit.prevent="onSubmit">
+        <UFormField label="用户名" size="md">
+          <UInput
+            v-model="username"
+            type="text"
+            placeholder="admin"
+            icon="i-lucide-user"
+            size="md"
+            block
+          />
+        </UFormField>
+        <UFormField label="密码" size="md">
+          <UInput
+            v-model="password"
+            type="password"
+            placeholder="admin"
+            icon="i-lucide-lock"
+            size="md"
+            block
+          />
+        </UFormField>
+        <UAlert
+          v-if="error"
+          color="error"
+          variant="subtle"
+          :title="error"
+          icon="i-lucide-alert-circle"
+        />
+        <UButton
+          type="submit"
+          color="primary"
+          variant="solid"
+          size="lg"
+          block
+          :loading="loading"
+          :label="loading ? '登录中…' : '登录'"
+          icon="i-lucide-log-in"
+        />
       </form>
-    </div>
+    </UCard>
   </div>
 </template>
-
-<style scoped>
-.login-page {
-  min-height: 60vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-}
-.login-card {
-  width: 100%;
-  max-width: 400px;
-  background: #fff;
-  border: 1px solid var(--color-border-light);
-  border-radius: 20px;
-  padding: 32px;
-  box-shadow: rgba(0, 0, 0, 0.08) 0px 4px 6px;
-}
-.login-title {
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0;
-}
-.login-sub {
-  font-size: 13px;
-  color: var(--color-ink-700);
-  margin: 8px 0 24px;
-}
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.login-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.login-field label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-ink-700);
-}
-.login-field input {
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  font-size: 14px;
-  outline: none;
-}
-.login-field input:focus {
-  border-color: var(--color-brand-900);
-}
-.login-error {
-  padding: 10px 12px;
-  background: #fef2f2;
-  color: #b91c1c;
-  border-radius: 10px;
-  font-size: 13px;
-}
-.login-submit {
-  padding: 12px;
-  background: var(--color-brand-900);
-  color: #fff;
-  border: 0;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 200ms ease;
-}
-.login-submit:hover:not(:disabled) {
-  background: var(--color-brand-700);
-}
-.login-submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-</style>
