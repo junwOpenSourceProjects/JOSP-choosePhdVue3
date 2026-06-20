@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import { queryAll, queryAllQs, queryAllEcharts } from '~/lib/api/university'
-import type { UniversityAllDTO, UniversityRankingsAll, RankVariant } from '~/types'
+import { queryAllQs } from '~/lib/api/university'
+import type { UniversityAllDTO, RankVariant } from '~/types'
 import { RANK_VARIANT_SHORT_MAP } from '~/types'
 
 useHead({ title: '学校库 · 选校系统' })
 
 // ============ 状态 ============
-const search = ref('')
+const search = ref<string | undefined>(undefined)
 const rankVariant = ref<RankVariant>('qs')      // qs / usnews / all
-const tagState = ref<string>('')                 // 洲
-const tag = ref<string>('')                      // 国家
+const tagState = ref<string | undefined>(undefined)  // 洲
+const tag = ref<string | undefined>(undefined)       // 国家
 const maxRank = ref<number>(100)                 // 排名上限
+const sortBy = ref<string>('rank')               // rank / name / country
 const currentPage = ref(1)
 const pageSize = 20
-const sortBy = ref<'rank' | 'name' | 'country'>('rank')
 
 // 数据
 const tableData = ref<UniversityAllDTO[]>([])
@@ -21,8 +21,35 @@ const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-// 派生: 过滤选项 (从全表 first page 拉 200 条统计 unique 值)
-const tagStateOptions = ref<string[]>([])
+const rankVariantItems = [
+  { value: 'qs' as const, label: RANK_VARIANT_SHORT_MAP.qs },
+  { value: 'usnews' as const, label: RANK_VARIANT_SHORT_MAP.usnews },
+  { value: 'all' as const, label: RANK_VARIANT_SHORT_MAP.all }
+]
+
+const tagStateOptions = [
+  { value: '亚洲', label: '亚洲' },
+  { value: '欧洲', label: '欧洲' },
+  { value: '北美洲', label: '北美洲' },
+  { value: '大洋洲', label: '大洋洲' },
+  { value: '南美洲', label: '南美洲' },
+  { value: '非洲', label: '非洲' }
+]
+
+const maxRankItems = [
+  { value: 50, label: 'Top 50' },
+  { value: 100, label: 'Top 100' },
+  { value: 200, label: 'Top 200' },
+  { value: 500, label: 'Top 500' }
+]
+
+const sortByItems = [
+  { value: 'rank', label: '按排名' },
+  { value: 'name', label: '按名称' },
+  { value: 'country', label: '按国家' }
+]
+
+// 派生: 过滤选项
 const tagOptions = computed(() => {
   if (!tagState.value) return []
   const set = new Set<string>()
@@ -31,7 +58,7 @@ const tagOptions = computed(() => {
       set.add(row.universityTags)
     }
   }
-  return Array.from(set).sort()
+  return Array.from(set).sort().map(v => ({ value: v, label: v }))
 })
 
 // ============ 加载数据 ============
@@ -43,8 +70,8 @@ async function load() {
       page: currentPage.value,
       limit: pageSize,
       rankVariant: rankVariant.value,
-      universityTagsState: tagState.value || undefined,
-      universityTags: tag.value || undefined,
+      universityTagsState: tagState.value,
+      universityTags: tag.value,
       currentRank: maxRank.value
     }) as any
     const records = res?.records ?? res?.data?.records ?? []
@@ -52,8 +79,7 @@ async function load() {
     total.value = res?.total ?? res?.data?.total ?? 0
   } catch (e: any) {
     console.warn('[universities] load failed', e?.message)
-    error.value = '后端不可达,显示 mock 数据'
-    // mock fallback
+    error.value = '后端不可达, 显示 mock 数据'
     tableData.value = generateMock()
     total.value = 50
   } finally {
@@ -76,14 +102,12 @@ function generateMock(): UniversityAllDTO[] {
   ]
 }
 
-// 客户端过滤 (search 实时)
 const filteredData = computed(() => {
   if (!search.value) return tableData.value
   const kw = search.value.toLowerCase()
   return tableData.value.filter(r => r.universityNameChinese?.toLowerCase().includes(kw))
 })
 
-// 排序
 const sortedData = computed(() => {
   const arr = [...filteredData.value]
   if (sortBy.value === 'rank') {
@@ -109,7 +133,6 @@ function getRankField(row: UniversityAllDTO, which: 'all' | 'cs'): number | null
   if (rankVariant.value === 'usnews') {
     return which === 'all' ? row.currentUsnewsAllRank : row.currentUsnewsComputerRank
   }
-  // 'all' rankVariant: 综合 = 最小值
   if (which === 'all') {
     const a = row.currentQsAllRank, b = row.currentUsnewsAllRank
     if (a == null && b == null) return null
@@ -124,26 +147,33 @@ function getRankField(row: UniversityAllDTO, which: 'all' | 'cs'): number | null
   return Math.min(a, b)
 }
 
-function rankClass(rank: number | null | undefined): string {
-  if (rank == null) return 'rank-cell--none'
-  if (rank <= 10) return 'rank-cell--top10'
-  if (rank <= 50) return 'rank-cell--top50'
-  if (rank <= 100) return 'rank-cell--top100'
-  return 'rank-cell--normal'
+function rankBadgeColor(rank: number | null | undefined): 'primary' | 'secondary' | 'neutral' {
+  if (rank == null) return 'neutral'
+  if (rank <= 10) return 'primary'
+  if (rank <= 50) return 'primary'
+  if (rank <= 100) return 'secondary'
+  return 'neutral'
+}
+
+function rankBadgeVariant(rank: number | null | undefined): 'solid' | 'subtle' | 'soft' {
+  if (rank == null) return 'subtle'
+  if (rank <= 10) return 'solid'
+  if (rank <= 100) return 'subtle'
+  return 'soft'
 }
 
 function reset() {
-  search.value = ''
-  tagState.value = ''
-  tag.value = ''
+  search.value = undefined
+  tagState.value = undefined
+  tag.value = undefined
   maxRank.value = 100
   rankVariant.value = 'qs'
+  sortBy.value = 'rank'
   currentPage.value = 1
   load()
 }
 
-// 监听过滤变化自动重查
-watch([rankVariant, tagState, tag, maxRank], () => {
+watch([rankVariant, tagState, tag, maxRank, sortBy], () => {
   currentPage.value = 1
   load()
 })
@@ -151,405 +181,230 @@ watch([rankVariant, tagState, tag, maxRank], () => {
 onMounted(() => {
   load()
 })
-
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
-const pageNumbers = computed(() => {
-  const t = totalPages.value
-  const c = currentPage.value
-  const arr: (number | string)[] = []
-  if (t <= 7) {
-    for (let i = 1; i <= t; i++) arr.push(i)
-  } else {
-    arr.push(1)
-    if (c > 3) arr.push('…')
-    for (let i = Math.max(2, c - 1); i <= Math.min(t - 1, c + 1); i++) arr.push(i)
-    if (c < t - 2) arr.push('…')
-    arr.push(t)
-  }
-  return arr
-})
-
-function goPage(p: number | string) {
-  if (typeof p === 'string') return
-  currentPage.value = p
-  load()
-}
 </script>
 
 <template>
   <div>
     <!-- Page Hero -->
-    <section class="page-hero page-container">
-      <h1 class="page-hero__title">学校库</h1>
-      <p class="page-hero__sub">多源排名 · 多维过滤 · 一目了然</p>
-    </section>
+    <UContainer class="py-12">
+      <h1
+        class="text-4xl font-semibold leading-tight tracking-tight text-default"
+        :style="{ fontFamily: 'var(--font-display)' }"
+      >学校库</h1>
+      <p class="mt-2 text-base text-muted">多源排名 · 多维过滤 · 一目了然</p>
+    </UContainer>
 
     <!-- Toolbar -->
-    <section class="page-container toolbar-section">
-      <div class="toolbar">
-        <div class="toolbar__row">
-          <div class="toolbar__search">
-            <UIcon name="i-lucide-search" class="size-4 text-muted" />
-            <input
-              v-model="search"
-              type="text"
-              class="toolbar__input"
-              placeholder="搜索大学名称..."
+    <UContainer>
+      <UCard
+        :ui="{
+          root: 'rounded-2xl border border-default bg-white shadow-sm',
+          body: 'p-5 sm:p-6 space-y-4'
+        }"
+      >
+        <!-- Row 1: search + rank variant + reset -->
+        <div class="flex flex-wrap items-center gap-3">
+          <UInput
+            v-model="search"
+            icon="i-lucide-search"
+            placeholder="搜索大学名称..."
+            size="md"
+            class="flex-1 min-w-[240px]"
+          />
+          <UFieldGroup size="md">
+            <UButton
+              v-for="v in rankVariantItems"
+              :key="v.value"
+              :color="rankVariant === v.value ? 'primary' : 'neutral'"
+              :variant="rankVariant === v.value ? 'solid' : 'outline'"
+              :label="v.label"
+              size="md"
+              @click="rankVariant = v.value"
             />
-          </div>
-
-          <div class="toolbar__pills">
-            <button
-              v-for="v in (['qs', 'usnews', 'all'] as RankVariant[])"
-              :key="v"
-              class="pill"
-              :class="{ 'is-active': rankVariant === v }"
-              @click="rankVariant = v"
-            >
-              {{ RANK_VARIANT_SHORT_MAP[v] }}
-            </button>
-          </div>
-
-          <button class="cta" style="background: #fff; color: #181e25; border: 1px solid #e5e7eb; padding: 8px 14px" @click="reset">
-            <UIcon name="i-lucide-rotate-ccw" class="size-4" />
-            <span style="margin-left: 6px">重置</span>
-          </button>
+          </UFieldGroup>
+          <UButton
+            icon="i-lucide-rotate-ccw"
+            color="neutral"
+            variant="outline"
+            size="md"
+            label="重置"
+            @click="reset"
+          />
         </div>
 
-        <div class="toolbar__row">
-          <label class="filter-label">
-            <span>洲</span>
-            <select v-model="tagState" class="filter-select">
-              <option value="">全部</option>
-              <option value="亚洲">亚洲</option>
-              <option value="欧洲">欧洲</option>
-              <option value="北美洲">北美洲</option>
-              <option value="大洋洲">大洋洲</option>
-              <option value="南美洲">南美洲</option>
-              <option value="非洲">非洲</option>
-            </select>
-          </label>
-
-          <label class="filter-label">
-            <span>国家</span>
-            <select v-model="tag" class="filter-select" :disabled="!tagState">
-              <option value="">全部</option>
-              <option v-for="c in tagOptions" :key="c" :value="c">{{ c }}</option>
-            </select>
-          </label>
-
-          <label class="filter-label">
-            <span>排名上限</span>
-            <select v-model.number="maxRank" class="filter-select">
-              <option :value="50">Top 50</option>
-              <option :value="100">Top 100</option>
-              <option :value="200">Top 200</option>
-              <option :value="500">Top 500</option>
-            </select>
-          </label>
-
-          <label class="filter-label">
-            <span>排序</span>
-            <select v-model="sortBy" class="filter-select">
-              <option value="rank">按排名</option>
-              <option value="name">按名称</option>
-              <option value="country">按国家</option>
-            </select>
-          </label>
-
-          <div class="filter-label" style="margin-left: auto">
-            <span class="text-muted" style="font-size: 13px">
-              共 <strong style="color: var(--color-ink-1000)">{{ total }}</strong> 所大学
-            </span>
+        <!-- Row 2: filters + total -->
+        <div class="flex flex-wrap items-center gap-3">
+          <USelectMenu
+            v-model="tagState"
+            :items="tagStateOptions"
+            value-key="value"
+            placeholder="洲 (全部)"
+            size="md"
+            class="min-w-[140px]"
+          />
+          <USelectMenu
+            v-model="tag"
+            :items="tagOptions"
+            value-key="value"
+            :placeholder="tagState ? '国家 (全部)' : '请先选洲'"
+            :disabled="!tagState"
+            size="md"
+            class="min-w-[140px]"
+          />
+          <USelectMenu
+            v-model="maxRank"
+            :items="maxRankItems"
+            value-key="value"
+            size="md"
+            class="min-w-[120px]"
+          />
+          <USelectMenu
+            v-model="sortBy"
+            :items="sortByItems"
+            value-key="value"
+            size="md"
+            class="min-w-[120px]"
+          />
+          <div class="ml-auto text-[13px] text-muted">
+            共 <strong class="text-default">{{ total }}</strong> 所大学
           </div>
         </div>
-      </div>
 
-      <div v-if="error" class="toolbar__error">
-        <UIcon name="i-lucide-alert-circle" class="size-4" />
-        <span>{{ error }}</span>
-      </div>
-    </section>
+        <UAlert
+          v-if="error"
+          color="warning"
+          variant="subtle"
+          :title="error"
+          icon="i-lucide-alert-circle"
+        />
+      </UCard>
+    </UContainer>
 
     <!-- Table -->
-    <section class="page-container table-section">
-      <div class="ds-card table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th style="width: 60px">排名</th>
-              <th>大学</th>
-              <th>国家/地区</th>
-              <th style="text-align: right">QS {{ rankVariant === 'usnews' ? '(参考)' : '' }}</th>
-              <th style="text-align: right">QS 计算机</th>
-              <th style="text-align: right">US News {{ rankVariant === 'qs' ? '(参考)' : '' }}</th>
-              <th style="text-align: right">US News 计算机</th>
-              <th style="width: 80px">操作</th>
-            </tr>
-          </thead>
-          <tbody v-if="!loading && sortedData.length > 0">
-            <tr v-for="row in sortedData" :key="row.universityNameChinese" class="data-table__row">
-              <td>
-                <span class="rank-cell" :class="rankClass(getRankField(row, 'all'))">
-                  {{ getRankField(row, 'all') ?? '—' }}
-                </span>
-              </td>
-              <td class="data-table__name">
-                <span class="data-table__name-cn">{{ row.universityNameChinese }}</span>
-              </td>
-              <td>
-                <div class="data-table__location">
-                  <span class="data-table__country">{{ row.universityTags || '—' }}</span>
-                  <span class="data-table__state">{{ row.universityTagsState || '' }}</span>
-                </div>
-              </td>
-              <td style="text-align: right" class="data-table__num">
-                <span :class="rankClass(row.currentQsAllRank)">{{ row.currentQsAllRank ?? '—' }}</span>
-              </td>
-              <td style="text-align: right" class="data-table__num">
-                <span :class="rankClass(row.currentQsComputerRank)">{{ row.currentQsComputerRank ?? '—' }}</span>
-              </td>
-              <td style="text-align: right" class="data-table__num">
-                <span :class="rankClass(row.currentUsnewsAllRank)">{{ row.currentUsnewsAllRank ?? '—' }}</span>
-              </td>
-              <td style="text-align: right" class="data-table__num">
-                <span :class="rankClass(row.currentUsnewsComputerRank)">{{ row.currentUsnewsComputerRank ?? '—' }}</span>
-              </td>
-              <td>
-                <NuxtLink
-                  :to="`/universities/${encodeURIComponent(row.universityNameChinese)}`"
-                  class="data-table__link"
-                >
-                  详情
-                  <UIcon name="i-lucide-chevron-right" class="size-3" />
-                </NuxtLink>
-              </td>
-            </tr>
-          </tbody>
-          <tbody v-else-if="loading">
-            <tr><td colspan="8" class="data-table__empty">加载中…</td></tr>
-          </tbody>
-          <tbody v-else>
-            <tr><td colspan="8" class="data-table__empty">暂无数据</td></tr>
-          </tbody>
-        </table>
+    <UContainer class="py-6">
+      <UCard
+        :ui="{
+          root: 'rounded-2xl border border-default bg-white shadow-sm overflow-hidden',
+          body: 'p-0'
+        }"
+      >
+        <UTable
+          :data="sortedData"
+          :loading="loading"
+          :columns="[
+            { id: 'rank', header: '排名', accessorKey: 'currentQsAllRank', meta: { class: { th: 'w-[88px]', td: 'w-[88px]' } } },
+            { id: 'name', header: '大学', accessorKey: 'universityNameChinese' },
+            { id: 'country', header: '国家/地区', accessorKey: 'universityTags' },
+            { id: 'qsAll', header: () => rankVariant === 'usnews' ? 'QS (参考)' : 'QS', meta: { class: { th: 'text-right', td: 'text-right' } } },
+            { id: 'qsCs', header: 'QS 计算机', meta: { class: { th: 'text-right', td: 'text-right' } } },
+            { id: 'usAll', header: () => rankVariant === 'qs' ? 'US News (参考)' : 'US News', meta: { class: { th: 'text-right', td: 'text-right' } } },
+            { id: 'usCs', header: 'US News 计算机', meta: { class: { th: 'text-right', td: 'text-right' } } },
+            { id: 'action', header: '操作', meta: { class: { th: 'w-[100px]', td: 'w-[100px]' } } }
+          ]"
+          :ui="{
+            wrapper: 'min-h-[200px]',
+            th: 'text-xs font-semibold uppercase tracking-wider text-muted',
+            td: 'py-3.5 text-sm'
+          }"
+        >
+          <template #rank-cell="{ row }">
+            <UBadge
+              :color="rankBadgeColor(getRankField(row.original, 'all'))"
+              :variant="rankBadgeVariant(getRankField(row.original, 'all'))"
+              size="sm"
+              variant="solid"
+              :label="String(getRankField(row.original, 'all') ?? '—')"
+            />
+          </template>
+          <template #name-cell="{ row }">
+            <NuxtLink
+              :to="`/universities/${encodeURIComponent(row.original.universityNameChinese)}`"
+              class="font-medium text-default hover:text-[var(--color-brand-900)]"
+            >{{ row.original.universityNameChinese }}</NuxtLink>
+          </template>
+          <template #country-cell="{ row }">
+            <div class="flex flex-col leading-tight">
+              <span class="text-[13px] text-default">{{ row.original.universityTags || '—' }}</span>
+              <span v-if="row.original.universityTagsState" class="mt-0.5 text-[11px] text-subtle">{{ row.original.universityTagsState }}</span>
+            </div>
+          </template>
+          <template #qsAll-cell="{ row }">
+            <UBadge
+              :color="rankBadgeColor(row.original.currentQsAllRank)"
+              :variant="rankBadgeVariant(row.original.currentQsAllRank)"
+              size="sm"
+              variant="subtle"
+              :label="String(row.original.currentQsAllRank ?? '—')"
+              class="font-[var(--font-data)]"
+            />
+          </template>
+          <template #qsCs-cell="{ row }">
+            <UBadge
+              :color="rankBadgeColor(row.original.currentQsComputerRank)"
+              :variant="rankBadgeVariant(row.original.currentQsComputerRank)"
+              size="sm"
+              variant="subtle"
+              :label="String(row.original.currentQsComputerRank ?? '—')"
+              class="font-[var(--font-data)]"
+            />
+          </template>
+          <template #usAll-cell="{ row }">
+            <UBadge
+              :color="rankBadgeColor(row.original.currentUsnewsAllRank)"
+              :variant="rankBadgeVariant(row.original.currentUsnewsAllRank)"
+              size="sm"
+              variant="subtle"
+              :label="String(row.original.currentUsnewsAllRank ?? '—')"
+              class="font-[var(--font-data)]"
+            />
+          </template>
+          <template #usCs-cell="{ row }">
+            <UBadge
+              :color="rankBadgeColor(row.original.currentUsnewsComputerRank)"
+              :variant="rankBadgeVariant(row.original.currentUsnewsComputerRank)"
+              size="sm"
+              variant="subtle"
+              :label="String(row.original.currentUsnewsComputerRank ?? '—')"
+              class="font-[var(--font-data)]"
+            />
+          </template>
+          <template #action-cell="{ row }">
+            <UButton
+              :to="`/universities/${encodeURIComponent(row.original.universityNameChinese)}`"
+              color="primary"
+              variant="subtle"
+              size="xs"
+              trailing-icon="i-lucide-chevron-right"
+              label="详情"
+            />
+          </template>
+          <template #empty>
+            <div class="flex flex-col items-center justify-center gap-2 py-12 text-muted">
+              <UIcon name="i-lucide-search-x" class="size-10" />
+              <span class="text-sm">暂无数据</span>
+            </div>
+          </template>
+          <template #loading>
+            <div class="flex items-center justify-center py-10 text-muted">
+              <UIcon name="i-lucide-loader-2" class="size-5 animate-spin" />
+              <span class="ml-2 text-sm">加载中…</span>
+            </div>
+          </template>
+        </UTable>
 
         <!-- Pagination -->
-        <div v-if="total > pageSize" class="pagination">
-          <button
-            class="pagination__btn"
-            :disabled="currentPage === 1"
-            @click="goPage(currentPage - 1)"
-          >
-            <UIcon name="i-lucide-chevron-left" class="size-4" />
-          </button>
-          <button
-            v-for="(p, idx) in pageNumbers"
-            :key="idx"
-            class="pagination__btn"
-            :class="{
-              'is-active': p === currentPage,
-              'is-dots': typeof p === 'string'
-            }"
-            :disabled="typeof p === 'string'"
-            @click="goPage(p)"
-          >
-            {{ p }}
-          </button>
-          <button
-            class="pagination__btn"
-            :disabled="currentPage === totalPages"
-            @click="goPage(currentPage + 1)"
-          >
-            <UIcon name="i-lucide-chevron-right" class="size-4" />
-          </button>
+        <div v-if="total > pageSize" class="border-t border-default px-4 py-3">
+          <UPagination
+            v-model:page="currentPage"
+            :items-per-page="pageSize"
+            :total="total"
+            active-color="primary"
+            show-first
+            show-last
+            @update:page="load"
+          />
         </div>
-      </div>
-    </section>
+      </UCard>
+    </UContainer>
   </div>
 </template>
-
-<style scoped>
-.page-hero { padding: 56px 0 24px; }
-.page-hero__title { font-family: var(--font-display); font-size: 40px; font-weight: 600; color: var(--color-ink-1000); margin: 0; line-height: 1.1; letter-spacing: -0.02em; }
-.page-hero__sub { font-size: 16px; color: var(--color-ink-700); margin: 8px 0 0; }
-
-.toolbar-section { padding: 8px 24px 0; }
-.toolbar {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 20px 24px;
-  background: #fff;
-  border-radius: 20px;
-  border: 1px solid var(--color-border-light);
-  box-shadow: rgba(0, 0, 0, 0.08) 0px 4px 6px;
-}
-.toolbar__row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.toolbar__search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  background: var(--color-surface-1);
-  border-radius: 12px;
-  flex: 1;
-  min-width: 240px;
-}
-.toolbar__input {
-  flex: 1;
-  border: 0;
-  background: transparent;
-  outline: none;
-  font-size: 14px;
-  color: var(--color-ink-1000);
-}
-.toolbar__input::placeholder { color: var(--color-ink-500); }
-
-.toolbar__pills { display: flex; gap: 4px; padding: 4px; background: var(--color-surface-1); border-radius: 9999px; }
-.toolbar__pills .pill { background: transparent; padding: 6px 14px; font-size: 13px; }
-.toolbar__pills .pill:hover { background: rgba(0, 0, 0, 0.04); }
-.toolbar__pills .pill.is-active { background: var(--color-brand-900); color: #fff; }
-
-.filter-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--color-ink-700);
-}
-.filter-select {
-  padding: 6px 10px;
-  border: 1px solid var(--color-border);
-  background: #fff;
-  border-radius: 8px;
-  font-size: 13px;
-  color: var(--color-ink-1000);
-  outline: none;
-  cursor: pointer;
-  transition: border 160ms ease;
-}
-.filter-select:hover { border-color: var(--color-brand-300); }
-.filter-select:focus { border-color: var(--color-brand-900); }
-.filter-select:disabled { background: var(--color-surface-1); cursor: not-allowed; }
-
-.toolbar__error {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background: #fef3c7;
-  color: #92400e;
-  border-radius: 8px;
-  font-size: 13px;
-}
-
-.table-section { padding: 20px 24px 40px; }
-.table-wrap { padding: 0; overflow: hidden; }
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-.data-table thead {
-  background: var(--color-surface-1);
-  border-bottom: 1px solid var(--color-border-light);
-}
-.data-table th {
-  text-align: left;
-  padding: 12px 16px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-ink-700);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-.data-table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--color-border-light);
-  vertical-align: middle;
-}
-.data-table__row { transition: background 160ms ease; }
-.data-table__row:hover { background: rgba(20, 86, 240, 0.04); }
-.data-table__name { font-weight: 500; color: var(--color-ink-1000); }
-.data-table__name-cn { font-size: 14px; }
-.data-table__location { display: flex; flex-direction: column; }
-.data-table__country { color: var(--color-ink-1000); font-size: 13px; }
-.data-table__state { color: var(--color-ink-500); font-size: 11px; margin-top: 2px; }
-.data-table__num { font-family: var(--font-data); }
-.data-table__link {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  background: rgba(20, 86, 240, 0.08);
-  color: var(--color-brand-900);
-  font-size: 12px;
-  font-weight: 500;
-  text-decoration: none;
-  transition: all 160ms ease;
-}
-.data-table__link:hover { background: var(--color-brand-900); color: #fff; }
-.data-table__empty { text-align: center; color: var(--color-ink-500); padding: 40px 0; }
-
-.rank-cell {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 36px;
-  height: 32px;
-  padding: 0 10px;
-  border-radius: 10px;
-  font-family: var(--font-data);
-  font-size: 13px;
-  font-weight: 600;
-}
-.rank-cell--top10 { background: var(--color-brand-900); color: #fff; }
-.rank-cell--top50 { background: rgba(20, 86, 240, 0.1); color: var(--color-brand-700); }
-.rank-cell--top100 { background: var(--color-surface-2); color: var(--color-ink-1000); }
-.rank-cell--normal { color: var(--color-ink-700); }
-.rank-cell--none { color: var(--color-ink-500); font-weight: 400; }
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 4px;
-  padding: 16px;
-  border-top: 1px solid var(--color-border-light);
-}
-.pagination__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  height: 32px;
-  padding: 0 8px;
-  border: 1px solid var(--color-border);
-  background: #fff;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-ink-1000);
-  cursor: pointer;
-  transition: all 160ms ease;
-}
-.pagination__btn:hover:not(:disabled) { border-color: var(--color-brand-900); color: var(--color-brand-900); }
-.pagination__btn.is-active { background: var(--color-brand-900); color: #fff; border-color: var(--color-brand-900); }
-.pagination__btn.is-dots { border: 0; background: transparent; cursor: default; }
-.pagination__btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-@media (max-width: 768px) {
-  .toolbar__row { flex-direction: column; align-items: stretch; }
-  .toolbar__pills { width: 100%; justify-content: space-between; }
-  .data-table { font-size: 12px; }
-  .data-table th, .data-table td { padding: 10px 8px; }
-}
-</style>
