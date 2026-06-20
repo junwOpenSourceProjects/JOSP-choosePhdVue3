@@ -3,13 +3,11 @@ const route = useRoute()
 const open = ref(false)
 
 const navItems = [
-  { label: '首页', to: '/' },
-  { label: '学校库', to: '/universities' },
-  { label: '我的选校', to: '/choices' },
-  { label: '数据图表', to: '/charts' }
+  { label: '首页', to: '/', icon: 'i-lucide-home' },
+  { label: '学校库', to: '/universities', icon: 'i-lucide-library-big' },
+  { label: '我的选校', to: '/choices', icon: 'i-lucide-bookmark-check' },
+  { label: '数据图表', to: '/charts', icon: 'i-lucide-line-chart' }
 ]
-
-const userRoute = { label: '登录', to: '/login' }
 
 function close() {
   open.value = false
@@ -22,202 +20,106 @@ const isActive = (to: string) => {
 </script>
 
 <template>
-  <header class="app-header">
-    <div class="app-header__inner page-container">
-      <NuxtLink to="/" class="app-header__brand" @click="close">
-        <div class="app-header__logo">
-          <UIcon name="i-lucide-graduation-cap" class="size-6" />
+  <header
+    class="sticky top-0 z-50 backdrop-blur-md"
+    :class="[
+      'border-b border-default',
+      'bg-white/85 dark:bg-white/85'
+    ]"
+  >
+    <UContainer class="flex h-16 items-center justify-between gap-6">
+      <NuxtLink to="/" class="flex items-center gap-3" @click="close">
+        <div
+          class="flex size-9 items-center justify-center rounded-xl text-white shadow-sm"
+          :style="{ background: 'var(--color-brand-900)' }"
+        >
+          <UIcon name="i-lucide-graduation-cap" class="size-5" />
         </div>
-        <div class="app-header__brand-text">
-          <span class="app-header__title">选校系统</span>
-          <span class="app-header__subtitle">PhD 申请助手</span>
+        <div class="flex flex-col leading-tight">
+          <span
+            class="text-lg font-semibold tracking-tight text-default"
+            :style="{ fontFamily: 'var(--font-display)' }"
+          >选校系统</span>
+          <span class="mt-0.5 text-[11px] text-muted">PhD 申请助手</span>
         </div>
       </NuxtLink>
 
-      <nav class="app-header__nav">
-        <NuxtLink
+      <nav class="hidden flex-1 items-center justify-center gap-1 md:flex">
+        <UButton
           v-for="item in navItems"
           :key="item.to"
           :to="item.to"
-          class="pill"
-          :class="{ 'is-active': isActive(item.to) }"
-        >
-          {{ item.label }}
-        </NuxtLink>
+          :icon="item.icon"
+          :variant="isActive(item.to) ? 'solid' : 'ghost'"
+          :color="isActive(item.to) ? 'primary' : 'neutral'"
+          size="sm"
+          class="rounded-full"
+        />
       </nav>
 
-      <NuxtLink
-        :to="userRoute.to"
-        class="app-header__login"
-      >
-        {{ userRoute.label }}
-      </NuxtLink>
+      <div class="hidden items-center gap-2 md:flex">
+        <UButton
+          to="/login"
+          icon="i-lucide-log-in"
+          color="primary"
+          variant="solid"
+          size="sm"
+          class="rounded-full"
+        >
+          登录
+        </UButton>
+      </div>
 
-      <button
-        type="button"
-        class="app-header__menu-btn"
-        :aria-expanded="open"
-        aria-label="菜单"
+      <UButton
+        :icon="open ? 'i-lucide-x' : 'i-lucide-menu'"
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        class="md:hidden"
+        square
         @click="open = !open"
-      >
-        <UIcon :name="open ? 'i-lucide-x' : 'i-lucide-menu'" class="size-6" />
-      </button>
-    </div>
+      />
+    </UContainer>
 
-    <Transition name="slide">
-      <div v-if="open" class="app-header__mobile">
-        <NuxtLink
-          v-for="item in navItems"
-          :key="item.to"
-          :to="item.to"
-          class="app-header__mobile-item"
-          :class="{ 'is-active': isActive(item.to) }"
-          @click="close"
-        >
-          {{ item.label }}
-        </NuxtLink>
-        <NuxtLink
-          :to="userRoute.to"
-          class="app-header__mobile-item"
-          @click="close"
-        >
-          {{ userRoute.label }}
-        </NuxtLink>
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      leave-active-class="transition-all duration-150 ease-in"
+      enter-from-class="opacity-0 -translate-y-2"
+      leave-to-class="opacity-0 -translate-y-2"
+    >
+      <div
+        v-if="open"
+        class="border-t border-default bg-white px-4 py-3 md:hidden"
+      >
+        <div class="flex flex-col gap-1">
+          <UButton
+            v-for="item in navItems"
+            :key="item.to"
+            :to="item.to"
+            :icon="item.icon"
+            :variant="isActive(item.to) ? 'solid' : 'ghost'"
+            :color="isActive(item.to) ? 'primary' : 'neutral'"
+            size="sm"
+            block
+            class="justify-start"
+            @click="close"
+          >
+            {{ item.label }}
+          </UButton>
+          <UButton
+            to="/login"
+            icon="i-lucide-log-in"
+            color="primary"
+            variant="solid"
+            size="sm"
+            block
+            class="mt-2 justify-center"
+            @click="close"
+          >
+            登录
+          </UButton>
+        </div>
       </div>
     </Transition>
   </header>
 </template>
-
-<style scoped>
-.app-header {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
-  border-bottom: 1px solid var(--color-border-light);
-}
-
-.app-header__inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 64px;
-  gap: 24px;
-}
-
-.app-header__brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-decoration: none;
-  color: var(--color-ink-1000);
-}
-.app-header__logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--color-brand-900);
-  color: #fff;
-  box-shadow: var(--shadow-card);
-}
-.app-header__brand-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.1;
-}
-.app-header__title {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--color-ink-1000);
-  letter-spacing: -0.01em;
-}
-.app-header__subtitle {
-  font-size: 11px;
-  color: var(--color-ink-700);
-  margin-top: 2px;
-}
-
-.app-header__nav {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex: 1;
-  justify-content: center;
-}
-
-.app-header__login {
-  padding: 8px 16px;
-  border-radius: 9999px;
-  background: var(--color-brand-900);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: background 200ms ease;
-}
-.app-header__login:hover {
-  background: var(--color-brand-700);
-}
-
-.app-header__menu-btn {
-  display: none;
-  background: transparent;
-  border: 0;
-  padding: 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  color: var(--color-ink-1000);
-}
-.app-header__menu-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.app-header__mobile {
-  display: none;
-  flex-direction: column;
-  border-top: 1px solid var(--color-border-light);
-  background: #fff;
-  padding: 12px 16px;
-  gap: 4px;
-}
-.app-header__mobile-item {
-  display: block;
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-ink-1000);
-  text-decoration: none;
-}
-.app-header__mobile-item.is-active {
-  background: var(--color-brand-900);
-  color: #fff;
-}
-.app-header__mobile-item:hover {
-  background: rgba(0, 0, 0, 0.05);
-}
-.app-header__mobile-item.is-active:hover {
-  background: var(--color-brand-700);
-}
-
-@media (max-width: 768px) {
-  .app-header__nav { display: none; }
-  .app-header__menu-btn { display: inline-flex; }
-  .app-header__mobile { display: flex; }
-  .app-header__subtitle { display: none; }
-}
-
-.slide-enter-active, .slide-leave-active {
-  transition: all 200ms ease;
-}
-.slide-enter-from, .slide-leave-to {
-  opacity: 0;
-  transform: translateY(-6px);
-}
-</style>
