@@ -5,7 +5,7 @@ import type { RankingStatusDTO } from '~/types'
 
 useHead({ title: '我的选校 · 选校系统' })
 
-// ============ 状态 ============
+// ============== 状态 ==============
 const items = ref<RankingStatusDTO[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -15,43 +15,32 @@ const saving = ref(false)
 
 function scheduleInfoClear(delay = 3000) {
   if (infoTimer.value) clearTimeout(infoTimer.value)
-  infoTimer.value = setTimeout(() => info.value = null, delay)
+  infoTimer.value = setTimeout(() => { info.value = null }, delay)
 }
+onBeforeUnmount(() => { if (infoTimer.value) clearTimeout(infoTimer.value) })
 
-onBeforeUnmount(() => {
-  if (infoTimer.value) clearTimeout(infoTimer.value)
-})
-
+// ============== 过滤 / 排序 ==============
 const filterConsider = ref<'all' | 'yes' | 'no'>('all')
 const filterLevel = ref<'all' | 'strong' | 'medium' | 'weak'>('all')
 const search = ref<string | undefined>(undefined)
-const sortBy = ref<'name' | 'qs' | 'total'>('total')
-
-// 抽屉 (UDrawer)
-const drawerOpen = ref(false)
-const drawerName = ref('')
-const drawerChart = ref<any>(null)
-const drawerLoading = ref(false)
+const sortBy = ref<'total' | 'qs' | 'name'>('total')
 
 const considerItems = [
-  { value: 'all' as const, label: '全部' },
-  { value: 'yes' as const, label: '考虑' },
-  { value: 'no' as const, label: '不考虑' }
+  { value: 'all', label: '全部' },
+  { value: 'yes', label: '考虑' },
+  { value: 'no', label: '不考虑' }
 ]
-
 const levelItems = [
-  { value: 'all' as const, label: '全部强度' },
-  { value: 'strong' as const, label: '强' },
-  { value: 'medium' as const, label: '中' },
-  { value: 'weak' as const, label: '弱' }
+  { value: 'all', label: '全部强度' },
+  { value: 'strong', label: '强' },
+  { value: 'medium', label: '中' },
+  { value: 'weak', label: '弱' }
 ]
-
 const sortByItems = [
-  { value: 'total' as const, label: '按整体强度' },
-  { value: 'qs' as const, label: '按 QS 强度' },
-  { value: 'name' as const, label: '按名称' }
+  { value: 'total', label: '按整体强度' },
+  { value: 'qs', label: '按 QS 强度' },
+  { value: 'name', label: '按名称' }
 ]
-
 const statusLevelItems = [
   { value: null, label: '—' },
   { value: 0, label: '弱' },
@@ -59,6 +48,27 @@ const statusLevelItems = [
   { value: 2, label: '强' }
 ]
 
+// ============== 抽屉 ==============
+const drawerOpen = ref(false)
+const drawerName = ref('')
+const drawerChart = ref<any>(null)
+const drawerLoading = ref(false)
+
+async function openDrawer(n: string) {
+  drawerName.value = n
+  drawerOpen.value = true
+  drawerLoading.value = true
+  drawerChart.value = null
+  try {
+    drawerChart.value = await drawerData(n)
+  } catch {
+    drawerChart.value = { error: '后端不可达' }
+  } finally {
+    drawerLoading.value = false
+  }
+}
+
+// ============== 加载 ==============
 async function load() {
   loading.value = true
   error.value = null
@@ -67,7 +77,7 @@ async function load() {
     items.value = Array.isArray(res) ? res : []
   } catch (e: any) {
     console.warn('[choices] load failed', e?.message)
-    error.value = '后端不可达, 显示示例数据'
+    error.value = '后端不可达, 显示示意数据'
     items.value = generateMock()
   } finally {
     loading.value = false
@@ -104,8 +114,7 @@ async function updateField(item: RankingStatusDTO, field: keyof RankingStatusDTO
 }
 
 async function toggleConsider(item: RankingStatusDTO) {
-  const newVal = item.consider === 1 ? 0 : 1
-  await updateField(item, 'consider', newVal)
+  await updateField(item, 'consider', item.consider === 1 ? 0 : 1)
 }
 
 async function batchInit() {
@@ -145,22 +154,6 @@ async function seedRankings() {
   }
 }
 
-async function openDrawer(name: string) {
-  drawerName.value = name
-  drawerOpen.value = true
-  drawerLoading.value = true
-  drawerChart.value = null
-  try {
-    const data = await drawerData(name)
-    drawerChart.value = data
-  } catch (e) {
-    console.warn('[choices] drawer failed', e)
-    drawerChart.value = { error: '后端不可达' }
-  } finally {
-    drawerLoading.value = false
-  }
-}
-
 const filteredItems = computed(() => {
   let arr = [...items.value]
   if (filterConsider.value === 'yes') arr = arr.filter(i => i.consider === 1)
@@ -192,141 +185,116 @@ const stats = computed(() => {
 
 onMounted(load)
 
-function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'neutral' {
-  if (v == null) return 'neutral'
-  if (v === 2) return 'primary'
-  if (v === 1) return 'secondary'
-  return 'neutral'
+// ============== 等级 chip helper ==============
+function statusLevel(level: number | null | undefined): 'weak' | 'medium' | 'strong' | null {
+  if (level == null) return null
+  if (level === 2) return 'strong'
+  if (level === 1) return 'medium'
+  return 'weak'
 }
+
+const REGION_COLORS: Record<string, { bg: string; fg: string; dot: string }> = {
+  '亚洲':   { bg: '#fce7f3', fg: '#be185d', dot: '#ea5ec1' },
+  '欧洲':   { bg: '#dbeafe', fg: '#1d4ed8', dot: '#1456f0' },
+  '北美洲': { bg: '#fef3c7', fg: '#b45309', dot: '#f59e0b' },
+  '南美洲': { bg: '#dcfce7', fg: '#15803d', dot: '#22c55e' },
+  '大洋洲': { bg: '#ede9fe', fg: '#7c3aed', dot: '#a855f7' },
+  '非洲':   { bg: '#fee2e2', fg: '#b91c1c', dot: '#ef4444' }
+}
+function regionStyle(r: string) {
+  const c = REGION_COLORS[r]
+  if (!c) return { background: 'var(--color-surface-soft)', color: 'var(--color-slate)' }
+  return { background: c.bg, color: c.fg }
+}
+function regionColor(r: string): string { return REGION_COLORS[r]?.dot ?? '#8e8e93' }
+
+const fields = [
+  { key: 'statusQs', label: 'QS 综合' },
+  { key: 'statusQsCs', label: 'QS CS' },
+  { key: 'statusUsnews', label: 'US News' },
+  { key: 'statusUsnewsCs', label: 'US CS' },
+  { key: 'statusTotal', label: '整体', primary: true }
+]
 </script>
 
 <template>
   <div>
-    <!-- Hero + 顶部 actions -->
-    <UContainer class="py-10">
-      <div class="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl font-[var(--font-display)]">
-            我的选校
-          </h1>
-          <p class="mt-2 text-base text-muted">标记 · 评估 · 决策</p>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <UButton
-            icon="i-lucide-refresh-cw"
-            color="neutral"
-            variant="outline"
-            size="md"
-            label="刷新最新排名"
-            :loading="saving"
-            :ui="{ leadingIcon: 'size-4' }"
-            class="rounded-full"
-            @click="seedRankings"
-          />
-          <UButton
-            icon="i-lucide-zap"
-            color="primary"
-            variant="solid"
-            size="md"
-            label="一键初始化"
-            :loading="saving"
-            :ui="{ leadingIcon: 'size-4' }"
-            class="rounded-full"
-            @click="batchInit"
-          />
+    <!-- ============== Hero (紧凑) ============== -->
+    <section class="choice-hero">
+      <div class="page-container">
+        <div class="choice-hero__inner">
+          <div>
+            <UBadge color="primary" variant="subtle" size="md">
+              <UIcon name="i-lucide-clipboard-check" class="size-3.5" />
+              <span class="ml-1.5 t-caption-bold">标记 · 评估 · 决策</span>
+            </UBadge>
+            <h1 class="t-h1 mt-3">我的选校</h1>
+            <p class="t-subtitle mt-2">标记「考虑 / 不考虑」, 按 4 维强度评估, 筛选符合预期的项目</p>
+          </div>
+          <div class="choice-hero__cta">
+            <UButton icon="i-lucide-refresh-cw" color="neutral" variant="outline" size="md" label="刷新最新排名" :loading="saving" class="rounded-full" @click="seedRankings" />
+            <UButton icon="i-lucide-zap" color="primary" variant="solid" size="md" label="一键初始化" :loading="saving" class="rounded-full" @click="batchInit" />
+          </div>
         </div>
       </div>
-    </UContainer>
+    </section>
 
-    <!-- 4 stats + stepper 流程叙事 -->
-    <UContainer class="pt-4">
-      <!-- 决策流程 stepper (3 step, 当前脉冲光晕) -->
-      <div class="mb-6 flex items-center justify-center gap-1">
-        <div class="flex flex-col items-center gap-1.5">
-          <div class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-brand-900)] text-sm font-bold text-white">
-            <UIcon name="i-lucide-check" class="size-4" />
-          </div>
-          <span class="text-[11px] font-semibold" :style="{ color: 'var(--color-brand-900)' }">1. 导入</span>
+    <!-- ============== 4 stats + stepper ============== -->
+    <div class="page-container section-band">
+      <!-- 决策流程 stepper (3 step) -->
+      <div class="stepper">
+        <div class="stepper__step is-done">
+          <div class="stepper__dot"><UIcon name="i-lucide-check" class="size-3.5" /></div>
+          <span class="stepper__label">1. 导入</span>
         </div>
-        <div class="mx-2 h-0.5 w-16 bg-[var(--color-brand-900)] sm:w-28" />
-        <div class="flex flex-col items-center gap-1.5">
-          <div class="relative flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-brand-900)] text-sm font-bold text-white shadow-lg" :style="{ boxShadow: '0 0 0 4px rgba(20,86,240,0.15), 0 0 0 8px rgba(20,86,240,0.08)' }">
-            2
-            <span class="absolute inset-0 animate-ping rounded-full bg-[var(--color-brand-900)] opacity-30" />
-          </div>
-          <span class="text-[11px] font-semibold" :style="{ color: 'var(--color-brand-900)' }">2. 评估</span>
+        <div class="stepper__line is-done" />
+        <div class="stepper__step is-current">
+          <div class="stepper__dot">2</div>
+          <span class="stepper__label">2. 评估</span>
         </div>
-        <div class="mx-2 h-0.5 w-16 bg-default sm:w-28" />
-        <div class="flex flex-col items-center gap-1.5 opacity-50">
-          <div class="flex h-9 w-9 items-center justify-center rounded-full border-2 border-default bg-white text-sm font-bold text-muted">3</div>
-          <span class="text-[11px] font-medium text-muted">3. 决策</span>
+        <div class="stepper__line" />
+        <div class="stepper__step is-todo">
+          <div class="stepper__dot">3</div>
+          <span class="stepper__label">3. 决策</span>
         </div>
       </div>
-      <!-- 4 stats card (0 数据 → 引导插画; > 0 → 数字 + mini 进度条) -->
-      <UCard v-if="stats.total === 0" :ui="{ root: 'rounded-2xl border-2 border-dashed border-default bg-[var(--color-surface-1)]', body: 'p-12 text-center space-y-4' }">
-        <div class="mx-auto flex size-16 items-center justify-center rounded-full" :style="{ background: 'rgba(20, 86, 240, 0.08)' }">
-          <UIcon name="i-lucide-target" class="size-4" :style="{ color: 'var(--color-brand-900)' }" />
+
+      <!-- 0 数据时引导插画 -->
+      <UCard v-if="stats.total === 0" class="empty-card" :ui="{ root: 'rounded-3xl border-2 border-dashed border-default bg-muted ring-0', body: 'p-12 text-center' }">
+        <div class="mx-auto flex size-16 items-center justify-center rounded-full empty-card__icon">
+          <UIcon name="i-lucide-target" class="size-7" />
         </div>
-        <h3 class="text-lg font-semibold text-default font-[var(--font-display)]">还没有选校, 开始第一步</h3>
-        <p class="text-sm text-muted">点上方「一键初始化」导入全部监控大学, 或先去「学校库」收藏几所</p>
-        <div class="flex flex-wrap justify-center gap-2">
-          <UButton to="/universities" color="primary" variant="solid" size="md" icon="i-lucide-search" label="去学校库" :ui="{ leadingIcon: 'size-4' }" class="rounded-full" />
-          <UButton color="neutral" variant="outline" size="md" icon="i-lucide-zap" label="一键初始化" :loading="saving" :ui="{ leadingIcon: 'size-4' }" class="rounded-full" @click="batchInit" />
+        <h3 class="t-h3 mt-4">还没有选校, 开始第一步</h3>
+        <p class="t-body-sm text-muted mt-2">点上方「一键初始化」导入全部监控大学, 或先去「学校库」收藏几所</p>
+        <div class="mt-6 flex flex-wrap justify-center gap-3">
+          <UButton to="/universities" color="primary" variant="solid" size="md" icon="i-lucide-search" label="去学校库" class="rounded-full" />
+          <UButton color="neutral" variant="outline" size="md" icon="i-lucide-zap" label="一键初始化" :loading="saving" class="rounded-full" @click="batchInit" />
         </div>
       </UCard>
-      <div v-else class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <UCard
-          v-for="s in [
-            { key: 'total', label: '清单总数', value: stats.total, color: '#222', hint: '所大学', percent: 100 },
-            { key: 'considered', label: '正在考虑', value: stats.considered, color: 'var(--color-brand-900)', hint: '已标记', percent: stats.total ? Math.round(stats.considered / stats.total * 100) : 0 },
-            { key: 'strong', label: '强校', value: stats.strong, color: '#22c55e', hint: 'QS/US 双强', percent: stats.total ? Math.round(stats.strong / stats.total * 100) : 0 },
-            { key: 'medium', label: '中校', value: stats.medium, color: '#f59e0b', hint: '评估待定', percent: stats.total ? Math.round(stats.medium / stats.total * 100) : 0 }
-          ]"
-          :key="s.key"
-          :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-4' }"
-        >
-          <div class="flex items-center justify-between text-xs text-muted">
-            <span>{{ s.label }}</span>
-            <span class="font-mono text-[10px]">{{ s.percent }}%</span>
-          </div>
-          <div class="mt-1.5 flex items-baseline gap-1">
-            <span class="text-[28px] font-semibold leading-none font-[var(--font-display)]" :style="{ color: s.color }">{{ s.value }}</span>
-            <span class="text-[11px] text-muted">{{ s.hint }}</span>
-          </div>
-          <div class="mt-2 h-1 w-full overflow-hidden rounded-full bg-[var(--color-surface-2)]">
-            <div class="h-full rounded-full transition-all" :style="{ width: s.percent + '%', background: s.color }" />
-          </div>
-        </UCard>
-      </div>
-    </UContainer>
 
-    <!-- Filter toolbar (视觉分组) -->
-    <UContainer class="pt-4">
-      <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-4 sm:p-5 space-y-3' }">
-        <div class="flex flex-wrap items-center gap-3">
-          <UInput
-            v-model="search"
-            icon="i-lucide-search"
-            placeholder="搜索大学名称 (支持中/英)..."
-            size="md"
-            class="flex-1 min-w-[200px]"
-            :ui="{ leadingIcon: 'size-4' }"
-          />
-          <USelectMenu
-            v-model="sortBy"
-            :items="sortByItems"
-            value-key="value"
-            size="md"
-            class="ml-auto min-w-[160px]"
-          >
+      <!-- 4 stats -->
+      <div v-else class="stats-grid">
+        <StatCard label="清单总数" :value="stats.total" hint="所大学" :icon="'i-lucide-database'" primary />
+        <StatCard label="正在考虑" :value="stats.considered" hint="已标记" :icon="'i-lucide-bookmark-check'" />
+        <StatCard label="强校" :value="stats.strong" hint="QS/US 双强" :icon="'i-lucide-trophy'" />
+        <StatCard label="中校" :value="stats.medium" hint="评估待定" :icon="'i-lucide-circle-help'" />
+      </div>
+    </div>
+
+    <!-- ============== Filter toolbar ============== -->
+    <div class="page-container section-band">
+      <UCard class="toolbar-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-5' }">
+        <div class="toolbar-row">
+          <UInput v-model="search" icon="i-lucide-search" placeholder="搜索大学名称 (支持中/英)..." size="md" class="toolbar-search" />
+          <USelectMenu v-model="sortBy" :items="sortByItems" value-key="value" size="md" class="toolbar-sort">
             <template #leading>
               <UIcon name="i-lucide-arrow-up-down" class="size-4" />
             </template>
           </USelectMenu>
         </div>
-        <div class="flex flex-wrap items-center gap-4 border-t border-default pt-3">
-          <div class="flex items-center gap-2">
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-muted">状态</span>
+        <div class="toolbar-row toolbar-row--second">
+          <div class="toolbar-group">
+            <span class="t-caption-bold text-muted">状态</span>
             <UFieldGroup size="sm">
               <UButton
                 v-for="c in considerItems"
@@ -336,15 +304,14 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
                 :icon="c.value === 'yes' ? 'i-lucide-check' : c.value === 'no' ? 'i-lucide-x' : 'i-lucide-list'"
                 :label="c.label"
                 size="sm"
-                :ui="{ leadingIcon: 'size-3.5' }"
                 class="rounded-full"
-                @click="filterConsider = c.value"
+                @click="filterConsider = c.value as any"
               />
             </UFieldGroup>
           </div>
-          <div class="h-5 w-px bg-default" />
-          <div class="flex items-center gap-2">
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-muted">强度</span>
+          <div class="toolbar-sep" />
+          <div class="toolbar-group">
+            <span class="t-caption-bold text-muted">强度</span>
             <UFieldGroup size="sm">
               <UButton
                 v-for="c in levelItems"
@@ -354,34 +321,22 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
                 :label="c.label"
                 size="sm"
                 class="rounded-full"
-                @click="filterLevel = c.value"
+                @click="filterLevel = c.value as any"
               />
             </UFieldGroup>
           </div>
         </div>
 
-        <UAlert
-          v-if="error"
-          color="warning"
-          variant="subtle"
-          :title="error"
-          icon="i-lucide-alert-circle"
-        />
-        <UAlert
-          v-if="info"
-          color="success"
-          variant="subtle"
-          :title="info"
-          icon="i-lucide-check-circle"
-        />
+        <UAlert v-if="error" color="warning" variant="subtle" :title="error" icon="i-lucide-alert-circle" class="mt-3" />
+        <UAlert v-if="info" color="success" variant="subtle" :title="info" icon="i-lucide-check-circle" class="mt-3" />
       </UCard>
-    </UContainer>
+    </div>
 
-    <!-- Cards grid -->
-    <UContainer class="py-6">
-      <UCard v-if="loading" :ui="{ root: 'rounded-2xl border border-default bg-white', body: 'p-20 flex flex-col items-center justify-center gap-3 text-muted' }">
-        <UIcon name="i-lucide-loader" class="size-4 animate-spin" />
-        <span class="text-sm">加载中…</span>
+    <!-- ============== Cards grid ============== -->
+    <div class="page-container section-band">
+      <UCard v-if="loading" class="loading-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-20 text-center' }">
+        <UIcon name="i-lucide-loader" class="size-5 mx-auto animate-spin text-muted" />
+        <p class="t-body-sm text-muted mt-3">加载中…</p>
       </UCard>
 
       <UEmpty
@@ -390,54 +345,37 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
         title="没有匹配的大学"
         description="尝试调整过滤条件, 或点击「一键初始化」导入全部大学"
         size="sm"
-      >
-        <template #footer>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <UCard :ui="{ root: 'rounded-2xl border border-default bg-[var(--color-surface-1)] opacity-60', body: 'p-4 text-left space-y-2' }">
-              <div class="flex items-center gap-2">
-                <span class="rank-badge rank-badge--gold">1</span>
-                <span class="text-sm font-semibold text-default">麻省理工学院</span>
-              </div>
-              <div class="text-[11px] text-muted">示意卡 · 真实数据需初始化</div>
-            </UCard>
-            <UCard :ui="{ root: 'rounded-2xl border border-default bg-[var(--color-surface-1)] opacity-60', body: 'p-4 text-left space-y-2' }">
-              <div class="flex items-center gap-2">
-                <span class="rank-badge rank-badge--silver">5</span>
-                <span class="text-sm font-semibold text-default">斯坦福大学</span>
-              </div>
-              <div class="text-[11px] text-muted">示意卡 · 真实数据需初始化</div>
-            </UCard>
-            <UCard :ui="{ root: 'rounded-2xl border border-default bg-[var(--color-surface-1)] opacity-60', body: 'p-4 text-left space-y-2' }">
-              <div class="flex items-center gap-2">
-                <span class="rank-badge rank-badge--bronze">23</span>
-                <span class="text-sm font-semibold text-default">清华大学</span>
-              </div>
-              <div class="text-[11px] text-muted">示意卡 · 真实数据需初始化</div>
-            </UCard>
-          </div>
-        </template>
-      </UEmpty>
+      />
 
       <div v-else class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <UCard
           v-for="item in filteredItems"
           :key="item.universityNameChinese"
+          class="choice-card"
           :ui="{
-            root: 'rounded-2xl border border-default bg-white shadow-sm transition-shadow duration-200 hover:shadow-md',
-            body: 'p-5 space-y-4'
+            root: 'rounded-2xl border border-default bg-default ring-0 transition-all duration-200 hover:shadow-md',
+            body: 'p-5'
           }"
         >
           <!-- Header -->
-          <div class="flex items-start justify-between gap-3">
+          <div class="choice-card__head">
             <div>
-              <h3 class="text-lg font-semibold leading-tight text-default font-[var(--font-display)]">
-                {{ item.universityNameChinese }}
+              <h3 class="t-h4">
+                <NuxtLink :to="`/universities/${encodeURIComponent(item.universityNameChinese)}`" class="text-default hover:text-brand">{{ item.universityNameChinese }}</NuxtLink>
               </h3>
-              <div class="mt-1.5 flex items-center gap-1.5">
+              <div class="choice-card__chips">
                 <UBadge color="neutral" variant="soft" size="xs">
-                  <UIcon name="i-lucide-map-pin" class="size-3.5" />
+                  <UIcon name="i-lucide-map-pin" class="size-3" />
                   <span class="ml-1">{{ item.universityTags || '—' }}</span>
                 </UBadge>
+                <span
+                  v-if="item.universityTagsState"
+                  class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 t-caption-bold"
+                  :style="regionStyle(item.universityTagsState)"
+                >
+                  <span class="size-1.5 rounded-full" :style="{ background: regionColor(item.universityTagsState) }" />
+                  {{ item.universityTagsState }}
+                </span>
               </div>
             </div>
             <UButton
@@ -445,23 +383,16 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
               :color="item.consider === 1 ? 'primary' : 'neutral'"
               :variant="item.consider === 1 ? 'solid' : 'outline'"
               size="sm"
-              :ui="{ leadingIcon: 'size-3.5' }"
-              class="rounded-full"
               :label="item.consider === 1 ? '考虑' : '不考虑'"
+              class="rounded-full"
               @click="toggleConsider(item)"
             />
           </div>
 
-          <!-- 4 status fields + overall -->
-          <div class="grid grid-cols-5 gap-2">
-            <div v-for="f in [
-              { key: 'statusQs', label: 'QS 综合' },
-              { key: 'statusQsCs', label: 'QS CS' },
-              { key: 'statusUsnews', label: 'US News' },
-              { key: 'statusUsnewsCs', label: 'US CS' },
-              { key: 'statusTotal', label: '整体', primary: true }
-            ]" :key="f.key" class="space-y-1.5">
-              <div class="text-[11px] font-medium text-muted">{{ f.label }}</div>
+          <!-- 5 status fields -->
+          <div class="choice-card__status">
+            <div v-for="f in fields" :key="f.key" class="choice-card__field">
+              <div class="choice-card__field-label">{{ f.label }}</div>
               <USelectMenu
                 :model-value="(item as any)[f.key]"
                 :items="statusLevelItems"
@@ -470,72 +401,228 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
                 :ui="{ base: 'w-full' }"
                 @update:model-value="(v: any) => updateField(item, f.key as any, v)"
               />
-              <UBadge
-                v-if="(item as any)[f.key] != null"
-                :color="statusColor((item as any)[f.key])"
-                :variant="(item as any)[f.key] === 2 ? 'solid' : 'subtle'"
-                size="xs"
-                :label="(item as any)[f.key] === 2 ? '强' : (item as any)[f.key] === 1 ? '中' : '弱'"
-                block
-              />
+              <StatusChip v-if="(item as any)[f.key] != null" :level="statusLevel((item as any)[f.key])" />
             </div>
           </div>
 
           <!-- Footer actions -->
-          <div class="flex items-center gap-2 border-t border-default pt-3">
+          <div class="choice-card__foot">
             <UButton
               :to="`/universities/${encodeURIComponent(item.universityNameChinese)}`"
-              icon="i-lucide-info"
               color="neutral"
               variant="ghost"
               size="xs"
+              icon="i-lucide-info"
               label="详情"
-              :ui="{ leadingIcon: 'size-3.5' }"
               class="rounded-full"
             />
             <UButton
-              icon="i-lucide-line-chart"
               color="neutral"
               variant="ghost"
               size="xs"
+              icon="i-lucide-line-chart"
               label="趋势"
-              :ui="{ leadingIcon: 'size-3.5' }"
               class="rounded-full"
               @click="openDrawer(item.universityNameChinese)"
+            />
+            <UButton
+              v-if="item.consider === 1"
+              color="primary"
+              variant="ghost"
+              size="xs"
+              icon="i-lucide-arrow-right"
+              label="下一步"
+              class="rounded-full ml-auto"
+              to="/charts"
             />
           </div>
         </UCard>
       </div>
-    </UContainer>
+    </div>
 
-    <!-- Drawer (UDrawer) -->
-    <UDrawer v-model:open="drawerOpen" direction="right" :ui="{ content: 'w-full sm:max-w-2xl' }">
+    <!-- ============== 抽屉 (UDrawer) ============== -->
+    <UDrawer v-model:open="drawerOpen" direction="right" :ui="{ content: 'max-w-2xl' }">
       <template #header>
-        <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-default font-[var(--font-display)]">{{ drawerName }} · 趋势</h2>
+        <div class="flex flex-col gap-1">
+          <span class="t-caption-bold text-muted">历年排名趋势</span>
+          <h3 class="t-h4">{{ drawerName }}</h3>
         </div>
       </template>
       <template #body>
-        <div class="space-y-4 p-2">
-          <div v-if="drawerLoading" class="flex h-40 items-center justify-center text-muted">
-            <UIcon name="i-lucide-loader" class="size-4 animate-spin" />
-            <span class="ml-2 text-sm">加载中…</span>
-          </div>
-          <UAlert
-            v-else-if="drawerChart?.error"
-            color="warning"
-            variant="subtle"
-            :title="drawerChart.error"
-            icon="i-lucide-alert-circle"
-          />
-          <div v-else-if="drawerChart?.chatData" class="space-y-3">
-            <p class="text-sm text-muted">趋势数据来自后端 {{ drawerChart.chatData.series.length }} 条曲线</p>
-            <div class="rounded-xl bg-[var(--color-surface-1)] p-4">
-              <ChartSvgChart :chart="drawerChart" :height="300" />
-            </div>
-          </div>
+        <div v-if="drawerLoading" class="flex items-center justify-center py-16">
+          <UIcon name="i-lucide-loader" class="size-5 animate-spin text-muted" />
+          <span class="ml-2 t-body-sm text-muted">加载中…</span>
+        </div>
+        <div v-else-if="drawerChart?.error" class="text-center py-16">
+          <UIcon name="i-lucide-alert-triangle" class="size-7 mx-auto text-muted" />
+          <p class="t-body-sm text-muted mt-2">{{ drawerChart.error }}</p>
+        </div>
+        <div v-else-if="drawerChart" class="drawer-chart">
+          <ChartSvgChart :chart="drawerChart" :height="320" />
         </div>
       </template>
     </UDrawer>
   </div>
 </template>
+
+<style scoped>
+/* Hero */
+.choice-hero { padding: 64px 0 32px; background: var(--color-canvas); }
+@media (min-width: 768px) {
+  .choice-hero { padding: 80px 0 48px; }
+}
+.choice-hero__inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+}
+.choice-hero__cta { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Section 间距 */
+.section-band { margin-top: 24px; }
+@media (min-width: 768px) {
+  .section-band { margin-top: 32px; }
+}
+
+/* Stepper */
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 24px;
+}
+.stepper__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.stepper__dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  background: var(--color-surface-soft);
+  color: var(--color-stone);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stepper__step.is-done .stepper__dot {
+  background: var(--color-brand-blue);
+  color: var(--color-on-dark);
+}
+.stepper__step.is-current .stepper__dot {
+  background: var(--color-brand-blue);
+  color: var(--color-on-dark);
+  box-shadow: 0 0 0 4px rgba(20, 86, 240, 0.15);
+}
+.stepper__step.is-todo { opacity: 0.5; }
+.stepper__label { font-size: 11px; font-weight: 600; }
+.stepper__line {
+  width: 60px;
+  height: 2px;
+  background: var(--color-surface-soft);
+  margin: 0 8px;
+  margin-bottom: 16px;
+}
+.stepper__line.is-done { background: var(--color-brand-blue); }
+@media (min-width: 768px) {
+  .stepper__line { width: 120px; }
+}
+
+/* Empty card */
+.empty-card__icon {
+  background: rgba(20, 86, 240, 0.10);
+  color: var(--color-brand-blue);
+}
+
+/* Stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (min-width: 768px) {
+  .stats-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; }
+}
+
+/* Toolbar */
+.toolbar-card { background: var(--color-canvas); }
+.toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.toolbar-row--second {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-hairline-soft);
+}
+.toolbar-search { flex: 1; min-width: 200px; }
+.toolbar-sort { min-width: 160px; margin-left: auto; }
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.toolbar-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--color-hairline);
+}
+
+/* Choice card */
+.choice-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.choice-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.choice-card__status {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (min-width: 480px) {
+  .choice-card__status { grid-template-columns: repeat(5, 1fr); }
+}
+.choice-card__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.choice-card__field-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-stone);
+}
+.choice-card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-hairline-soft);
+}
+
+/* Drawer chart */
+.drawer-chart { padding: 16px; background: var(--color-surface); border-radius: 16px; }
+</style>
