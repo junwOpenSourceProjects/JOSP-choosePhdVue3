@@ -81,6 +81,18 @@ const features = [
   { icon: 'i-lucide-bookmark-check', title: '状态管理', desc: '「考虑 / 不考虑」标记 + 弱 / 中 / 强评级, 辅助决策' }
 ]
 
+// ============== 8 排名机构 (logo 墙) ==============
+const orgLogos = [
+  { code: 'QS',     label: 'QS 世界大学排名',  bg: 'rgba(255, 0, 0, 0.10)',     fg: '#d11e3a' },
+  { code: 'US',     label: 'US News 全球',     bg: 'rgba(20, 86, 240, 0.10)',  fg: '#1456f0' },
+  { code: 'ARWU',   label: 'ARWU 软科',        bg: 'rgba(234, 94, 193, 0.10)', fg: '#be185d' },
+  { code: 'THE',    label: 'EduRank',          bg: 'rgba(245, 158, 11, 0.10)', fg: '#b45309' },
+  { code: 'MOS',    label: 'MOSiUR 世界',      bg: 'rgba(168, 85, 247, 0.10)', fg: '#7c3aed' },
+  { code: 'RUR',    label: 'RUR 俄罗斯',       bg: 'rgba(34, 197, 94, 0.10)',  fg: '#15803d' },
+  { code: 'QSS',    label: 'QS 学科',          bg: 'rgba(236, 72, 153, 0.10)', fg: '#be185d' },
+  { code: 'USS',    label: 'US News 学科',     bg: 'rgba(6, 182, 212, 0.10)',  fg: '#0e7490' }
+]
+
 // ============== 趋势预览 (取 queryAllEcharts Top 10, 过滤 data 有值的) ==============
 type Series = { name: string; country?: string; region?: string; data: (number | null)[] }
 const previewYears = ref<string[]>([])
@@ -174,7 +186,7 @@ function lastRank(s: Series) {
             </div>
           </div>
 
-          <!-- 趋势预览卡 (真数据) -->
+          <!-- 趋势预览卡 (真数据, 聚焦 Top 3 + Top 10 色带 + 渐变面) -->
           <div
             class="rounded-3xl border border-default bg-white p-6 lift-on-hover"
             :style="{ boxShadow: 'var(--shadow-brand-strong)' }"
@@ -196,8 +208,12 @@ function lastRank(s: Series) {
               <svg
                 viewBox="0 0 100 60"
                 preserveAspectRatio="none"
-                class="block h-[180px] w-full"
+                class="block h-[200px] w-full"
               >
+                <!-- Top 10 浅蓝带 -->
+                <rect :x="CHART_PAD" :y="CHART_H - CHART_PAD - (10/50)*(CHART_H-2*CHART_PAD)" :width="CHART_W - 2*CHART_PAD" :height="(10/50)*(CHART_H-2*CHART_PAD)" fill="rgba(20,86,240,0.06)" />
+                <!-- Top 30 中性带 -->
+                <rect :x="CHART_PAD" :y="CHART_H - CHART_PAD - (30/50)*(CHART_H-2*CHART_PAD)" :width="CHART_W - 2*CHART_PAD" :height="((30-10)/50)*(CHART_H-2*CHART_PAD)" fill="rgba(0,0,0,0.02)" />
                 <!-- 网格 -->
                 <line :x1="CHART_PAD" :y1="10" :x2="CHART_W - CHART_PAD" :y2="10" stroke="#f2f3f5" stroke-width="0.2" />
                 <line :x1="CHART_PAD" :y1="25" :x2="CHART_W - CHART_PAD" :y2="25" stroke="#f2f3f5" stroke-width="0.2" />
@@ -205,33 +221,53 @@ function lastRank(s: Series) {
                 <text :x="CHART_PAD - 1" :y="11" text-anchor="end" font-size="2.5" fill="#8e8e93">10</text>
                 <text :x="CHART_PAD - 1" :y="26" text-anchor="end" font-size="2.5" fill="#8e8e93">25</text>
                 <text :x="CHART_PAD - 1" :y="41" text-anchor="end" font-size="2.5" fill="#8e8e93">50</text>
-                <!-- 折线 -->
-                <path
-                  v-for="(s, idx) in previewSeries"
-                  :key="s.name"
-                  :d="buildPath(s.data, 50)"
-                  fill="none"
-                  :stroke="lineColor(idx)"
-                  stroke-width="0.6"
-                  stroke-linejoin="round"
-                  stroke-linecap="round"
-                />
-                <!-- 末端点 -->
-                <circle
-                  v-for="(s, idx) in previewSeries"
-                  :key="s.name + '-dot'"
-                  v-show="s.data.filter(v => v != null).length > 0"
-                  :cx="CHART_PAD + (s.data.length - 1) * ((CHART_W - 2 * CHART_PAD) / Math.max(1, s.data.length - 1))"
-                  :cy="(() => { const v = s.data.filter(x => x != null).pop(); return v == null ? 0 : CHART_H - CHART_PAD - (Math.min(v as number, 50) / 50) * (CHART_H - 2 * CHART_PAD) })()"
-                  r="0.9"
-                  :fill="lineColor(idx)"
-                />
+                <!-- 非 Top 3 校降透明度 -->
+                <template v-for="(s, idx) in previewSeries" :key="s.name + '-bg'">
+                  <path
+                    v-if="idx >= 3"
+                    :d="buildPath(s.data, 50)"
+                    fill="none"
+                    :stroke="lineColor(idx)"
+                    stroke-width="0.4"
+                    stroke-linejoin="round"
+                    stroke-linecap="round"
+                    opacity="0.3"
+                  />
+                </template>
+                <!-- Top 3 校粗线 + 渐变面 -->
+                <template v-for="idx in [0, 1, 2]" :key="`top${idx}`">
+                  <path
+                    v-if="previewSeries[idx]"
+                    :d="(buildPath(previewSeries[idx].data, 50) || '') + ` L ${CHART_W - CHART_PAD},${CHART_H - CHART_PAD} L ${CHART_PAD},${CHART_H - CHART_PAD} Z`"
+                    :fill="lineColor(idx)"
+                    opacity="0.08"
+                  />
+                  <path
+                    v-if="previewSeries[idx]"
+                    :d="buildPath(previewSeries[idx].data, 50)"
+                    fill="none"
+                    :stroke="lineColor(idx)"
+                    stroke-width="0.8"
+                    stroke-linejoin="round"
+                    stroke-linecap="round"
+                  />
+                  <!-- 末端点 (Top 3 加大) -->
+                  <circle
+                    v-if="previewSeries[idx] && previewSeries[idx].data.filter((v: any) => v != null).length > 0"
+                    :cx="CHART_PAD + (previewSeries[idx].data.length - 1) * ((CHART_W - 2 * CHART_PAD) / Math.max(1, previewSeries[idx].data.length - 1))"
+                    :cy="(() => { const v = previewSeries[idx].data.filter((x: any) => x != null).pop(); return v == null ? 0 : CHART_H - CHART_PAD - (Math.min(v as number, 50) / 50) * (CHART_H - 2 * CHART_PAD) })()"
+                    r="1.4"
+                    :fill="lineColor(idx)"
+                    stroke="#fff"
+                    stroke-width="0.3"
+                  />
+                </template>
               </svg>
-              <!-- 图例 (前 3 + 总数) -->
-              <div class="mt-3 flex flex-wrap items-center gap-3 text-[11px] font-medium text-muted">
-                <div v-for="(s, idx) in previewSeries.slice(0, 5)" :key="s.name" class="inline-flex items-center gap-1.5">
-                  <span class="size-2 rounded-full" :style="{ background: lineColor(idx) }" />
-                  <span class="text-default">{{ s.name }}</span>
+              <!-- 图例 (Top 3 强 + 其余弱) -->
+              <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] font-medium">
+                <div v-for="(s, idx) in previewSeries.slice(0, 5)" :key="s.name" class="inline-flex items-center gap-1.5" :class="idx < 3 ? 'text-default' : 'text-muted'">
+                  <span class="size-2 rounded-full" :style="{ background: lineColor(idx), opacity: idx < 3 ? 1 : 0.3 }" />
+                  <span :class="idx < 3 ? 'text-default' : 'text-muted'">{{ s.name }}</span>
                   <span class="font-mono text-[var(--color-brand-900)]">#{{ lastRank(s) }}</span>
                 </div>
               </div>
@@ -315,6 +351,29 @@ function lastRank(s: Series) {
           </div>
           <div class="text-base font-semibold text-default" :style="{ fontFamily: 'var(--font-display)' }">{{ f.title }}</div>
           <div class="text-[13px] leading-relaxed text-muted">{{ f.desc }}</div>
+        </div>
+      </div>
+    </UContainer>
+
+    <!-- ============== 8 排名机构 logo 墙 ============== -->
+    <UContainer class="mt-16">
+      <div class="rounded-3xl border border-default bg-[var(--color-surface-1)] p-8">
+        <div class="mb-5 text-center">
+          <div class="text-[12px] font-medium uppercase tracking-wider text-muted" :style="{ fontFamily: 'var(--font-ui)' }">数据来源</div>
+          <h2 class="mt-1 text-2xl font-semibold leading-tight text-default md:text-[26px]" :style="{ fontFamily: 'var(--font-display)' }">权威 8 大排名体系</h2>
+        </div>
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-8">
+          <div
+            v-for="org in orgLogos"
+            :key="org.code"
+            class="flex flex-col items-center gap-1.5 rounded-2xl border border-default bg-white px-3 py-4 lift-on-hover"
+          >
+            <div
+              class="inline-flex size-10 items-center justify-center rounded-xl text-sm font-extrabold tracking-tighter"
+              :style="{ background: org.bg, color: org.fg, fontFamily: 'var(--font-display)' }"
+            >{{ org.code }}</div>
+            <div class="text-[11px] font-medium text-default text-center leading-tight">{{ org.label }}</div>
+          </div>
         </div>
       </div>
     </UContainer>
