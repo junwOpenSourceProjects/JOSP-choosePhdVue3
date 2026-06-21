@@ -314,24 +314,24 @@ function toggleSelect(name: string) {
       <p class="mt-2 text-base text-muted">趋势 · 对比 · 洞察 · 让选校决策有数</p>
     </UContainer>
 
-    <!-- 4 大视图 mode tab (等高, 单色 + 选中态描边) -->
+    <!-- 4 大视图 mode tab (UButton flex 横排 1 行, 等高 + 自写激活态) -->
     <UContainer class="pt-2">
-      <div class="grid grid-cols-2 gap-2.5 md:grid-cols-4">
-        <button
+      <div class="flex flex-wrap gap-2">
+        <UButton
           v-for="m in modeTabs"
           :key="m.value"
-          type="button"
-          class="flex h-full min-h-[88px] flex-col items-start gap-1.5 rounded-2xl border bg-white p-3.5 text-left transition-all"
-          :class="mode === m.value ? 'border-[var(--color-brand-900)] shadow-md' : 'border-default hover:border-[var(--color-brand-900)]'"
-          :style="mode === m.value ? { background: 'var(--color-surface-1)', boxShadow: '0 0 0 2px var(--color-brand-900) inset' } : {}"
+          :color="mode === m.value ? 'primary' : 'neutral'"
+          :variant="mode === m.value ? 'solid' : 'outline'"
+          :icon="m.icon"
+          size="md"
+          class="flex-1 !flex !flex-col !items-start !gap-0.5 !rounded-xl !h-auto !min-h-[64px] !px-3 !py-2"
           @click="mode = m.value"
         >
-          <div class="flex items-center gap-1.5">
-            <UIcon :name="m.icon" class="size-4" :style="{ color: 'var(--color-brand-900)' }" />
-            <span class="text-sm font-semibold text-default">{{ m.label }}</span>
+          <div class="flex flex-col items-start gap-0.5 text-left">
+            <span class="text-[13px] font-semibold leading-tight">{{ m.label }}</span>
+            <span class="text-[10px] font-normal opacity-75 leading-tight">{{ m.desc }}</span>
           </div>
-          <span class="text-[12px] leading-snug text-muted">{{ m.desc }}</span>
-        </button>
+        </UButton>
       </div>
     </UContainer>
 
@@ -385,7 +385,7 @@ function toggleSelect(name: string) {
           </div>
           <ClientOnly>
             <div v-if="watchlist.length === 0" class="rounded-2xl border-2 border-dashed border-default bg-[var(--color-surface-1)] p-10 text-center">
-              <UIcon name="i-lucide-eye-off" class="mx-auto size-10 text-muted" />
+              <UIcon name="i-lucide-eye-off" class="mx-auto size-5 text-muted" />
               <div class="mt-3 text-sm text-default">还没有添加大学</div>
               <div class="mt-1 text-xs text-muted">从下方排名榜点 + 加入对比, 这里只画你挑的大学, 不再 137 条线堆一起</div>
             </div>
@@ -475,23 +475,23 @@ function toggleSelect(name: string) {
             <UBadge v-if="selectedForVariants.length" color="primary" variant="subtle" :label="`已选 ${selectedForVariants.length} / 6`" />
           </div>
 
-          <!-- 大学选择器 (Top 50 网格) -->
+          <!-- 大学选择器 (Top 30, UButton pill) -->
           <div class="mb-5">
             <div class="mb-2 text-[12px] font-medium text-muted">点击切换选择</div>
             <div class="flex flex-wrap gap-1.5">
-              <button
+              <UButton
                 v-for="r in rankingBoard.slice(0, 30)"
                 :key="r.name"
-                type="button"
-                class="inline-flex items-center gap-1 rounded-full border bg-white px-2.5 py-1 text-[12px] font-medium transition-all"
-                :class="selectedForVariants.includes(r.name) ? 'border-transparent' : 'border-default hover:border-[var(--color-brand-900)]'"
-                :style="selectedForVariants.includes(r.name) ? { background: 'var(--color-brand-900)', color: '#fff' } : {}"
+                :color="selectedForVariants.includes(r.name) ? 'primary' : 'neutral'"
+                :variant="selectedForVariants.includes(r.name) ? 'solid' : 'outline'"
+                size="xs"
+                class="!rounded-full"
                 @click="toggleSelect(r.name)"
               >
                 <span :class="['rank-badge', rankBadgeTier(r.last)]" :style="{ height: '18px', minWidth: '24px', fontSize: '10px', padding: '0 6px' }">{{ r.last }}</span>
-                <span>{{ r.name }}</span>
-                <UIcon v-if="selectedForVariants.includes(r.name)" name="i-lucide-check" class="size-3" />
-              </button>
+                <span class="ml-1">{{ r.name }}</span>
+                <UIcon v-if="selectedForVariants.includes(r.name)" name="i-lucide-check" class="ml-1 size-3" />
+              </UButton>
             </div>
           </div>
 
@@ -499,11 +499,11 @@ function toggleSelect(name: string) {
           <div class="rounded-xl bg-[var(--color-surface-1)] p-4">
             <ClientOnly>
               <div v-if="selectedForVariants.length === 0" class="flex flex-col items-center justify-center gap-2 py-16 text-center text-muted">
-                <UIcon name="i-lucide-git-compare" class="size-10" />
+                <UIcon name="i-lucide-git-compare" class="size-5" />
                 <span class="text-sm">从上方勾几所大学, 这里画 N × 4 条对比线</span>
               </div>
               <div v-else-if="variantLoading" class="flex items-center justify-center py-16 text-muted">
-                <UIcon name="i-lucide-loader" class="size-5 animate-spin" />
+                <UIcon name="i-lucide-loader" class="size-4 animate-spin" />
                 <span class="ml-2 text-sm">加载 4 维数据...</span>
               </div>
               <div v-else>
@@ -630,28 +630,31 @@ function toggleSelect(name: string) {
             <p class="mt-1 text-[13px] text-muted">选洲 → 看国家分布 → 加对比</p>
           </div>
 
-          <!-- 6 大洲 tab -->
+          <!-- 6 大洲 tab (UButton pill) -->
           <div class="mb-5 flex flex-wrap gap-2">
-            <button
-              type="button"
-              class="rounded-full border bg-white px-4 py-1.5 text-[12px] font-semibold transition-all"
-              :class="!selectedRegion ? 'border-transparent' : 'border-default hover:border-current'"
-              :style="!selectedRegion ? { background: 'var(--color-brand-900)', color: '#fff' } : {}"
+            <UButton
+              :color="!selectedRegion ? 'primary' : 'neutral'"
+              :variant="!selectedRegion ? 'solid' : 'outline'"
+              size="sm"
+              label="全部"
+              class="!rounded-full"
               @click="selectedRegion = undefined"
-            >全部</button>
-            <button
+            />
+            <UButton
               v-for="r in REGION_TABS"
               :key="r.value"
-              type="button"
-              class="rounded-full border bg-white px-4 py-1.5 text-[12px] font-semibold transition-all"
-              :class="selectedRegion === r.value ? 'border-transparent' : 'border-default hover:border-current'"
-              :style="selectedRegion === r.value ? { background: r.color, color: '#fff' } : { color: r.color }"
+              :variant="selectedRegion === r.value ? 'solid' : 'outline'"
+              :color="selectedRegion === r.value ? 'primary' : 'neutral'"
+              size="sm"
+              :label="r.label"
+              class="!rounded-full"
+              :style="selectedRegion === r.value ? { background: r.color, color: '#fff', borderColor: r.color } : { color: r.color, borderColor: r.color }"
               @click="selectedRegion = selectedRegion === r.value ? undefined : r.value"
-            >{{ r.label }}</button>
+            />
           </div>
 
           <div v-if="regionLoading" class="flex items-center justify-center py-10 text-muted">
-            <UIcon name="i-lucide-loader" class="size-5 animate-spin" />
+            <UIcon name="i-lucide-loader" class="size-4 animate-spin" />
             <span class="ml-2 text-sm">加载中…</span>
           </div>
           <div v-else class="grid grid-cols-1 gap-5 lg:grid-cols-3">

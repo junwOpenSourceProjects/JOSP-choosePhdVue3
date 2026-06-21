@@ -252,7 +252,7 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
       <!-- 4 stats card (0 数据 → 引导插画; > 0 → 数字 + mini 进度条) -->
       <div v-if="stats.total === 0" class="rounded-3xl border-2 border-dashed border-default bg-[var(--color-surface-1)] p-12 text-center">
         <div class="mx-auto mb-4 flex size-16 items-center justify-center rounded-full" :style="{ background: 'rgba(20, 86, 240, 0.08)' }">
-          <UIcon name="i-lucide-target" class="size-8" :style="{ color: 'var(--color-brand-900)' }" />
+          <UIcon name="i-lucide-target" class="size-5" :style="{ color: 'var(--color-brand-900)' }" />
         </div>
         <h3 class="text-lg font-semibold text-default" :style="{ fontFamily: 'var(--font-display)' }">还没有选校, 开始第一步</h3>
         <p class="mt-2 text-sm text-muted">点上方「一键初始化」导入全部监控大学, 或先去「学校库」收藏几所</p>
@@ -500,7 +500,7 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
       <template #body>
         <div class="space-y-4 p-2">
           <div v-if="drawerLoading" class="flex h-40 items-center justify-center text-muted">
-            <UIcon name="i-lucide-loader" class="size-6 animate-spin" />
+            <UIcon name="i-lucide-loader" class="size-4 animate-spin" />
             <span class="ml-2 text-sm">加载中…</span>
           </div>
           <UAlert

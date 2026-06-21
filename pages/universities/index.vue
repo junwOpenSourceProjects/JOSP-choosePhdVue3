@@ -447,7 +447,7 @@ function reset() {
           </template>
           <template #empty>
             <div class="flex flex-col items-center justify-center gap-2 py-10 text-muted">
-              <UIcon name="i-lucide-search-x" class="size-10" />
+              <UIcon name="i-lucide-search-x" class="size-5" />
               <span class="text-sm">暂无数据, 试试调整筛选</span>
             </div>
           </template>
@@ -468,13 +468,15 @@ function reset() {
             <span class="text-[11px] text-muted">点击切换筛选</span>
           </div>
           <div v-if="isOldTable" class="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-            <button
+            <UButton
               v-for="r in regionDist"
               :key="r.key"
-              type="button"
-              class="flex flex-col gap-1 rounded-xl border border-default bg-white p-3 text-left transition-all hover:border-current hover:shadow-sm"
-              :class="tagState === r.key ? 'border-transparent ring-2' : ''"
-              :style="tagState === r.key ? { background: REGION_COLORS[r.key]?.bg || '#f2f3f5', color: REGION_COLORS[r.key]?.fg || '#222', boxShadow: '0 0 0 2px ' + r.color + ' inset' } : {}"
+              :variant="tagState === r.key ? 'solid' : 'outline'"
+              color="neutral"
+              :ui="{ base: '!flex !flex-col !items-start !gap-1 !rounded-xl !p-3 !h-auto !justify-start hover:!shadow-sm' }"
+              class="!border"
+              :class="tagState === r.key ? '!ring-2' : ''"
+              :style="tagState === r.key ? { background: REGION_COLORS[r.key]?.bg || '#f2f3f5', color: REGION_COLORS[r.key]?.fg || '#222', boxShadow: '0 0 0 2px ' + r.color + ' inset', borderColor: 'transparent' } : { borderColor: 'var(--ui-border)' }"
               @click="tagState = tagState === r.key ? undefined : r.key"
             >
               <div class="flex items-center gap-1.5">
@@ -482,11 +484,11 @@ function reset() {
                 <span class="text-[12px] font-semibold">{{ r.key }}</span>
               </div>
               <span class="text-[18px] font-bold leading-none" :style="{ fontFamily: 'var(--font-data)' }">{{ r.count }}</span>
-              <span class="text-[10px] text-muted">所大学</span>
-            </button>
+              <span class="text-[10px] opacity-70">所大学</span>
+            </UButton>
           </div>
           <div v-else class="flex flex-col items-center justify-center gap-2 py-10 text-center text-muted">
-            <UIcon name="i-lucide-info" class="size-5" />
+            <UIcon name="i-lucide-info" class="size-4" />
             <span class="text-sm">新榜单表 ({{ rankTableItems.find(t => t.value === rankTable)?.label }}) 暂无地区分类, 请切换 QS / US News 查看</span>
           </div>
         </UCard>
@@ -519,7 +521,7 @@ function reset() {
             </NuxtLink>
           </div>
           <div v-else class="flex flex-col items-center justify-center gap-2 py-10 text-center text-muted">
-            <UIcon name="i-lucide-info" class="size-5" />
+            <UIcon name="i-lucide-info" class="size-4" />
             <span class="text-sm">专业分类仅 ARWU 学科 / US News 学科 / EduRank 等新榜单表支持, 请切换榜单查看</span>
           </div>
         </UCard>

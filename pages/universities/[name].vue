@@ -367,10 +367,10 @@ const detailTableRows = computed(() => {
         >
           <div class="flex items-center justify-between">
             <div
-              class="inline-flex size-9 items-center justify-center rounded-xl"
+              class="inline-flex size-7 items-center justify-center rounded-lg"
               :style="{ background: r.color + '15', color: r.color }"
             >
-              <UIcon :name="r.icon" class="size-4.5" />
+              <UIcon :name="r.icon" class="size-4" />
             </div>
             <UBadge
               v-if="r.rank != null"
@@ -423,7 +423,7 @@ const detailTableRows = computed(() => {
           <ChartSvgChart :chart="chartData" :height="280" />
         </div>
         <div v-else class="flex h-60 items-center justify-center gap-2 text-muted">
-          <UIcon name="i-lucide-loader" class="size-5 animate-spin" />
+          <UIcon name="i-lucide-loader" class="size-4 animate-spin" />
           <span class="text-sm">加载中…</span>
         </div>
       </UCard>
