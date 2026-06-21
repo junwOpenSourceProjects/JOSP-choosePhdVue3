@@ -68,6 +68,23 @@ function fillAdmin() {
           </p>
         </div>
 
+        <div class="login-brand__stats">
+          <div class="login-stat">
+            <div class="login-stat__value">2,884</div>
+            <div class="login-stat__label">覆盖大学</div>
+          </div>
+          <div class="login-stat__sep" />
+          <div class="login-stat">
+            <div class="login-stat__value">9</div>
+            <div class="login-stat__label">排名体系</div>
+          </div>
+          <div class="login-stat__sep" />
+          <div class="login-stat">
+            <div class="login-stat__value">10y</div>
+            <div class="login-stat__label">历年数据</div>
+          </div>
+        </div>
+
         <div class="login-brand__features">
           <div class="login-feature">
             <UIcon name="i-lucide-database" class="size-4 text-brand" />
@@ -194,8 +211,6 @@ function fillAdmin() {
   background: var(--color-canvas);
   padding: 48px 56px;
   border-right: 1px solid var(--color-hairline);
-  background-image: radial-gradient(circle at 20% 30%, rgba(20, 86, 240, 0.05) 0%, transparent 40%),
-                    radial-gradient(circle at 80% 70%, rgba(234, 94, 193, 0.04) 0%, transparent 40%);
 }
 @media (max-width: 1023px) {
   .login-brand { display: none; }
@@ -244,6 +259,40 @@ function fillAdmin() {
   flex-direction: column;
   gap: 12px;
   margin-top: 8px;
+}
+.login-brand__stats {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 24px 0;
+  border-top: 1px solid var(--color-hairline);
+  border-bottom: 1px solid var(--color-hairline);
+}
+.login-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.login-stat__value {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1.10;
+  color: var(--color-ink);
+  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+}
+.login-stat__label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-stone);
+}
+.login-stat__sep {
+  width: 1px;
+  height: 48px;
+  background: var(--color-hairline);
 }
 .login-feature {
   display: flex;
