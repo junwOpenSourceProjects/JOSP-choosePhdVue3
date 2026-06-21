@@ -125,14 +125,22 @@ function generateMockChart(_n: string) {
 
 onMounted(load)
 
-// 4 维排名数据 - 4 色区分配色 (金/银/铜/普通 不用于 4 维, 用 4 色 token)
+// 4 维排名数据 - 切换维度: 综合/计算机, 每维度 2 榜 (qs+usnews)
+type RankTab = 'all' | 'cs'
+const rankTab = ref<RankTab>('all')
+const rankTabLabel = computed(() => rankTab.value === 'all' ? '综合' : '计算机')
+
 const rankCards = computed(() => {
   if (!detail.value) return []
   const d = detail.value
+  if (rankTab.value === 'all') {
+    return [
+      { label: 'QS 综合', rank: d.currentQsAllRank, icon: 'i-lucide-globe-2', color: '#1456f0', sparkColor: '#1456f0' },
+      { label: 'US News 综合', rank: d.currentUsnewsAllRank, icon: 'i-lucide-award', color: '#ea5ec1', sparkColor: '#ea5ec1' }
+    ]
+  }
   return [
-    { label: 'QS 综合', rank: d.currentQsAllRank, icon: 'i-lucide-globe-2', color: '#1456f0', sparkColor: '#1456f0' },
     { label: 'QS 计算机', rank: d.currentQsComputerRank, icon: 'i-lucide-cpu', color: '#3b82f6', sparkColor: '#3b82f6' },
-    { label: 'US News 综合', rank: d.currentUsnewsAllRank, icon: 'i-lucide-award', color: '#ea5ec1', sparkColor: '#ea5ec1' },
     { label: 'US News 计算机', rank: d.currentUsnewsComputerRank, icon: 'i-lucide-code-2', color: '#a855f7', sparkColor: '#a855f7' }
   ]
 })
@@ -322,9 +330,33 @@ const detailTableRows = computed(() => {
       />
     </UContainer>
 
-    <!-- 4 维排名卡 (rank-badge + sparkline mini) -->
+    <!-- 4 维排名卡: 2 维 Tab Bar (综合/计算机) + 2 张卡 + 趋势小标 + 全榜单展开 -->
     <UContainer class="py-6">
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 class="text-[20px] font-semibold leading-tight text-default" :style="{ fontFamily: 'var(--font-display)' }">排名卡 (4 维)</h2>
+          <p class="mt-1 text-[12px] text-muted">切综合/计算机 维度, 每维 QS + US News 2 个榜单</p>
+        </div>
+        <UFieldGroup size="sm">
+          <UButton
+            :color="rankTab === 'all' ? 'primary' : 'neutral'"
+            :variant="rankTab === 'all' ? 'solid' : 'outline'"
+            size="sm"
+            icon="i-lucide-globe-2"
+            label="综合"
+            @click="rankTab = 'all'"
+          />
+          <UButton
+            :color="rankTab === 'cs' ? 'primary' : 'neutral'"
+            :variant="rankTab === 'cs' ? 'solid' : 'outline'"
+            size="sm"
+            icon="i-lucide-cpu"
+            label="计算机"
+            @click="rankTab = 'cs'"
+          />
+        </UFieldGroup>
+      </div>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <UCard
           v-for="r in rankCards"
           :key="r.label"

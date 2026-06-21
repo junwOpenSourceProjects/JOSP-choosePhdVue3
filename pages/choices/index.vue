@@ -227,45 +227,67 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
 
     <!-- 4 stats + stepper 流程叙事 -->
     <UContainer class="pt-4">
-      <!-- 决策流程 stepper -->
-      <div class="stepper mb-4">
-        <div class="stepper__item stepper__item--done">
-          <span class="stepper__dot" />
-          <span>1. 导入</span>
+      <!-- 决策流程 stepper (3 step, 当前脉冲光晕) -->
+      <div class="mb-6 flex items-center justify-center gap-1">
+        <div class="flex flex-col items-center gap-1.5">
+          <div class="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white" :style="{ background: 'var(--gradient-step-done)' }">
+            <UIcon name="i-lucide-check" class="size-4" />
+          </div>
+          <span class="text-[11px] font-semibold" :style="{ color: 'var(--color-brand-900)' }">1. 导入</span>
         </div>
-        <div class="stepper__divider" />
-        <div class="stepper__item stepper__item--active">
-          <span class="stepper__dot" />
-          <span>2. 评估</span>
+        <div class="mx-2 h-0.5 w-16 sm:w-28" :style="{ background: 'var(--gradient-step-line)' }" />
+        <div class="flex flex-col items-center gap-1.5">
+          <div class="relative flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white shadow-lg" :style="{ background: 'var(--gradient-step-active)', boxShadow: '0 0 0 4px rgba(20,86,240,0.15), 0 0 0 8px rgba(20,86,240,0.08)' }">
+            2
+            <span class="absolute inset-0 animate-ping rounded-full opacity-30" :style="{ background: 'var(--color-brand-900)' }" />
+          </div>
+          <span class="text-[11px] font-semibold" :style="{ color: 'var(--color-brand-900)' }">2. 评估</span>
         </div>
-        <div class="stepper__divider" />
-        <div class="stepper__item">
-          <span class="stepper__dot" />
-          <span>3. 决策</span>
+        <div class="mx-2 h-0.5 w-16 bg-default sm:w-28" />
+        <div class="flex flex-col items-center gap-1.5 opacity-50">
+          <div class="flex h-9 w-9 items-center justify-center rounded-full border-2 border-default bg-white text-sm font-bold text-muted">3</div>
+          <span class="text-[11px] font-medium text-muted">3. 决策</span>
         </div>
       </div>
-      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <!-- 4 stats card (0 数据 → 引导插画; > 0 → 数字 + mini 进度条) -->
+      <div v-if="stats.total === 0" class="rounded-3xl border-2 border-dashed border-default bg-[var(--color-surface-1)] p-12 text-center">
+        <div class="mx-auto mb-4 flex size-16 items-center justify-center rounded-full" :style="{ background: 'rgba(20, 86, 240, 0.08)' }">
+          <UIcon name="i-lucide-target" class="size-8" :style="{ color: 'var(--color-brand-900)' }" />
+        </div>
+        <h3 class="text-lg font-semibold text-default" :style="{ fontFamily: 'var(--font-display)' }">还没有选校, 开始第一步</h3>
+        <p class="mt-2 text-sm text-muted">点上方「一键初始化」导入全部监控大学, 或先去「学校库」收藏几所</p>
+        <div class="mt-5 flex flex-wrap justify-center gap-2">
+          <UButton to="/universities" color="primary" variant="solid" size="md" icon="i-lucide-search" label="去学校库" />
+          <UButton color="neutral" variant="outline" size="md" icon="i-lucide-zap" label="一键初始化" :loading="saving" @click="batchInit" />
+        </div>
+      </div>
+      <div v-else class="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <UCard
           v-for="s in [
-            { key: 'total', label: '清单总数', value: stats.total, brand: false },
-            { key: 'considered', label: '正在考虑', value: stats.considered, brand: true },
-            { key: 'strong', label: '强校 (2)', value: stats.strong, brand: false },
-            { key: 'medium', label: '中校 (1)', value: stats.medium, brand: false }
+            { key: 'total', label: '清单总数', value: stats.total, color: '#222', hint: '所大学', percent: 100 },
+            { key: 'considered', label: '正在考虑', value: stats.considered, color: 'var(--color-brand-900)', hint: '已标记', percent: stats.total ? Math.round(stats.considered / stats.total * 100) : 0 },
+            { key: 'strong', label: '强校', value: stats.strong, color: '#22c55e', hint: 'QS/US 双强', percent: stats.total ? Math.round(stats.strong / stats.total * 100) : 0 },
+            { key: 'medium', label: '中校', value: stats.medium, color: '#f59e0b', hint: '评估待定', percent: stats.total ? Math.round(stats.medium / stats.total * 100) : 0 }
           ]"
           :key="s.key"
           :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-4' }"
         >
-          <div class="text-xs text-muted">{{ s.label }}</div>
-          <div
-            class="mt-1 text-[28px] font-semibold leading-none"
-            :class="s.brand ? 'text-[var(--color-brand-900)]' : 'text-default'"
-            :style="{ fontFamily: 'var(--font-display)' }"
-          >{{ s.value }}</div>
+          <div class="flex items-center justify-between text-xs text-muted">
+            <span>{{ s.label }}</span>
+            <span class="font-mono text-[10px]">{{ s.percent }}%</span>
+          </div>
+          <div class="mt-1.5 flex items-baseline gap-1">
+            <span class="text-[28px] font-semibold leading-none" :style="{ color: s.color, fontFamily: 'var(--font-display)' }">{{ s.value }}</span>
+            <span class="text-[11px] text-muted">{{ s.hint }}</span>
+          </div>
+          <div class="mt-2 h-1 w-full overflow-hidden rounded-full bg-[var(--color-surface-2)]">
+            <div class="h-full rounded-full transition-all" :style="{ width: s.percent + '%', background: s.color }" />
+          </div>
         </UCard>
       </div>
     </UContainer>
 
-    <!-- Filter toolbar -->
+    <!-- Filter toolbar (视觉分组) -->
     <UContainer class="pt-4">
       <UCard
         :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-4 sm:p-5 space-y-3' }"
@@ -274,39 +296,53 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
           <UInput
             v-model="search"
             icon="i-lucide-search"
-            placeholder="搜索大学名称..."
+            placeholder="搜索大学名称 (支持中/英)..."
             size="md"
             class="flex-1 min-w-[200px]"
           />
-          <UFieldGroup size="sm">
-            <UButton
-              v-for="c in considerItems"
-              :key="c.value"
-              :color="filterConsider === c.value ? 'primary' : 'neutral'"
-              :variant="filterConsider === c.value ? 'solid' : 'outline'"
-              :label="c.label"
-              size="sm"
-              @click="filterConsider = c.value"
-            />
-          </UFieldGroup>
-          <UFieldGroup size="sm">
-            <UButton
-              v-for="c in levelItems"
-              :key="c.value"
-              :color="filterLevel === c.value ? 'primary' : 'neutral'"
-              :variant="filterLevel === c.value ? 'solid' : 'outline'"
-              :label="c.label"
-              size="sm"
-              @click="filterLevel = c.value"
-            />
-          </UFieldGroup>
           <USelectMenu
             v-model="sortBy"
             :items="sortByItems"
             value-key="value"
             size="md"
             class="ml-auto min-w-[160px]"
-          />
+          >
+            <template #leading>
+              <UIcon name="i-lucide-arrow-up-down" class="size-4" />
+            </template>
+          </USelectMenu>
+        </div>
+        <div class="flex flex-wrap items-center gap-4 border-t border-default pt-3">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-muted">状态</span>
+            <UFieldGroup size="sm">
+              <UButton
+                v-for="c in considerItems"
+                :key="c.value"
+                :color="filterConsider === c.value ? 'primary' : 'neutral'"
+                :variant="filterConsider === c.value ? 'solid' : 'outline'"
+                :icon="c.value === 'yes' ? 'i-lucide-check' : c.value === 'no' ? 'i-lucide-x' : 'i-lucide-list'"
+                :label="c.label"
+                size="sm"
+                @click="filterConsider = c.value"
+              />
+            </UFieldGroup>
+          </div>
+          <div class="h-5 w-px bg-default" />
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-muted">强度</span>
+            <UFieldGroup size="sm">
+              <UButton
+                v-for="c in levelItems"
+                :key="c.value"
+                :color="filterLevel === c.value ? 'primary' : 'neutral'"
+                :variant="filterLevel === c.value ? 'solid' : 'outline'"
+                :label="c.label"
+                size="sm"
+                @click="filterLevel = c.value"
+              />
+            </UFieldGroup>
+          </div>
         </div>
 
         <UAlert

@@ -279,32 +279,90 @@ function reset() {
 
 <template>
   <div>
-    <!-- Page Hero -->
-    <UContainer class="pt-12 pb-6">
-      <h1 class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl" :style="{ fontFamily: 'var(--font-display)' }">学校库</h1>
-      <p class="mt-2 text-base text-muted">多源排名 · 多维过滤 · 一目了然</p>
-    </UContainer>
+    <!-- Page Hero (品牌色 Hero + 搜索嵌入 + 装饰球) -->
+    <section class="hero-with-orb relative overflow-hidden py-14 md:py-20">
+      <UContainer>
+        <div class="grid items-center gap-8 md:grid-cols-[1.1fr_1fr]">
+          <div>
+            <UBadge color="primary" variant="subtle" size="md" class="mb-4">
+              <UIcon name="i-lucide-library" class="size-3.5" />
+              <span class="ml-1.5">{{ total > 0 ? total.toLocaleString() : '2,884' }} 所大学 · 8 大排名体系</span>
+            </UBadge>
+            <h1 class="text-4xl font-medium leading-[1.10] tracking-tight text-default sm:text-5xl md:text-[52px]" :style="{ fontFamily: 'var(--font-display)' }">
+              学校库
+            </h1>
+            <p class="mt-3 text-base font-medium leading-relaxed text-muted md:text-lg">
+              多源排名 · 多维过滤 · 一目了然
+            </p>
+            <div class="mt-5 flex flex-wrap gap-2">
+              <UBadge v-for="r in [10, 20, 50, 100, 200].map(v => ({ v, l: 'Top ' + v }))" :key="r.v" :color="maxRank === r.v ? 'primary' : 'neutral'" :variant="maxRank === r.v ? 'solid' : 'soft'" size="sm" :label="r.l" class="cursor-pointer" @click="maxRank = r.v" />
+            </div>
+          </div>
+          <div class="flex items-center justify-end">
+            <div class="grid grid-cols-2 gap-3 text-center md:gap-4">
+              <div class="rounded-2xl border border-default bg-white px-5 py-4 shadow-sm">
+                <div class="text-[10px] font-medium uppercase tracking-wider text-muted">院校</div>
+                <div class="mt-1 text-3xl font-bold leading-none text-[var(--color-brand-900)]" :style="{ fontFamily: 'var(--font-display)' }">{{ total > 0 ? total.toLocaleString() : '2,884' }}</div>
+                <div class="mt-1 text-[11px] text-muted">所大学</div>
+              </div>
+              <div class="rounded-2xl border border-default bg-white px-5 py-4 shadow-sm">
+                <div class="text-[10px] font-medium uppercase tracking-wider text-muted">排名</div>
+                <div class="mt-1 text-3xl font-bold leading-none text-[var(--color-brand-pink)]" :style="{ fontFamily: 'var(--font-display)' }">8</div>
+                <div class="mt-1 text-[11px] text-muted">权威体系</div>
+              </div>
+              <div class="rounded-2xl border border-default bg-white px-5 py-4 shadow-sm">
+                <div class="text-[10px] font-medium uppercase tracking-wider text-muted">跨度</div>
+                <div class="mt-1 text-3xl font-bold leading-none text-[var(--color-brand-900)]" :style="{ fontFamily: 'var(--font-display)' }">10</div>
+                <div class="mt-1 text-[11px] text-muted">年 (2018-2027)</div>
+              </div>
+              <div class="rounded-2xl border border-default bg-white px-5 py-4 shadow-sm">
+                <div class="text-[10px] font-medium uppercase tracking-wider text-muted">数据</div>
+                <div class="mt-1 text-3xl font-bold leading-none text-[var(--color-brand-pink)]" :style="{ fontFamily: 'var(--font-display)' }">158k+</div>
+                <div class="mt-1 text-[11px] text-muted">行级排名</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </UContainer>
+    </section>
 
-    <!-- Toolbar -->
+    <!-- Toolbar (单行 + 搜索框聚焦) -->
     <UContainer>
       <ClientOnly>
-      <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-5 sm:p-6 space-y-4' }">
+      <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-4 sm:p-5 space-y-3' }">
         <div class="flex flex-wrap items-center gap-3">
-          <UInput v-model="search" icon="i-lucide-search" placeholder="搜索大学名称..." size="md" class="flex-1 min-w-[240px]" />
-          <USelectMenu v-model="rankTable" :items="rankTableItems" value-key="value" placeholder="榜单类型" size="md" class="min-w-[180px]" />
-          <UButton icon="i-lucide-rotate-ccw" color="neutral" variant="outline" size="md" label="重置" @click="reset" />
+          <UInput v-model="search" icon="i-lucide-search" placeholder="搜索大学名称 (清华 / MIT / 麻省)..." size="lg" class="flex-1 min-w-[280px]" />
+          <USelectMenu v-model="rankTable" :items="rankTableItems" value-key="value" size="lg" class="min-w-[180px]">
+            <template #leading>
+              <UIcon name="i-lucide-layers" class="size-4" />
+            </template>
+          </USelectMenu>
+          <UButton icon="i-lucide-rotate-ccw" color="neutral" variant="outline" size="lg" label="重置" @click="reset" />
         </div>
-        <div class="flex flex-wrap items-center gap-3">
-          <USelectMenu v-model="tagState" :items="tagStateOptions" value-key="value" placeholder="洲 (全部)" size="md" class="min-w-[140px]" />
-          <USelectMenu v-model="maxRank" :items="maxRankItems" value-key="value" size="md" class="min-w-[120px]" />
-          <USelectMenu v-if="!isOldTable" v-model="yearFilter" :items="yearFilterItems" value-key="value" placeholder="全部年份" size="md" class="min-w-[140px]" />
-          <div class="inline-flex items-center gap-1 rounded-full border border-default bg-white px-3 py-1.5 text-[13px]">
-            <span class="text-muted">排序</span>
-            <span class="font-semibold text-default">{{ sortByLabel }}</span>
-            <UIcon :name="sortIcon" class="size-3.5 text-[var(--color-brand-900)]" />
-          </div>
-          <div class="ml-auto text-[13px] text-muted">
-            共 <strong class="text-default">{{ total.toLocaleString() }}</strong> 所大学
+        <div class="flex flex-wrap items-center gap-2.5">
+          <USelectMenu v-model="tagState" :items="tagStateOptions" value-key="value" placeholder="洲 (全部)" size="md" class="min-w-[140px]">
+            <template #leading>
+              <UIcon name="i-lucide-globe-2" class="size-4" />
+            </template>
+          </USelectMenu>
+          <USelectMenu v-model="maxRank" :items="maxRankItems" value-key="value" size="md" class="min-w-[120px]">
+            <template #leading>
+              <UIcon name="i-lucide-trophy" class="size-4" />
+            </template>
+          </USelectMenu>
+          <USelectMenu v-if="!isOldTable" v-model="yearFilter" :items="yearFilterItems" value-key="value" placeholder="全部年份" size="md" class="min-w-[140px]">
+            <template #leading>
+              <UIcon name="i-lucide-calendar" class="size-4" />
+            </template>
+          </USelectMenu>
+          <USelectMenu v-model="sortBy" :items="sortByItems" value-key="value" size="md" class="min-w-[140px]">
+            <template #leading>
+              <UIcon :name="sortIcon" class="size-4" />
+            </template>
+          </USelectMenu>
+          <div class="ml-auto inline-flex items-center gap-1.5 rounded-full bg-[var(--color-surface-1)] px-3 py-1.5 text-[12px] font-medium text-default">
+            <UIcon name="i-lucide-database" class="size-3.5 text-[var(--color-brand-900)]" />
+            共 <strong class="text-[var(--color-brand-900)]">{{ total.toLocaleString() }}</strong> 所大学
           </div>
         </div>
         <UAlert v-if="error" color="warning" variant="subtle" :title="error" icon="i-lucide-alert-circle" />
