@@ -1,11 +1,21 @@
 <script setup lang="ts">
 import { queryAllEcharts } from '~/lib/api/university'
-import { trendAllVariants, listEchartsUniversities, queryBackup2List, fetchBackup2Tables } from '~/lib/api/ranking'
+import { trendAllVariants, queryBackup2List, fetchBackup2Tables, fetchBackup2Years } from '~/lib/api/ranking'
 
 useHead({ title: '数据图表 · 选校系统' })
 
-// ============ 状态 ============
-const allData = ref<any>(null)        // 后端 queryAllEcharts 原始: { chatData: { series }, legendData }
+// ============ 顶部 tab: 4 大视图模式 ============
+type Mode = 'ranking' | 'variants' | 'subject' | 'region'
+const mode = ref<Mode>('ranking')
+const modeTabs: { value: Mode; label: string; icon: string; desc: string }[] = [
+  { value: 'ranking', label: '排名榜 + 对比', icon: 'i-lucide-bar-chart-3', desc: '看全部 + 加进我的对比' },
+  { value: 'variants', label: '4 维多校对比', icon: 'i-lucide-git-compare', desc: '勾几所大学, 看 QS/US News/计算机 4 维' },
+  { value: 'subject', label: '按专业排序', icon: 'i-lucide-book-marked', desc: 'ARWU 学科 / US News 学科 分类' },
+  { value: 'region', label: '按地区联动', icon: 'i-lucide-globe-2', desc: '选洲 → 看国家 → 看院校' }
+]
+
+// ============ 通用 ============
+const allData = ref<any>(null)        // queryAllEcharts 原始
 const loading = ref(false)
 const error = ref<string | null>(null)
 const currentRank = ref<number>(50)   // Top 50
@@ -16,7 +26,6 @@ const rankItems = [
   { value: 100, label: 'Top 100' }
 ]
 
-// ============ 数据加载 ============
 async function loadAll() {
   loading.value = true
   error.value = null
@@ -25,7 +34,7 @@ async function loadAll() {
     allData.value = data
   } catch (e: any) {
     console.warn('[charts] loadAll failed', e?.message)
-    error.value = '后端不可达, 显示 mock 数据'
+    error.value = '后端不可达'
     allData.value = generateMockAll(currentRank.value)
   } finally {
     loading.value = false
@@ -48,11 +57,14 @@ function generateMockAll(rank: number) {
   }
 }
 
-// ============ 数据派生 ============
+onMounted(loadAll)
+watch(currentRank, loadAll)
+
+// ============ 派生数据 ============
 const years = computed(() => allData.value?.legendData ?? [])
 const series = computed(() => allData.value?.chatData?.series ?? [])
 
-/** Ranking Board: 一行一校,排序按最新一年 (data 最后一位) 升序 */
+/** Ranking Board: 一行一校,排序按最新一年升序 */
 const rankingBoard = computed(() => {
   return series.value
     .map((s: any) => {
@@ -61,66 +73,16 @@ const rankingBoard = computed(() => {
       const first = data[0] ?? last
       const max = data.length ? Math.max(...data) : last
       const min = data.length ? Math.min(...data.filter((v: any) => typeof v === 'number' && v > 0)) : last
-      // 趋势: latest - earliest (负数 = 上升)
       const trend = last - first
       let tone: 'up' | 'down' | 'flat' = 'flat'
       if (trend < -3) tone = 'up'
       else if (trend > 3) tone = 'down'
-      return {
-        name: s.name,
-        country: s.country,
-        region: s.region,
-        data,
-        last,
-        max,
-        min,
-        trend,
-        tone
-      }
+      return { name: s.name, country: s.country, region: s.region, data, last, max, min, trend, tone }
     })
     .filter((r: any) => r.last > 0 && r.last <= currentRank.value)
     .sort((a: any, b: any) => a.last - b.last)
 })
 
-/** 地区分布: 用 rankingBoard (已按 currentRank 过滤) 计算, 不用全 series */
-const regionDist = computed(() => {
-  const buckets: Record<string, { count: number; totalRank: number; names: string[] }> = {}
-  for (const r of rankingBoard.value) {
-    // 优先用后端返的 country 字段 (从 university_tags 来), 后端没返时降级用启发式
-    const country = (r.country && r.country.trim()) || guessCountry(r.name) || '未知'
-    if (!buckets[country]) buckets[country] = { count: 0, totalRank: 0, names: [] }
-    buckets[country].count += 1
-    buckets[country].totalRank += r.last
-    buckets[country].names.push(r.name)
-  }
-  return Object.entries(buckets)
-    .map(([country, v]) => ({
-      country,
-      count: v.count,
-      avgRank: v.count ? Math.round(v.totalRank / v.count) : 0,
-      names: v.names
-    }))
-    .sort((a, b) => b.count - a.count)
-})
-
-/** 根据大学名称快速判断国家 (启发式, 跟 raw qs 排名文件用同一语义) */
-function guessCountry(name: string): string {
-  // 简化: 按常见关键词
-  if (name.includes('中国') || name.includes('清华') || name.includes('北大') || name.includes('香港') || name.includes('台湾')) return '中国大陆/港台'
-  if (name.includes('美') || name.includes('加州') || name.includes('纽约') || name.includes('麻省') || name.includes('德州')) return '美国'
-  if (name.includes('英') || name.includes('伦敦') || name.includes('剑桥') || name.includes('牛津') || name.includes('帝国')) return '英国'
-  if (name.includes('日本') || name.includes('东京') || name.includes('京都')) return '日本'
-  if (name.includes('澳')) return '澳大利亚'
-  if (name.includes('加坡')) return '新加坡'
-  if (name.includes('瑞士') || name.includes('苏黎世') || name.includes('联邦')) return '瑞士'
-  if (name.includes('加拿大')) return '加拿大'
-  if (name.includes('德国') || name.includes('柏林') || name.includes('慕尼黑')) return '德国'
-  if (name.includes('法国') || name.includes('巴黎')) return '法国'
-  if (name.includes('韩')) return '韩国'
-  return '其他'
-}
-
-/** 4 个 KPI */
 const kpis = computed(() => {
   const n = rankingBoard.value.length
   const up = rankingBoard.value.filter((r: any) => r.tone === 'up').length
@@ -134,7 +96,7 @@ const kpis = computed(() => {
   ]
 })
 
-// ============ 我的对比 (watchlist) ============
+// ============ 模式 1: 排名榜 + 对比 (watchlist) ============
 const watchlist = ref<string[]>([])
 const MAX_WATCHLIST = 5
 
@@ -144,171 +106,242 @@ function toggleWatch(name: string) {
     watchlist.value.splice(idx, 1)
   } else {
     if (watchlist.value.length >= MAX_WATCHLIST) {
-      // FIFO: 移除最早加入的
       watchlist.value.shift()
     }
     watchlist.value.push(name)
   }
 }
+function isWatching(name: string): boolean { return watchlist.value.includes(name) }
+const watchSeries = computed(() => watchlist.value.map(name => series.value.find((s: any) => s.name === name)).filter(Boolean))
+const watchChart = computed(() => ({ chatData: { series: watchSeries.value }, legendData: years.value }))
+function clearWatch() { watchlist.value = [] }
 
-function isWatching(name: string): boolean {
-  return watchlist.value.includes(name)
-}
+// ============ 模式 2: 4 维多校对比 (variants) ============
+// 思路: 用户勾几所大学 → 拉 trendAllVariants 单校 4 维 → 拼成一图 (N*4 条线)
+const selectedForVariants = ref<string[]>([])
+const variantCharts = ref<Record<string, any>>({})  // { uniName: trendAllVariants 返的 chartData }
+const variantLoading = ref(false)
 
-const watchSeries = computed(() => {
-  return watchlist.value
-    .map(name => series.value.find((s: any) => s.name === name))
-    .filter(Boolean)
-})
+const variantColors = ['#1456f0', '#ea5ec1', '#10b981', '#f59e0b', '#a855f7', '#06b6d4']
+function variantColor(idx: number) { return variantColors[idx % variantColors.length] }
 
-const watchChart = computed(() => {
-  return {
-    chatData: { series: watchSeries.value },
-    legendData: years.value
+async function loadVariantChart(name: string) {
+  if (variantCharts.value[name]) return
+  try {
+    const res = await trendAllVariants(name) as any
+    const chartData = res?.chatData ?? res?.data?.chatData ?? res
+    if (chartData?.series) variantCharts.value[name] = chartData
+  } catch (e) {
+    console.warn(`[charts] trendAllVariants failed for ${name}`, e)
   }
-})
-
-function clearWatch() {
-  watchlist.value = []
 }
 
-// ============ 7 张新表: 分类分布 (bar chart) ============
-const backup2CategoryDist = ref<Array<{ rankTable: string; label: string; categories: Array<{ name: string; count: number }> }>>([])
-const backup2DistLoading = ref(false)
+watch([selectedForVariants, currentRank], async () => {
+  if (mode.value !== 'variants') return
+  variantLoading.value = true
+  // 拉所有选中校的 4 维
+  await Promise.all(selectedForVariants.value.map(loadVariantChart))
+  variantLoading.value = false
+}, { deep: true })
 
-const BACKUP2_LABEL_MAP: Record<string, string> = {
+const variantMergedChart = computed(() => {
+  const mergedSeries: any[] = []
+  let years: string[] = []
+  for (const name of selectedForVariants.value) {
+    const chart = variantCharts.value[name]
+    if (!chart?.series) continue
+    if (!years.length) years = chart.legendData ?? []
+    for (const s of chart.series) {
+      mergedSeries.push({ ...s, name: `${name} · ${s.name.replace(/^.*?·\s*/, '')}` })
+    }
+  }
+  return { chatData: { series: mergedSeries }, legendData: years }
+})
+
+// ============ 模式 3: 按专业排序 (subject) ============
+const subjectRankTable = ref<string>('arwu_subject')
+const subjectYear = ref<string | undefined>(undefined)
+const subjectRankLimit = ref<number>(50)
+const subjectList = ref<any[]>([])
+const subjectLoading = ref(false)
+const subjectCategoryDist = ref<{ name: string; count: number }[]>([])
+
+const SUBJECT_TABLES: Record<string, string> = {
   arwu_subject: 'ARWU 学科',
   usnews_subject: 'US News 学科',
-  mosiur_world: 'MOSIUR 全球',
-  rur_world: 'RUR 全球',
   qs_sustainability: 'QS 可持续',
   declining_trend: '下降趋势',
   edurank_region: 'EduRank 地区'
 }
+const subjectTableItems = Object.entries(SUBJECT_TABLES).map(([k, v]) => ({ value: k, label: v }))
 
-async function loadBackup2Dist() {
-  backup2DistLoading.value = true
-  const rankTables = Object.keys(BACKUP2_LABEL_MAP)
-  // 7 张表各拿最多 500 条 (够算出 category 分布, 不需要全量)
-  const results = await Promise.allSettled(
-    rankTables.map(rt => queryBackup2List({ page: 1, limit: 500, rankTable: rt }) as any)
-  )
-  const groups: typeof backup2CategoryDist.value = []
-  results.forEach((r, i) => {
-    if (r.status !== 'fulfilled') return
-    const records: any[] = r.value?.data?.records ?? r.value?.records ?? []
-    if (records.length === 0) return
-    // 按 rankingCategory (或 rankingYear) 分组
-    const buckets: Record<string, number> = {}
-    for (const rec of records) {
-      const key = rec.rankingCategory || rec.rankingYear || '其他'
-      buckets[key] = (buckets[key] || 0) + 1
+const subjectYears = ref<string[]>([])
+async function loadSubjectYears() {
+  if (!subjectRankTable.value) return
+  try {
+    const res = await fetchBackup2Years(subjectRankTable.value) as any
+    subjectYears.value = res?.data ?? res ?? []
+    if (subjectYears.value.length && !subjectYear.value) subjectYear.value = subjectYears.value[0]
+  } catch (e) { subjectYears.value = [] }
+}
+watch(subjectRankTable, () => { subjectYear.value = undefined; subjectYears.value = []; loadSubjectYears() })
+
+async function loadSubject() {
+  if (mode.value !== 'subject') return
+  subjectLoading.value = true
+  try {
+    const res = await queryBackup2List({
+      page: 1, limit: 500,
+      rankTable: subjectRankTable.value,
+      rankingYear: subjectYear.value || undefined,
+      currentRankLimit: subjectRankLimit.value
+    }) as any
+    const records: any[] = res?.records ?? res?.data?.records ?? []
+    subjectList.value = records.sort((a, b) => (a.currentRankInteger ?? 9999) - (b.currentRankInteger ?? 9999))
+    // 分类分布
+    const map = new Map<string, number>()
+    for (const r of records) {
+      const k = r.rankingCategory || '未分类'
+      map.set(k, (map.get(k) || 0) + 1)
     }
-    const categories = Object.entries(buckets)
+    subjectCategoryDist.value = Array.from(map.entries())
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 12)  // 最多显示 12 个
-    if (categories.length > 0) {
-      groups.push({ rankTable: rankTables[i], label: BACKUP2_LABEL_MAP[rankTables[i]], categories })
+      .slice(0, 12)
+  } catch (e) {
+    console.warn('[charts] loadSubject failed', e)
+    subjectList.value = []
+  } finally {
+    subjectLoading.value = false
+  }
+}
+watch([mode, subjectRankTable, subjectYear, subjectRankLimit], loadSubject)
+onMounted(async () => { await loadSubjectYears(); loadSubject() })
+
+// ============ 模式 4: 按地区联动 (region) ============
+const selectedRegion = ref<string | undefined>(undefined)
+const regionCountryDist = ref<{ name: string; count: number }[]>([])
+const regionCountryList = ref<any[]>([])
+const regionLoading = ref(false)
+
+const REGION_TABS: { value: string; label: string; color: string }[] = [
+  { value: '亚洲', label: '亚洲', color: '#ea5ec1' },
+  { value: '欧洲', label: '欧洲', color: '#1456f0' },
+  { value: '北美洲', label: '北美洲', color: '#f59e0b' },
+  { value: '南美洲', label: '南美洲', color: '#22c55e' },
+  { value: '大洋洲', label: '大洋洲', color: '#a855f7' },
+  { value: '非洲', label: '非洲', color: '#ef4444' }
+]
+
+async function loadRegion() {
+  if (mode.value !== 'region') return
+  regionLoading.value = true
+  try {
+    // 用 queryAllQs 拉当前 currentRank 范围内的学校
+    const { queryAllQs } = await import('~/lib/api/university')
+    const res = await queryAllQs({
+      page: 1, limit: 500, rankVariant: 'all',
+      universityTagsState: selectedRegion.value,
+      currentRank: 200
+    }) as any
+    const records: any[] = res?.records ?? res?.data?.records ?? []
+    // 国家级分布
+    const map = new Map<string, number>()
+    for (const r of records) {
+      const k = r.universityTags || '未知'
+      map.set(k, (map.get(k) || 0) + 1)
     }
-  })
-  // 按 category 数量降序
-  groups.sort((a, b) => b.categories.length - a.categories.length)
-  backup2CategoryDist.value = groups
-  backup2DistLoading.value = false
+    regionCountryDist.value = Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 15)
+    regionCountryList.value = records.slice(0, 100)
+  } catch (e) {
+    console.warn('[charts] loadRegion failed', e)
+  } finally {
+    regionLoading.value = false
+  }
 }
+watch([mode, selectedRegion], loadRegion)
+onMounted(loadRegion)
 
-function categoryBarColor(idx: number): string {
-  // 12 色渐变
-  const palette = [
-    '#1456f0', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#a855f7',
-    '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#06b6d4'
-  ]
-  return palette[idx % palette.length]
-}
-
-onMounted(() => {
-  loadBackup2Dist().catch(e => console.warn('[charts] backup2 dist failed', e))
-})
-
-// ============ Trend helpers ============
+// ============ helpers ============
 function trendIcon(tone: string): string {
   if (tone === 'up') return 'i-lucide-trending-up'
   if (tone === 'down') return 'i-lucide-trending-down'
   return 'i-lucide-minus'
 }
-
 function trendColor(tone: string): string {
   if (tone === 'up') return 'text-emerald-600'
   if (tone === 'down') return 'text-red-500'
   return 'text-muted'
 }
-
 function trendLabel(tone: string, trend: number): string {
   if (tone === 'up') return `↑ ${Math.abs(trend)}`
   if (tone === 'down') return `↓ ${Math.abs(trend)}`
   return '— 0'
 }
-
-// 排名徽章 tier (跟 universities 一致)
-function rankBadgeTier(rank: number): string {
+function rankBadgeTier(rank: number | null | undefined): string {
+  if (rank == null) return 'rank-badge--normal'
   if (rank <= 3) return 'rank-badge--gold'
   if (rank <= 10) return 'rank-badge--silver'
   if (rank <= 50) return 'rank-badge--bronze'
   return 'rank-badge--normal'
 }
-
-// 地区色 token (跟 universities 一致, 6 大洲)
-const REGION_BAR_COLORS: Record<string, string> = {
-  '美国': '#1456f0',
-  '英国': '#3b82f6',
-  '中国': '#ea5ec1',
-  '中国大陆/港台': '#ea5ec1',
-  '瑞士': '#a855f7',
-  '日本': '#f59e0b',
-  '新加坡': '#22c55e',
-  '澳大利亚': '#10b981',
-  '加拿大': '#0ea5e9',
-  '德国': '#1d4ed8',
-  '法国': '#1d4ed8',
-  '韩国': '#ec4899',
-  '其他': '#8e8e93',
-  '未知': '#8e8e93'
-}
-function countryBarColor(country: string): string {
-  return REGION_BAR_COLORS[country] ?? '#1456f0'
-}
-
-// mini sparkline SVG path
 function sparklinePath(data: number[], width = 100, height = 28): string {
   if (!data.length) return ''
   const maxV = Math.max(...data, 10) * 1.1
   const minV = 0
   const xStep = data.length > 1 ? width / (data.length - 1) : 0
-  return data
-    .map((v, i) => {
-      const x = i * xStep
-      const y = height - ((v - minV) / (maxV - minV)) * height
-      return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`
-    })
-    .join(' ')
+  return data.map((v, i) => {
+    const x = i * xStep
+    const y = height - ((v - minV) / (maxV - minV)) * height
+    return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`
+  }).join(' ')
 }
-
-onMounted(() => loadAll())
-watch(currentRank, () => loadAll())
+function toggleSelect(name: string) {
+  const idx = selectedForVariants.value.indexOf(name)
+  if (idx >= 0) selectedForVariants.value.splice(idx, 1)
+  else if (selectedForVariants.value.length < 6) selectedForVariants.value.push(name)
+}
 </script>
 
 <template>
   <div>
-    <UContainer class="py-10">
+    <!-- Hero -->
+    <UContainer class="pt-10 pb-4">
+      <h1 class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl" :style="{ fontFamily: 'var(--font-display)' }">数据图表</h1>
+      <p class="mt-2 text-base text-muted">趋势 · 对比 · 洞察 · 让选校决策有数</p>
+    </UContainer>
+
+    <!-- 4 大视图 mode tab -->
+    <UContainer class="pt-2">
+      <div class="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <button
+          v-for="m in modeTabs"
+          :key="m.value"
+          type="button"
+          class="flex flex-col items-start gap-1 rounded-xl border bg-white p-3.5 text-left transition-all"
+          :class="mode === m.value ? 'border-transparent shadow-md' : 'border-default hover:border-[var(--color-brand-900)]'"
+          :style="mode === m.value ? { background: 'var(--gradient-card-featured)', color: '#fff', boxShadow: 'var(--shadow-brand)' } : {}"
+          @click="mode = m.value"
+        >
+          <div class="flex items-center gap-1.5">
+            <UIcon :name="m.icon" class="size-4" />
+            <span class="text-sm font-semibold">{{ m.label }}</span>
+          </div>
+          <span class="text-[11px] opacity-80">{{ m.desc }}</span>
+        </button>
+      </div>
+    </UContainer>
+
+    <UContainer v-if="error" class="pt-4">
+      <UAlert color="warning" variant="subtle" :title="error" icon="i-lucide-alert-circle" />
+    </UContainer>
+
+    <!-- 通用 toolbar: Top N 选择 + KPI (ranking/variants 显示) -->
+    <UContainer v-if="mode === 'ranking' || mode === 'variants'" class="py-4">
       <div class="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1
-            class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl"
-            :style="{ fontFamily: 'var(--font-display)' }"
-          >数据图表</h1>
-          <p class="mt-2 text-base text-muted">趋势 · 对比 · 洞察 · 让选校决策有数</p>
-        </div>
         <UFieldGroup size="sm">
           <UButton
             v-for="r in rankItems"
@@ -320,306 +353,358 @@ watch(currentRank, () => loadAll())
             @click="currentRank = r.value"
           />
         </UFieldGroup>
+        <div class="text-[12px] text-muted">筛选 QS / US News Top {{ currentRank }} 范围</div>
       </div>
     </UContainer>
 
-    <UContainer v-if="error">
-      <UAlert
-        color="warning"
-        variant="subtle"
-        :title="error"
-        icon="i-lucide-alert-circle"
-      />
-    </UContainer>
-
-    <!-- KPI 4 卡 -->
-    <UContainer class="pb-2">
+    <!-- KPI 4 卡 (只 ranking/variants 显示) -->
+    <UContainer v-if="mode === 'ranking' || mode === 'variants'" class="pb-2">
       <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <UCard
-          v-for="k in kpis"
-          :key="k.label"
-          :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-5' }"
-        >
+        <UCard v-for="k in kpis" :key="k.label" :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-5' }">
           <div class="text-[12px] font-medium text-muted">{{ k.label }}</div>
-          <div
-            class="mt-2 text-[36px] font-semibold leading-none tracking-tight"
-            :style="{ color: k.color, fontFamily: 'var(--font-display)' }"
-          >{{ k.value }}</div>
+          <div class="mt-2 text-[36px] font-semibold leading-none tracking-tight" :style="{ color: k.color, fontFamily: 'var(--font-display)' }">{{ k.value }}</div>
           <div class="mt-2 text-[12px] text-subtle">{{ k.sub }}</div>
         </UCard>
       </div>
     </UContainer>
 
-    <!-- 我的对比 (watchlist) -->
-    <UContainer class="py-4">
-      <UCard
-        :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-6' }"
-      >
-        <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2
-              class="text-[22px] font-semibold leading-tight text-default"
-              :style="{ fontFamily: 'var(--font-display)' }"
-            >我的对比</h2>
-            <p class="mt-1 text-[13px] text-muted">
-              下方排名榜点 <span class="font-mono text-default">+ 加入对比</span> 添加, 最多 {{ MAX_WATCHLIST }} 所大学
-            </p>
-          </div>
-          <div class="flex items-center gap-2">
-            <UBadge
-              v-if="watchlist.length"
-              color="primary"
-              variant="subtle"
-              :label="`${watchlist.length} / ${MAX_WATCHLIST}`"
-            />
-            <UButton
-              v-if="watchlist.length"
-              icon="i-lucide-trash-2"
-              color="neutral"
-              variant="ghost"
-              size="sm"
-              label="清空"
-              @click="clearWatch"
-            />
-          </div>
-        </div>
-
-        <ClientOnly>
-          <div v-if="watchlist.length === 0" class="rounded-2xl border-2 border-dashed border-default bg-[var(--color-surface-1)] p-10 text-center">
-            <UIcon name="i-lucide-eye-off" class="mx-auto size-10 text-muted" />
-            <div class="mt-3 text-sm text-default">还没有添加大学</div>
-            <div class="mt-1 text-xs text-muted">从下方排名榜点 + 加入对比, 这里只画你挑的大学, 不再 137 条线堆一起</div>
-          </div>
-
-          <div v-else class="rounded-xl bg-[var(--color-surface-1)] p-4">
-            <ChartSvgChart :chart="watchChart" :height="320" />
-            <div class="mt-3 flex flex-wrap gap-2">
-              <UButton
-                v-for="name in watchlist"
-                :key="name"
-                :label="name"
-                icon="i-lucide-x"
-                color="neutral"
-                variant="outline"
-                size="xs"
-                @click="toggleWatch(name)"
-              />
+    <!-- ============ 模式 1: 排名榜 + 对比 ============ -->
+    <template v-if="mode === 'ranking'">
+      <!-- 我的对比 -->
+      <UContainer class="py-4">
+        <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-6' }">
+          <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 class="text-[22px] font-semibold leading-tight text-default" :style="{ fontFamily: 'var(--font-display)' }">我的对比</h2>
+              <p class="mt-1 text-[13px] text-muted">下方排名榜点 <span class="font-mono text-default">+ 加入对比</span> 添加, 最多 {{ MAX_WATCHLIST }} 所大学</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <UBadge v-if="watchlist.length" color="primary" variant="subtle" :label="`${watchlist.length} / ${MAX_WATCHLIST}`" />
+              <UButton v-if="watchlist.length" icon="i-lucide-trash-2" color="neutral" variant="ghost" size="sm" label="清空" @click="clearWatch" />
             </div>
           </div>
-        </ClientOnly>
-      </UCard>
-    </UContainer>
-
-    <!-- 排名榜 (核心) -->
-    <UContainer class="py-4">
-      <UCard
-        :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm overflow-hidden', body: 'p-0' }"
-      >
-        <div class="flex items-center justify-between border-b border-default p-5">
-          <div>
-            <h2
-              class="text-[22px] font-semibold leading-tight text-default"
-              :style="{ fontFamily: 'var(--font-display)' }"
-            >Top {{ currentRank }} 排名榜</h2>
-            <p class="mt-1 text-[13px] text-muted">按最新年份排名升序 · 历年曲线 = sparkline · 趋势 = 同比首年变化</p>
-          </div>
-        </div>
-        <ClientOnly>
-          <UTable
-            :data="rankingBoard"
-            :loading="loading"
-            :columns="[
-            { id: 'rank', header: '排名', meta: { class: { th: 'w-[80px]', td: 'w-[80px] font-[var(--font-data)]' } } },
-            { id: 'name', header: '大学' },
-            { id: 'sparkline', header: '历年曲线', meta: { class: { th: 'w-[140px]', td: 'w-[140px]' } } },
-            { id: 'minmax', header: '区间 (低/高)', meta: { class: { th: 'w-[140px]', td: 'w-[140px]' } } },
-            { id: 'trend', header: '趋势', meta: { class: { th: 'w-[120px]', td: 'w-[120px]' } } },
-            { id: 'action', header: '', meta: { class: { th: 'w-[140px]', td: 'w-[140px]' } } }
-          ]"
-          :ui="{ th: 'text-[12px] font-medium text-muted', td: 'py-3 text-sm'}"
-        >
-          <template #rank-cell="{ row }">
-            <span :class="['rank-badge', rankBadgeTier(row.original.last)]">{{ row.original.last }}</span>
-          </template>
-          <template #name-cell="{ row }">
-            <span class="text-default" :style="{ fontFamily: 'var(--font-display)' }">{{ row.original.name }}</span>
-          </template>
-          <template #sparkline-cell="{ row }">
-            <svg :width="100" :height="28" class="overflow-visible">
-              <path
-                :d="sparklinePath(row.original.data, 100, 28)"
-                fill="none"
-                stroke="#1456f0"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </template>
-          <template #minmax-cell="{ row }">
-            <span class="font-mono text-[13px] text-muted">
-              <span class="text-emerald-600">{{ row.original.min }}</span>
-              <span class="mx-1 text-subtle">/</span>
-              <span class="text-red-500">{{ row.original.max }}</span>
-            </span>
-          </template>
-          <template #trend-cell="{ row }">
-            <div class="inline-flex items-center gap-1.5" :class="trendColor(row.original.tone)">
-              <UIcon :name="trendIcon(row.original.tone)" class="size-4" />
-              <span class="text-[13px] font-medium">{{ trendLabel(row.original.tone, row.original.trend) }}</span>
+          <ClientOnly>
+            <div v-if="watchlist.length === 0" class="rounded-2xl border-2 border-dashed border-default bg-[var(--color-surface-1)] p-10 text-center">
+              <UIcon name="i-lucide-eye-off" class="mx-auto size-10 text-muted" />
+              <div class="mt-3 text-sm text-default">还没有添加大学</div>
+              <div class="mt-1 text-xs text-muted">从下方排名榜点 + 加入对比, 这里只画你挑的大学, 不再 137 条线堆一起</div>
             </div>
-          </template>
-          <template #action-cell="{ row }">
-            <UButton
-              :icon="isWatching(row.original.name) ? 'i-lucide-check' : 'i-lucide-plus'"
-              :color="isWatching(row.original.name) ? 'primary' : 'neutral'"
-              :variant="isWatching(row.original.name) ? 'solid' : 'outline'"
-              size="xs"
-              :label="isWatching(row.original.name) ? '已加入' : '加入对比'"
-              :disabled="!isWatching(row.original.name) && watchlist.length >= MAX_WATCHLIST"
-              @click="toggleWatch(row.original.name)"
-            />
-          </template>
-          <template #empty>
-            <UEmpty
-              icon="i-lucide-bar-chart-3"
-              title="暂无排名数据"
-              description="后端 /query/queryAllEcharts 返回为空"
-            />
-          </template>
-        </UTable>
-        </ClientOnly>
-      </UCard>
-    </UContainer>
-
-    <!-- 地区分布 -->
-    <UContainer class="py-4">
-      <UCard
-        :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-6' }"
-      >
-        <div class="mb-5">
-          <h2
-            class="text-[22px] font-semibold leading-tight text-default"
-            :style="{ fontFamily: 'var(--font-display)' }"
-          >地区分布</h2>
-          <p class="mt-1 text-[13px] text-muted">Top {{ currentRank }} 在主要国家/地区的分布 · 辅助宏观选校方向</p>
-        </div>
-        <div v-if="regionDist.length === 0" class="text-sm text-muted">暂无数据</div>
-        <div v-else class="space-y-3">
-          <div
-            v-for="r in regionDist"
-            :key="r.country"
-            class="flex items-center gap-3"
-          >
-            <div class="w-32 shrink-0 text-sm font-medium text-default">{{ r.country }}</div>
-            <div class="relative h-7 flex-1 overflow-hidden rounded-full bg-[var(--color-surface-2)]">
-              <div
-                class="absolute inset-y-0 left-0 rounded-full"
-                :style="{
-                  width: (r.count / regionDist[0].count * 100) + '%',
-                  background: `linear-gradient(90deg, ${countryBarColor(r.country)} 0%, ${countryBarColor(r.country)}cc 100%)`
-                }"
-              />
-              <div class="absolute inset-0 flex items-center pl-3 text-[12px] font-semibold text-white">
-                {{ r.count }} 所
+            <div v-else class="rounded-xl bg-[var(--color-surface-1)] p-4">
+              <ChartSvgChart :chart="watchChart" :height="320" />
+              <div class="mt-3 flex flex-wrap gap-2">
+                <UButton v-for="name in watchlist" :key="name" :label="name" icon="i-lucide-x" color="neutral" variant="outline" size="xs" @click="toggleWatch(name)" />
               </div>
             </div>
-            <div class="w-20 shrink-0 text-right text-[12px] font-medium text-muted">
-              均 <span class="text-default">{{ r.avgRank }}</span>
+          </ClientOnly>
+        </UCard>
+      </UContainer>
+
+      <!-- 排名榜 -->
+      <UContainer class="py-4">
+        <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm overflow-hidden', body: 'p-0' }">
+          <div class="flex items-center justify-between border-b border-default p-5">
+            <div>
+              <h2 class="text-[22px] font-semibold leading-tight text-default" :style="{ fontFamily: 'var(--font-display)' }">Top {{ currentRank }} 排名榜</h2>
+              <p class="mt-1 text-[13px] text-muted">按最新年份排名升序 · 历年曲线 = sparkline · 趋势 = 同比首年变化</p>
             </div>
           </div>
-        </div>
-        <UAlert
-          color="info"
-          variant="subtle"
-          title="地区推断: 基于大学名称的启发式识别, 实际以 DB university_tags 字段为准"
-          icon="i-lucide-info"
-          class="mt-4"
-        />
-      </UCard>
-    </UContainer>
-
-    <!-- 备份 2 榜单分类分布 (新表数据可视化) -->
-    <UContainer v-if="backup2CategoryDist.length > 0 || backup2DistLoading" class="py-4">
-      <UCard
-        :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-6' }"
-      >
-        <div class="mb-5">
-          <h2
-            class="text-[22px] font-semibold leading-tight text-default"
-            :style="{ fontFamily: 'var(--font-display)' }"
-          >备份 2 榜单 · 分类分布</h2>
-          <p class="mt-1 text-[13px] text-muted">
-            ARWU 学科 / US News 学科 等新表的数据分布 · 每个榜单的 Top 500 抽样
-            <span v-if="backup2DistLoading" class="ml-2 inline-flex items-center gap-1 text-muted">
-              <UIcon name="i-lucide-loader-2" class="size-3 animate-spin" />
-              <span>加载中…</span>
-            </span>
-          </p>
-        </div>
-        <div class="space-y-6">
-          <div
-            v-for="g in backup2CategoryDist"
-            :key="g.rankTable"
-            class="rounded-xl border border-default bg-[var(--color-surface-1)] p-4"
-          >
-            <div class="mb-3 flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <UBadge color="primary" variant="subtle" size="sm">{{ g.label }}</UBadge>
-                <span class="text-[12px] text-muted">{{ g.categories.length }} 个分类</span>
-              </div>
-            </div>
-            <div class="space-y-2">
-              <div
-                v-for="(c, i) in g.categories"
-                :key="c.name"
-                class="flex items-center gap-3"
-              >
-                <div class="w-48 shrink-0 truncate text-sm font-medium text-default" :title="c.name">
-                  {{ c.name }}
+          <ClientOnly>
+            <UTable
+              :data="rankingBoard"
+              :loading="loading"
+              :columns="[
+                { id: 'rank', header: '排名', meta: { class: { th: 'w-[80px]', td: 'w-[80px]' } } },
+                { id: 'name', header: '大学' },
+                { id: 'sparkline', header: '历年曲线', meta: { class: { th: 'w-[140px]', td: 'w-[140px]' } } },
+                { id: 'minmax', header: '区间 (低/高)', meta: { class: { th: 'w-[140px]', td: 'w-[140px]' } } },
+                { id: 'trend', header: '趋势', meta: { class: { th: 'w-[120px]', td: 'w-[120px]' } } },
+                { id: 'action', header: '', meta: { class: { th: 'w-[140px]', td: 'w-[140px]' } } }
+              ]"
+              :ui="{ th: 'text-[12px] font-medium text-muted', td: 'py-3 text-sm'}"
+            >
+              <template #rank-cell="{ row }">
+                <span :class="['rank-badge', rankBadgeTier(row.original.last)]">{{ row.original.last }}</span>
+              </template>
+              <template #name-cell="{ row }">
+                <NuxtLink :to="`/universities/${encodeURIComponent(row.original.name)}`" class="text-default hover:text-[var(--color-brand-900)]" :style="{ fontFamily: 'var(--font-display)' }">{{ row.original.name }}</NuxtLink>
+              </template>
+              <template #sparkline-cell="{ row }">
+                <svg :width="100" :height="28" class="overflow-visible">
+                  <path :d="sparklinePath(row.original.data, 100, 28)" fill="none" stroke="#1456f0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </template>
+              <template #minmax-cell="{ row }">
+                <span class="font-mono text-[13px] text-muted">
+                  <span class="text-emerald-600">{{ row.original.min }}</span>
+                  <span class="mx-1 text-subtle">/</span>
+                  <span class="text-red-500">{{ row.original.max }}</span>
+                </span>
+              </template>
+              <template #trend-cell="{ row }">
+                <div class="inline-flex items-center gap-1.5" :class="trendColor(row.original.tone)">
+                  <UIcon :name="trendIcon(row.original.tone)" class="size-4" />
+                  <span class="text-[13px] font-medium">{{ trendLabel(row.original.tone, row.original.trend) }}</span>
                 </div>
-                <div class="relative h-6 flex-1 overflow-hidden rounded-full bg-[var(--color-surface-2)]">
-                  <div
-                    class="absolute inset-y-0 left-0 rounded-full transition-all"
-                    :style="{
-                      width: (c.count / g.categories[0].count * 100) + '%',
-                      background: categoryBarColor(i)
-                    }"
-                  />
-                  <div class="absolute inset-0 flex items-center pl-3 text-[11px] font-semibold text-white">
-                    {{ c.count }} 所
+              </template>
+              <template #action-cell="{ row }">
+                <UButton
+                  :icon="isWatching(row.original.name) ? 'i-lucide-check' : 'i-lucide-plus'"
+                  :color="isWatching(row.original.name) ? 'primary' : 'neutral'"
+                  :variant="isWatching(row.original.name) ? 'solid' : 'outline'"
+                  size="xs"
+                  :label="isWatching(row.original.name) ? '已加入' : '加入对比'"
+                  :disabled="!isWatching(row.original.name) && watchlist.length >= MAX_WATCHLIST"
+                  @click="toggleWatch(row.original.name)"
+                />
+              </template>
+            </UTable>
+          </ClientOnly>
+        </UCard>
+      </UContainer>
+    </template>
+
+    <!-- ============ 模式 2: 4 维多校对比 ============ -->
+    <template v-else-if="mode === 'variants'">
+      <UContainer class="py-4">
+        <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-6' }">
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="text-[22px] font-semibold leading-tight text-default" :style="{ fontFamily: 'var(--font-display)' }">4 维多校对比</h2>
+              <p class="mt-1 text-[13px] text-muted">勾几所大学, 拉到 QS 综合 / QS 计算机 / US News 综合 / US News 计算机 4 维 (共 N × 4 条线)</p>
+            </div>
+            <UBadge v-if="selectedForVariants.length" color="primary" variant="subtle" :label="`已选 ${selectedForVariants.length} / 6`" />
+          </div>
+
+          <!-- 大学选择器 (Top 50 网格) -->
+          <div class="mb-5">
+            <div class="mb-2 text-[12px] font-medium text-muted">点击切换选择</div>
+            <div class="flex flex-wrap gap-1.5">
+              <button
+                v-for="r in rankingBoard.slice(0, 30)"
+                :key="r.name"
+                type="button"
+                class="inline-flex items-center gap-1 rounded-full border bg-white px-2.5 py-1 text-[12px] font-medium transition-all"
+                :class="selectedForVariants.includes(r.name) ? 'border-transparent' : 'border-default hover:border-[var(--color-brand-900)]'"
+                :style="selectedForVariants.includes(r.name) ? { background: 'var(--color-brand-900)', color: '#fff' } : {}"
+                @click="toggleSelect(r.name)"
+              >
+                <span :class="['rank-badge', rankBadgeTier(r.last)]" :style="{ height: '18px', minWidth: '24px', fontSize: '10px', padding: '0 6px' }">{{ r.last }}</span>
+                <span>{{ r.name }}</span>
+                <UIcon v-if="selectedForVariants.includes(r.name)" name="i-lucide-check" class="size-3" />
+              </button>
+            </div>
+          </div>
+
+          <!-- 4 维对比图 -->
+          <div class="rounded-xl bg-[var(--color-surface-1)] p-4">
+            <ClientOnly>
+              <div v-if="selectedForVariants.length === 0" class="flex flex-col items-center justify-center gap-2 py-16 text-center text-muted">
+                <UIcon name="i-lucide-git-compare" class="size-10" />
+                <span class="text-sm">从上方勾几所大学, 这里画 N × 4 条对比线</span>
+              </div>
+              <div v-else-if="variantLoading" class="flex items-center justify-center py-16 text-muted">
+                <UIcon name="i-lucide-loader" class="size-5 animate-spin" />
+                <span class="ml-2 text-sm">加载 4 维数据...</span>
+              </div>
+              <div v-else>
+                <ChartSvgChart :chart="variantMergedChart" :height="380" />
+                <div class="mt-3 flex flex-wrap gap-2 text-[11px]">
+                  <div class="inline-flex items-center gap-1.5">
+                    <span class="size-2 rounded-full" style="background: var(--color-brand-900)" />QS 综合
+                  </div>
+                  <div class="inline-flex items-center gap-1.5">
+                    <span class="size-2 rounded-full" style="background: #3b82f6" />QS 计算机
+                  </div>
+                  <div class="inline-flex items-center gap-1.5">
+                    <span class="size-2 rounded-full" style="background: #ea5ec1" />US News 综合
+                  </div>
+                  <div class="inline-flex items-center gap-1.5">
+                    <span class="size-2 rounded-full" style="background: #a855f7" />US News 计算机
                   </div>
                 </div>
               </div>
+            </ClientOnly>
+          </div>
+        </UCard>
+      </UContainer>
+    </template>
+
+    <!-- ============ 模式 3: 按专业排序 ============ -->
+    <template v-else-if="mode === 'subject'">
+      <UContainer class="py-4">
+        <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-6' }">
+          <div class="mb-4 flex flex-wrap items-center gap-3">
+            <h2 class="text-[22px] font-semibold leading-tight text-default" :style="{ fontFamily: 'var(--font-display)' }">按专业 / 分类排序</h2>
+            <USelectMenu v-model="subjectRankTable" :items="subjectTableItems" value-key="value" size="sm" class="min-w-[180px]" />
+            <USelectMenu
+              v-if="subjectYears.length"
+              v-model="subjectYear"
+              :items="subjectYears.map(y => ({ value: y, label: y }))"
+              value-key="value"
+              size="sm"
+              class="min-w-[100px]"
+            />
+            <USelectMenu
+              :model-value="subjectRankLimit"
+              :items="[{ value: 20, label: 'Top 20' }, { value: 50, label: 'Top 50' }, { value: 100, label: 'Top 100' }, { value: 200, label: 'Top 200' }]"
+              value-key="value"
+              size="sm"
+              class="min-w-[100px]"
+              @update:model-value="(v: any) => subjectRankLimit = v"
+            />
+          </div>
+
+          <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            <!-- 分类分布 (Top 12) -->
+            <div class="rounded-xl border border-default bg-[var(--color-surface-1)] p-4">
+              <div class="mb-2 text-[13px] font-semibold text-default">分类分布 (Top 12)</div>
+              <div v-if="subjectLoading" class="flex items-center justify-center py-8 text-muted">
+                <UIcon name="i-lucide-loader" class="size-4 animate-spin" />
+              </div>
+              <div v-else class="space-y-1">
+                <div v-for="(c, i) in subjectCategoryDist" :key="c.name" class="flex items-center gap-2">
+                  <span class="w-[120px] truncate text-[12px] text-default" :title="c.name">{{ c.name }}</span>
+                  <div class="flex-1 overflow-hidden rounded-full bg-white h-1.5">
+                    <div class="h-full rounded-full" :style="{ background: variantColor(i), width: ((c.count / (subjectCategoryDist[0]?.count || 1)) * 100) + '%' }" />
+                  </div>
+                  <span class="w-[40px] text-right font-mono text-[12px] font-semibold" :style="{ fontFamily: 'var(--font-data)', color: variantColor(i) }">{{ c.count }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 排名榜 (按 currentRankInteger 升序) -->
+            <div class="rounded-xl border border-default bg-white lg:col-span-2">
+              <div v-if="subjectLoading" class="flex items-center justify-center py-10 text-muted">
+                <UIcon name="i-lucide-loader" class="size-4 animate-spin" />
+                <span class="ml-2 text-sm">加载中…</span>
+              </div>
+              <UTable
+                v-else
+                :data="subjectList.slice(0, 50)"
+                :columns="[
+                  { id: 'rank', header: '排名', meta: { class: { th: 'w-[80px]', td: 'w-[80px]' } } },
+                  { id: 'name', header: '院校 / 学科' },
+                  { id: 'category', header: '学科分类' },
+                  { id: 'year', header: '年份', meta: { class: { th: 'w-[100px]', td: 'w-[100px]' } } },
+                  { id: 'action', header: '', meta: { class: { th: 'w-[100px]', td: 'w-[100px]' } } }
+                ]"
+                :ui="{ th: 'text-[12px] font-medium text-muted', td: 'py-2.5 text-sm' }"
+              >
+                <template #rank-cell="{ row }">
+                  <span :class="['rank-badge', rankBadgeTier(row.original.currentRankInteger)]" :style="{ minWidth: '36px', height: '24px', fontSize: '12px' }">{{ row.original.currentRankInteger ?? '—' }}</span>
+                </template>
+                <template #name-cell="{ row }">
+                  <NuxtLink :to="`/universities/${encodeURIComponent(row.original.universityNameChinese)}`" class="font-medium text-default hover:text-[var(--color-brand-900)]">
+                    {{ row.original.universityNameChinese }}
+                  </NuxtLink>
+                </template>
+                <template #category-cell="{ row }">
+                  <UBadge color="primary" variant="subtle" size="xs" :label="row.original.rankingCategory || '—'" />
+                </template>
+                <template #year-cell="{ row }">
+                  <span class="text-[12px] text-muted">{{ row.original.rankingYear || '—' }}</span>
+                </template>
+                <template #action-cell="{ row }">
+                  <UButton
+                    :icon="isWatching(row.original.universityNameChinese) ? 'i-lucide-check' : 'i-lucide-plus'"
+                    :color="isWatching(row.original.universityNameChinese) ? 'primary' : 'neutral'"
+                    :variant="isWatching(row.original.universityNameChinese) ? 'solid' : 'outline'"
+                    size="xs"
+                    :label="isWatching(row.original.universityNameChinese) ? '已加入' : '加入对比'"
+                    @click="toggleWatch(row.original.universityNameChinese)"
+                  />
+                </template>
+              </UTable>
             </div>
           </div>
-        </div>
-      </UCard>
-    </UContainer>
+        </UCard>
+      </UContainer>
+    </template>
 
-    <!-- 洞察 -->
-    <UContainer class="py-8">
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div
-          v-for="i in [
-            { icon: 'i-lucide-eye', title: '先挑再画', desc: '不再 137 条线堆一起 · 加 5 所进对比看清晰曲线', color: '#1456f0' },
-            { icon: 'i-lucide-trending-up', title: '找黑马', desc: '「趋势 = ↓」= 排名持续上升 = 近年表现亮眼', color: '#10b981' },
-            { icon: 'i-lucide-shield-alert', title: '避陷阱', desc: '「趋势 = ↑」= 排名持续下滑 = 警惕「过誉」老牌名校', color: '#ef4444' },
-            { icon: 'i-lucide-globe', title: '看分布', desc: 'Top 50 里 50% 美国 · 选校考虑地区多元化降低风险', color: '#9333ea' }
-          ]"
-          :key="i.title"
-          class="group flex flex-col gap-2.5 rounded-2xl border border-default bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-        >
-          <div
-            class="inline-flex size-9 items-center justify-center rounded-xl"
-            :style="{ background: i.color + '15', color: i.color }"
-          >
-            <UIcon :name="i.icon" class="size-5" />
+    <!-- ============ 模式 4: 按地区联动 ============ -->
+    <template v-else-if="mode === 'region'">
+      <UContainer class="py-4">
+        <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-6' }">
+          <div class="mb-4">
+            <h2 class="text-[22px] font-semibold leading-tight text-default" :style="{ fontFamily: 'var(--font-display)' }">按地区联动</h2>
+            <p class="mt-1 text-[13px] text-muted">选洲 → 看国家分布 → 加对比</p>
           </div>
-          <div class="text-base font-semibold text-default" :style="{ fontFamily: 'var(--font-display)' }">{{ i.title }}</div>
-          <div class="text-[13px] leading-relaxed text-muted">{{ i.desc }}</div>
-        </div>
-      </div>
-    </UContainer>
+
+          <!-- 6 大洲 tab -->
+          <div class="mb-5 flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="rounded-full border bg-white px-4 py-1.5 text-[12px] font-semibold transition-all"
+              :class="!selectedRegion ? 'border-transparent' : 'border-default hover:border-current'"
+              :style="!selectedRegion ? { background: 'var(--color-brand-900)', color: '#fff' } : {}"
+              @click="selectedRegion = undefined"
+            >全部</button>
+            <button
+              v-for="r in REGION_TABS"
+              :key="r.value"
+              type="button"
+              class="rounded-full border bg-white px-4 py-1.5 text-[12px] font-semibold transition-all"
+              :class="selectedRegion === r.value ? 'border-transparent' : 'border-default hover:border-current'"
+              :style="selectedRegion === r.value ? { background: r.color, color: '#fff' } : { color: r.color }"
+              @click="selectedRegion = selectedRegion === r.value ? undefined : r.value"
+            >{{ r.label }}</button>
+          </div>
+
+          <div v-if="regionLoading" class="flex items-center justify-center py-10 text-muted">
+            <UIcon name="i-lucide-loader" class="size-5 animate-spin" />
+            <span class="ml-2 text-sm">加载中…</span>
+          </div>
+          <div v-else class="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            <!-- 国家分布 -->
+            <div class="rounded-xl border border-default bg-[var(--color-surface-1)] p-4">
+              <div class="mb-2 text-[13px] font-semibold text-default">国家分布 (Top 15)</div>
+              <div class="space-y-1">
+                <div v-for="(c, i) in regionCountryDist" :key="c.name" class="flex items-center gap-2">
+                  <span class="w-[120px] truncate text-[12px] text-default" :title="c.name">{{ c.name }}</span>
+                  <div class="flex-1 overflow-hidden rounded-full bg-white h-1.5">
+                    <div class="h-full rounded-full bg-[var(--color-brand-900)]" :style="{ width: ((c.count / (regionCountryDist[0]?.count || 1)) * 100) + '%' }" />
+                  </div>
+                  <span class="w-[40px] text-right font-mono text-[12px] font-semibold text-[var(--color-brand-900)]" :style="{ fontFamily: 'var(--font-data)' }">{{ c.count }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 院校列表 (Top 100 范围内, 按 currentQsAllRank 升序) -->
+            <div class="rounded-xl border border-default bg-white lg:col-span-2">
+              <UTable
+                :data="regionCountryList"
+                :columns="[
+                  { id: 'rank', header: '排名', meta: { class: { th: 'w-[80px]', td: 'w-[80px]' } } },
+                  { id: 'name', header: '大学' },
+                  { id: 'country', header: '国家' },
+                  { id: 'action', header: '', meta: { class: { th: 'w-[100px]', td: 'w-[100px]' } } }
+                ]"
+                :ui="{ th: 'text-[12px] font-medium text-muted', td: 'py-2.5 text-sm' }"
+              >
+                <template #rank-cell="{ row }">
+                  <span :class="['rank-badge', rankBadgeTier(row.original.currentQsAllRank)]" :style="{ minWidth: '36px', height: '24px', fontSize: '12px' }">{{ row.original.currentQsAllRank ?? '—' }}</span>
+                </template>
+                <template #name-cell="{ row }">
+                  <NuxtLink :to="`/universities/${encodeURIComponent(row.original.universityNameChinese)}`" class="font-medium text-default hover:text-[var(--color-brand-900)]">{{ row.original.universityNameChinese }}</NuxtLink>
+                </template>
+                <template #country-cell="{ row }">
+                  <span class="text-[12px] text-muted">{{ row.original.universityTags || '—' }}</span>
+                </template>
+                <template #action-cell="{ row }">
+                  <UButton
+                    :icon="isWatching(row.original.universityNameChinese) ? 'i-lucide-check' : 'i-lucide-plus'"
+                    :color="isWatching(row.original.universityNameChinese) ? 'primary' : 'neutral'"
+                    :variant="isWatching(row.original.universityNameChinese) ? 'solid' : 'outline'"
+                    size="xs"
+                    :label="isWatching(row.original.universityNameChinese) ? '已加入' : '加入对比'"
+                    @click="toggleWatch(row.original.universityNameChinese)"
+                  />
+                </template>
+              </UTable>
+            </div>
+          </div>
+        </UCard>
+      </UContainer>
+    </template>
   </div>
 </template>
