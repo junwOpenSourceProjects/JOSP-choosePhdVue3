@@ -238,18 +238,14 @@ function formatSize(bytes: number): string {
           <div class="mt-2 text-[12px] text-subtle">按 (排名类型, 年份) 分组</div>
         </UCard>
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-5' }">
-          <div class="text-[12px] font-medium text-muted">待上传文件</div>
-          <div
-            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-default font-[var(--font-display)]"
-          >{{ pendingFiles.length }}</div>
-          <div class="mt-2 text-[12px] text-subtle">.txt 排名文件</div>
+          <div class="t-caption-bold text-muted">待上传文件</div>
+          <div class="t-h2 mt-2 mb-2">{{ pendingFiles.length }}</div>
+          <div class="t-micro text-subtle">.txt 排名文件</div>
         </UCard>
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-5' }">
-          <div class="text-[12px] font-medium text-muted">最近一次更新</div>
-          <div
-            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-default font-[var(--font-display)]"
-          >{{ latestYear ?? '—' }}</div>
-          <div class="mt-2 text-[12px] text-subtle">
+          <div class="t-caption-bold text-muted">最近一次更新</div>
+          <div class="t-h2 mt-2 mb-2">{{ latestYear ?? '—' }}</div>
+          <div class="t-micro text-subtle">
             <span v-if="latestYear">最新年份 · 来自历史导入</span>
             <span v-else>尚未执行</span>
           </div>
@@ -263,8 +259,8 @@ function formatSize(bytes: number): string {
         <!-- 左: 拖拽上传 -->
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-6 space-y-4' }">
           <div>
-            <h2 class="text-lg font-semibold text-default font-[var(--font-display)]">拖拽上传</h2>
-            <p class="mt-1 text-[13px] text-muted">支持多选 .txt 格式的排名文件 (TSV 7 列)</p>
+            <h2 class="t-h3">拖拽上传</h2>
+            <p class="t-caption mt-1 text-muted">支持多选 .txt 格式的排名文件 (TSV 7 列)</p>
           </div>
 
           <div
@@ -357,8 +353,8 @@ function formatSize(bytes: number): string {
         <!-- 右: 一键扫描 -->
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-6 space-y-4' }">
           <div>
-            <h2 class="text-lg font-semibold text-default font-[var(--font-display)]">一键扫描</h2>
-            <p class="mt-1 text-[13px] text-muted">直接读后端工作目录的 qs 排名/ 文件夹, 全部导入</p>
+            <h2 class="t-h3">一键扫描</h2>
+            <p class="t-caption mt-1 text-muted">直接读后端工作目录的 qs 排名/ 文件夹, 全部导入</p>
           </div>
 
           <div class="space-y-3">
