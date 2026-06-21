@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * DESIGN.md §Top Navigation (Marketing)
+ * 白底 + 64px 高 + 底边 1px hairline-soft
+ * 左: wordmark + 副标 · 中: link list · 右: 黑色 pill "登录" / 头像 + 退出
+ */
 const route = useRoute()
 const open = ref(false)
 const auth = useAuthStore()
@@ -11,10 +16,7 @@ const navItems = [
   { label: '数据图表', to: '/charts', icon: 'i-lucide-line-chart' }
 ]
 
-function close() {
-  open.value = false
-}
-
+function close() { open.value = false }
 const isActive = (to: string) => {
   if (to === '/') return route.path === '/'
   return route.path === to || route.path.startsWith(to + '/')
@@ -22,149 +24,216 @@ const isActive = (to: string) => {
 </script>
 
 <template>
-  <header
-    class="sticky top-0 z-50 backdrop-blur-md"
-    :class="[
-      'border-b border-default',
-      'bg-white/85 dark:bg-white/85'
-    ]"
-  >
-    <UContainer class="flex h-16 items-center justify-between gap-6">
-      <NuxtLink to="/" class="flex items-center gap-3" @click="close">
-        <div
-          class="flex size-9 items-center justify-center rounded-xl text-white shadow-sm"
-          :style="{ background: 'var(--color-brand-900)' }"
-        >
+  <header class="nav-root">
+    <div class="nav-inner">
+      <!-- 左: brand -->
+      <NuxtLink to="/" class="brand" @click="close">
+        <div class="brand__mark">
           <UIcon name="i-lucide-graduation-cap" class="size-4" />
         </div>
-        <div class="flex flex-col leading-tight">
-          <span
-            class="text-lg font-semibold tracking-tight text-default"
-            :style="{ fontFamily: 'var(--font-display)' }"
-          >选校系统</span>
-          <span class="mt-0.5 text-[11px] text-muted">PhD 申请助手</span>
+        <div class="brand__txt">
+          <span class="brand__name">选校系统</span>
+          <span class="brand__sub">PhD 申请助手</span>
         </div>
       </NuxtLink>
 
-      <nav class="hidden flex-1 items-center justify-center gap-1 md:flex">
+      <!-- 中: 桌面 nav -->
+      <nav class="nav-list">
         <UButton
           v-for="item in navItems"
           :key="item.to"
           :to="item.to"
-          :icon="item.icon"
           :variant="isActive(item.to) ? 'solid' : 'ghost'"
           :color="isActive(item.to) ? 'primary' : 'neutral'"
           size="sm"
+          :label="item.label"
           class="rounded-full"
         />
       </nav>
 
-      <div class="hidden items-center gap-2 md:flex">
+      <!-- 右: 账户 -->
+      <div class="nav-right">
         <template v-if="auth.isLoggedIn">
           <UAvatar
             v-if="auth.avatar"
             :src="auth.avatar"
             :alt="auth.displayName"
-            size="sm"
+            size="xs"
           />
-          <span class="text-sm font-medium text-default">{{ auth.displayName }}</span>
+          <span class="nav-username">{{ auth.displayName }}</span>
           <UButton
-            icon="i-lucide-log-out"
+            label="退出"
             color="neutral"
             variant="ghost"
             size="sm"
             class="rounded-full"
             @click="auth.clearUser"
-          >
-            退出
-          </UButton>
+          />
         </template>
         <UButton
           v-else
           to="/login"
-          icon="i-lucide-log-in"
+          label="登录"
           color="primary"
           variant="solid"
           size="sm"
           class="rounded-full"
-        >
-          登录
-        </UButton>
+        />
       </div>
 
+      <!-- 移动端 menu button -->
       <UButton
         :icon="open ? 'i-lucide-x' : 'i-lucide-menu'"
         color="neutral"
         variant="ghost"
         size="sm"
-        class="md:hidden"
         square
+        class="nav-burger"
         @click="open = !open"
       />
-    </UContainer>
+    </div>
 
+    <!-- 移动端 drawer -->
     <Transition
       enter-active-class="transition-all duration-200 ease-out"
       leave-active-class="transition-all duration-150 ease-in"
       enter-from-class="opacity-0 -translate-y-2"
       leave-to-class="opacity-0 -translate-y-2"
     >
-      <div
-        v-if="open"
-        class="border-t border-default bg-white px-4 py-3 md:hidden"
-      >
-        <div class="flex flex-col gap-1">
-          <UButton
-            v-for="item in navItems"
-            :key="item.to"
-            :to="item.to"
-            :icon="item.icon"
-            :variant="isActive(item.to) ? 'solid' : 'ghost'"
-            :color="isActive(item.to) ? 'primary' : 'neutral'"
-            size="sm"
-            block
-            class="justify-start"
-            @click="close"
-          >
-            {{ item.label }}
-          </UButton>
-          <template v-if="auth.isLoggedIn">
-            <div class="flex items-center gap-2 px-2 py-2">
-              <UAvatar
-                v-if="auth.avatar"
-                :src="auth.avatar"
-                :alt="auth.displayName"
-                size="sm"
-              />
-              <span class="text-sm font-medium text-default">{{ auth.displayName }}</span>
-            </div>
-            <UButton
-              icon="i-lucide-log-out"
-              color="neutral"
-              variant="outline"
-              size="sm"
-              block
-              class="mt-2 justify-center"
-              @click="auth.clearUser(); close()"
-            >
-              退出
-            </UButton>
-          </template>
-          <UButton
-            v-else
-            to="/login"
-            icon="i-lucide-log-in"
-            color="primary"
-            variant="solid"
-            size="sm"
-            block
-            class="mt-2 justify-center"
-            @click="close"
-          >
-            登录
-          </UButton>
-        </div>
+      <div v-if="open" class="nav-mobile">
+        <UButton
+          v-for="item in navItems"
+          :key="item.to"
+          :to="item.to"
+          :variant="isActive(item.to) ? 'solid' : 'ghost'"
+          :color="isActive(item.to) ? 'primary' : 'neutral'"
+          size="sm"
+          :label="item.label"
+          block
+          class="justify-start rounded-full"
+          @click="close"
+        />
+        <div class="nav-mobile-sep" />
+        <UButton
+          v-if="auth.isLoggedIn"
+          label="退出登录"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          block
+          class="rounded-full"
+          @click="auth.clearUser(); close()"
+        />
+        <UButton
+          v-else
+          to="/login"
+          label="登录"
+          color="primary"
+          variant="solid"
+          size="sm"
+          block
+          class="rounded-full"
+          @click="close"
+        />
       </div>
     </Transition>
   </header>
 </template>
+
+<style scoped>
+/* DESIGN.md §Top Navigation (Marketing): 64px · 白底 · 底 1px hairline-soft */
+.nav-root {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--color-canvas);
+  border-bottom: 1px solid var(--color-hairline-soft);
+  backdrop-filter: blur(8px);
+}
+.nav-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 32px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+@media (max-width: 768px) {
+  .nav-inner { padding: 0 16px; gap: 12px; }
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.brand__mark {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-lg);
+  background: var(--color-primary);
+  color: var(--color-canvas);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.brand__txt { display: flex; flex-direction: column; line-height: 1.2; }
+.brand__name {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--color-ink);
+}
+.brand__sub {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-stone);
+  margin-top: 2px;
+}
+.nav-list {
+  display: none;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+@media (min-width: 768px) {
+  .nav-list { display: flex; }
+}
+.nav-right {
+  display: none;
+  align-items: center;
+  gap: 8px;
+}
+@media (min-width: 768px) {
+  .nav-right { display: flex; }
+}
+.nav-username {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+.nav-burger {
+  margin-left: auto;
+}
+@media (min-width: 768px) {
+  .nav-burger { display: none; }
+}
+.nav-mobile {
+  border-top: 1px solid var(--color-hairline-soft);
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--color-canvas);
+}
+.nav-mobile-sep {
+  height: 1px;
+  background: var(--color-hairline-soft);
+  margin: 4px 0;
+}
+</style>

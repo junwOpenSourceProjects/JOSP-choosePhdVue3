@@ -1,35 +1,52 @@
 <script setup lang="ts">
-import type { StatusLevel } from '~/types'
-
-const props = defineProps<{
-  level: StatusLevel | number | null | undefined
-  size?: 'sm' | 'md'
+/**
+ * DESIGN.md §badge-success (考虑)
+ * 弱/中/强 三档映射到 DESIGN.md 的语义色
+ */
+type Level = 'weak' | 'medium' | 'strong' | null
+defineProps<{
+  level: Level
+  label?: string
 }>()
 
-const label = computed(() => {
-  if (props.level === null || props.level === undefined) return '—'
-  if (props.level === 0) return '弱'
-  if (props.level === 1) return '中'
-  return '强'
-})
-
-const color = computed<'primary' | 'secondary' | 'success' | 'neutral'>(() => {
-  if (props.level === null || props.level === undefined) return 'neutral'
-  if (props.level === 0) return 'neutral'
-  if (props.level === 1) return 'secondary'
-  return 'primary'
-})
-
-const variant = computed<'subtle' | 'soft' | 'solid'>(() => {
-  if (props.level === 2) return 'solid'
-  return 'subtle'
-})
+const labelMap: Record<Exclude<Level, null>, string> = {
+  weak: '弱',
+  medium: '中',
+  strong: '强'
+}
 </script>
 
 <template>
-  <UBadge
-    :color="color"
-    :variant="variant"
-    :size="size === 'sm' ? 'xs' : 'sm'"
-  >{{ label }}</UBadge>
+  <span v-if="level" class="chip" :class="`chip--${level}`">
+    {{ label ?? labelMap[level] }}
+  </span>
 </template>
+
+<style scoped>
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+/* DESIGN.md: 弱 = 中性灰 (surface-soft + slate) */
+.chip--weak {
+  background: var(--color-surface-soft);
+  color: var(--color-slate);
+}
+/* DESIGN.md: 中 = badge-beta 蓝 (brand-blue-200 + brand-blue-deep) */
+.chip--medium {
+  background: var(--color-brand-blue-200);
+  color: var(--color-brand-blue-deep);
+}
+/* DESIGN.md: 强 = 黑底白字 (primary + on-primary) */
+.chip--strong {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+</style>
