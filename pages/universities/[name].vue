@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { queryAllQs } from '~/lib/api/university'
 import { drawerData, queryBackup2List } from '~/lib/api/ranking'
-import type { UniversityAllDTO } from '~/types'
+import type { Backup2Record, EchartsDTO, UniversityAllDTO } from '~/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -12,12 +12,13 @@ useHead({ title: () => `${name.value} · 学校详情` })
 
 // 数据
 const detail = ref<UniversityAllDTO | null>(null)
-const chartData = ref<any>(null)
+const chartData = ref<EchartsDTO | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const backup2RunId = ref(0)
 
 // ============ 7 张新表的数据 (按 rankTable 分组) ============
-const backup2Groups = ref<Array<{ rankTable: string; label: string; records: any[] }>>([])
+const backup2Groups = ref<Array<{ rankTable: string; label: string; records: Backup2Record[] }>>([])
 const backup2Loading = ref(false)
 
 const BACKUP2_LABEL_MAP: Record<string, string> = {
@@ -30,7 +31,7 @@ const BACKUP2_LABEL_MAP: Record<string, string> = {
   qs_sustainability: 'QS 可持续'
 }
 
-async function loadBackup2Data() {
+async function loadBackup2Data(runId: number) {
   backup2Loading.value = true
   const rankTables = Object.keys(BACKUP2_LABEL_MAP)
   const groups: typeof backup2Groups.value = []
@@ -42,16 +43,18 @@ async function loadBackup2Data() {
         limit: 50,
         rankTable: rt,
         universityNameChinese: name.value
-      }) as any
+      })
     )
   )
+  // 已切走/卸载时丢弃旧结果
+  if (runId !== backup2RunId.value) return
   results.forEach((r, i) => {
     if (r.status === 'fulfilled') {
-      const records = r.value?.data?.records ?? r.value?.records ?? []
+      const records = r.value?.data?.records ?? []
       if (records.length > 0) {
         groups.push({
-          rankTable: rankTables[i],
-          label: BACKUP2_LABEL_MAP[rankTables[i]],
+          rankTable: rankTables[i]!,
+          label: BACKUP2_LABEL_MAP[rankTables[i]!]!,
           records
         })
       }
@@ -66,6 +69,9 @@ async function loadBackup2Data() {
 async function load() {
   loading.value = true
   error.value = null
+  // 切学校时丢弃旧 backup2 请求结果
+  backup2RunId.value++
+  const runId = backup2RunId.value
   try {
     // 1) 用 queryAllQs 搜这一所的汇总数据
     const list = await queryAllQs({
@@ -73,16 +79,18 @@ async function load() {
       limit: 50,
       universityNameChinese: name.value,
       rankVariant: 'all'
-    }) as any
-    const records = list?.records ?? list?.data?.records ?? []
+    })
+    const records = list.records ?? []
     if (records.length > 0) {
-      detail.value = records[0]
+      detail.value = records[0] ?? null
     }
     // 2) 拉抽屉详细图表数据
-    const drawer = await drawerData(name.value) as any
-    if (drawer?.chatData) {
+    const drawer = await drawerData(name.value)
+    if (drawer.chatData) {
       chartData.value = drawer
     }
+    // 3) 7 张新表数据
+    await loadBackup2Data(runId)
   } catch (e: any) {
     console.warn('[detail] load failed', e?.message)
     error.value = '后端不可达, 显示 mock 数据'
@@ -91,9 +99,11 @@ async function load() {
   } finally {
     loading.value = false
   }
-  // 7 张新表数据 (非阻塞, 跟主数据并行)
-  loadBackup2Data().catch(e => console.warn('[detail] backup2 load failed', e))
 }
+
+onBeforeUnmount(() => {
+  backup2RunId.value++
+})
 
 function generateMockDetail(n: string): UniversityAllDTO {
   return {
@@ -179,18 +189,18 @@ function regionColor(r: string): string {
 }
 
 // 4 维排名 sparkline mini (SVG)
-function rankSparklinePath(data: number[], width = 100, height = 32): string {
+function rankSparklinePath(data: (number | null)[], width = 100, height = 32): string {
   if (!data || !data.length) return ''
-  const maxV = Math.max(...data, 10) * 1.1
+  const maxV = Math.max(...data.map(v => v ?? 0), 10) * 1.1
   const minV = 0
   const xStep = data.length > 1 ? width / (data.length - 1) : 0
   return data.map((v, i) => {
     const x = i * xStep
-    const y = height - ((v - minV) / (maxV - minV)) * height
+    const y = height - ((v ?? 0 - minV) / (maxV - minV)) * height
     return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`
   }).join(' ')
 }
-function getSeriesData(seriesName: string): number[] {
+function getSeriesData(seriesName: string): (number | null)[] {
   return chartData.value?.chatData?.series?.find((s: any) => s.name === seriesName)?.data ?? []
 }
 
@@ -252,7 +262,7 @@ const detailTableRows = computed(() => {
   return chartData.value.chatData.series.map((s: any) => {
     const row: any = { name: s.name }
     s.data.forEach((v: any, i: number) => {
-      const year = chartData.value.legendData[i]
+      const year = chartData.value?.legendData[i]
       if (year) row[`y_${year}`] = v
     })
     return row
@@ -266,10 +276,11 @@ const detailTableRows = computed(() => {
     <UContainer class="pt-6">
       <UButton
         icon="i-lucide-arrow-left"
-        color="neutral"
+        color="primary"
         variant="ghost"
         size="sm"
         label="返回"
+        class="rounded-full"
         @click="back"
       />
     </UContainer>
@@ -278,12 +289,11 @@ const detailTableRows = computed(() => {
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1
-            class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl"
-            :style="{ fontFamily: 'var(--font-display)' }"
+            class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl font-[var(--font-display)]"
           >{{ name || '未知大学' }}</h1>
           <div v-if="detail" class="mt-3 flex flex-wrap items-center gap-2">
             <UBadge v-if="detail.universityTags" color="primary" variant="subtle" size="sm">
-              <UIcon name="i-lucide-map-pin" class="size-3" />
+              <UIcon name="i-lucide-map-pin" class="size-3.5" />
               <span class="ml-1">{{ detail.universityTags }}</span>
             </UBadge>
             <span
@@ -295,7 +305,7 @@ const detailTableRows = computed(() => {
               {{ detail.universityTagsState }}
             </span>
             <UBadge v-if="detail.rankingYear" color="neutral" variant="soft" size="sm">
-              <UIcon name="i-lucide-calendar" class="size-3" />
+              <UIcon name="i-lucide-calendar" class="size-3.5" />
               <span class="ml-1">{{ detail.rankingYear }} 年</span>
             </UBadge>
           </div>
@@ -303,18 +313,20 @@ const detailTableRows = computed(() => {
         <div class="flex items-center gap-2">
           <UButton
             :icon="inCompare ? 'i-lucide-list-checks' : 'i-lucide-list-plus'"
-            :color="inCompare ? 'primary' : 'neutral'"
+            :color="inCompare ? 'primary' : 'primary'"
             :variant="inCompare ? 'solid' : 'outline'"
             size="md"
             :label="inCompare ? '已加入对比' : '加入对比'"
+            class="rounded-full"
             @click="inCompare ? removeFromCompare() : addToCompare()"
           />
           <UButton
             :icon="isConsidering ? 'i-lucide-bookmark-check' : 'i-lucide-bookmark'"
-            :color="isConsidering ? 'primary' : 'neutral'"
+            :color="isConsidering ? 'primary' : 'primary'"
             :variant="isConsidering ? 'solid' : 'outline'"
             size="md"
             :label="isConsidering ? '已加入考虑' : '加入考虑'"
+            class="rounded-full"
             @click="toggleConsider"
           />
         </div>
@@ -334,24 +346,26 @@ const detailTableRows = computed(() => {
     <UContainer class="py-6">
       <div class="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h2 class="text-[20px] font-semibold leading-tight text-default" :style="{ fontFamily: 'var(--font-display)' }">排名卡 (4 维)</h2>
+          <h2 class="text-[20px] font-semibold leading-tight text-default font-[var(--font-display)]">排名卡 (4 维)</h2>
           <p class="mt-1 text-[12px] text-muted">切综合/计算机 维度, 每维 QS + US News 2 个榜单</p>
         </div>
         <UFieldGroup size="sm">
           <UButton
-            :color="rankTab === 'all' ? 'primary' : 'neutral'"
+            :color="rankTab === 'all' ? 'primary' : 'primary'"
             :variant="rankTab === 'all' ? 'solid' : 'outline'"
             size="sm"
             icon="i-lucide-globe-2"
             label="综合"
+            class="rounded-full"
             @click="rankTab = 'all'"
           />
           <UButton
-            :color="rankTab === 'cs' ? 'primary' : 'neutral'"
+            :color="rankTab === 'cs' ? 'primary' : 'primary'"
             :variant="rankTab === 'cs' ? 'solid' : 'outline'"
             size="sm"
             icon="i-lucide-cpu"
             label="计算机"
+            class="rounded-full"
             @click="rankTab = 'cs'"
           />
         </UFieldGroup>
@@ -413,8 +427,7 @@ const detailTableRows = computed(() => {
       >
         <div class="mb-5">
           <h2
-            class="text-[22px] font-semibold leading-tight text-default"
-            :style="{ fontFamily: 'var(--font-display)' }"
+            class="text-[22px] font-semibold leading-tight text-default font-[var(--font-display)]"
           >历年排名趋势</h2>
           <p class="mt-1 text-[13px] text-muted">4 个维度的排名变化 (越低越好)</p>
         </div>
@@ -439,8 +452,7 @@ const detailTableRows = computed(() => {
       >
         <div class="border-b border-default p-5">
           <h2
-            class="text-lg font-semibold leading-tight text-default"
-            :style="{ fontFamily: 'var(--font-display)' }"
+            class="text-lg font-semibold leading-tight text-default font-[var(--font-display)]"
           >历年数据明细</h2>
         </div>
         <UTable
@@ -452,7 +464,7 @@ const detailTableRows = computed(() => {
           }"
         >
           <template #name-cell="{ row }">
-            <span class="font-medium text-default">{{ row.original.name }}</span>
+            <span class="font-medium text-default">{{ (row.original as any).name }}</span>
           </template>
         </UTable>
       </UCard>
@@ -469,13 +481,12 @@ const detailTableRows = computed(() => {
         <div class="mb-5 flex items-end justify-between gap-3">
           <div>
             <h2
-              class="text-[22px] font-semibold leading-tight text-default"
-              :style="{ fontFamily: 'var(--font-display)' }"
+              class="text-[22px] font-semibold leading-tight text-default font-[var(--font-display)]"
             >其他榜单排名</h2>
             <p class="mt-1 text-[13px] text-muted">
               {{ backup2Groups.length }} 个榜单有数据
               <span v-if="backup2Loading" class="ml-2 inline-flex items-center gap-1 text-muted">
-                <UIcon name="i-lucide-loader-2" class="size-3 animate-spin" />
+                <UIcon name="i-lucide-loader-2" class="size-3.5 animate-spin" />
                 <span>加载中…</span>
               </span>
             </p>
@@ -483,10 +494,13 @@ const detailTableRows = computed(() => {
         </div>
 
         <div class="space-y-5">
-          <div
+          <UCard
             v-for="g in backup2Groups"
             :key="g.rankTable"
-            class="rounded-xl border border-default bg-[var(--color-surface-1)] p-4"
+            :ui="{
+              root: 'rounded-2xl border border-default bg-[var(--color-surface-1)]',
+              body: 'p-4'
+            }"
           >
             <div class="mb-3 flex items-center justify-between">
               <div class="flex items-center gap-2">
@@ -514,7 +528,7 @@ const detailTableRows = computed(() => {
                   v-if="r.rankingYear"
                   class="inline-flex items-center gap-1 rounded-full border border-default bg-white px-2 py-0.5 text-[10px] font-semibold text-muted"
                 >
-                  <UIcon name="i-lucide-calendar" class="size-2.5" />
+                  <UIcon name="i-lucide-calendar" class="size-3.5" />
                   {{ r.rankingYear }}
                 </span>
                 <span
@@ -529,7 +543,7 @@ const detailTableRows = computed(() => {
                 还有 {{ g.records.length - 10 }} 条…
               </div>
             </div>
-          </div>
+          </UCard>
         </div>
       </UCard>
     </UContainer>

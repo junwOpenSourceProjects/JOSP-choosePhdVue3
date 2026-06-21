@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { queryAllEcharts } from '~/lib/api/university'
 import { trendAllVariants, queryBackup2List, fetchBackup2Tables, fetchBackup2Years } from '~/lib/api/ranking'
+import type { Backup2Record, EchartsDTO, UniversityAllDTO } from '~/types'
 
 useHead({ title: '数据图表 · 选校系统' })
 
@@ -15,7 +16,7 @@ const modeTabs: { value: Mode; label: string; icon: string; desc: string }[] = [
 ]
 
 // ============ 通用 ============
-const allData = ref<any>(null)        // queryAllEcharts 原始
+const allData = ref<EchartsDTO | null>(null)        // queryAllEcharts 原始
 const loading = ref(false)
 const error = ref<string | null>(null)
 const currentRank = ref<number>(50)   // Top 50
@@ -30,8 +31,8 @@ async function loadAll() {
   loading.value = true
   error.value = null
   try {
-    const data = await queryAllEcharts({ currentRank: currentRank.value }) as any
-    allData.value = data
+    const res = await queryAllEcharts({ currentRank: currentRank.value })
+    allData.value = res
   } catch (e: any) {
     console.warn('[charts] loadAll failed', e?.message)
     error.value = '后端不可达'
@@ -128,9 +129,8 @@ function variantColor(idx: number) { return variantColors[idx % variantColors.le
 async function loadVariantChart(name: string) {
   if (variantCharts.value[name]) return
   try {
-    const res = await trendAllVariants(name) as any
-    const chartData = res?.chatData ?? res?.data?.chatData ?? res
-    if (chartData?.series) variantCharts.value[name] = chartData
+    const res = await trendAllVariants(name)
+    if (res?.chatData?.series) variantCharts.value[name] = res.chatData
   } catch (e) {
     console.warn(`[charts] trendAllVariants failed for ${name}`, e)
   }
@@ -142,7 +142,7 @@ watch([selectedForVariants, currentRank], async () => {
   // 拉所有选中校的 4 维
   await Promise.all(selectedForVariants.value.map(loadVariantChart))
   variantLoading.value = false
-}, { deep: true })
+})
 
 const variantMergedChart = computed(() => {
   const mergedSeries: any[] = []
@@ -179,12 +179,16 @@ const subjectYears = ref<string[]>([])
 async function loadSubjectYears() {
   if (!subjectRankTable.value) return
   try {
-    const res = await fetchBackup2Years(subjectRankTable.value) as any
-    subjectYears.value = res?.data ?? res ?? []
+    const res = await fetchBackup2Years(subjectRankTable.value)
+    subjectYears.value = res.data ?? []
     if (subjectYears.value.length && !subjectYear.value) subjectYear.value = subjectYears.value[0]
   } catch (e) { subjectYears.value = [] }
 }
-watch(subjectRankTable, () => { subjectYear.value = undefined; subjectYears.value = []; loadSubjectYears() })
+watch(subjectRankTable, () => {
+  subjectYear.value = undefined
+  subjectYears.value = []
+  loadSubjectYears()
+})
 
 async function loadSubject() {
   if (mode.value !== 'subject') return
@@ -195,8 +199,8 @@ async function loadSubject() {
       rankTable: subjectRankTable.value,
       rankingYear: subjectYear.value || undefined,
       currentRankLimit: subjectRankLimit.value
-    }) as any
-    const records: any[] = res?.records ?? res?.data?.records ?? []
+    })
+    const records: Backup2Record[] = res.data?.records ?? []
     subjectList.value = records.sort((a, b) => (a.currentRankInteger ?? 9999) - (b.currentRankInteger ?? 9999))
     // 分类分布
     const map = new Map<string, number>()
@@ -215,8 +219,8 @@ async function loadSubject() {
     subjectLoading.value = false
   }
 }
-watch([mode, subjectRankTable, subjectYear, subjectRankLimit], loadSubject)
-onMounted(async () => { await loadSubjectYears(); loadSubject() })
+watch([mode, subjectYear, subjectRankLimit], loadSubject)
+onMounted(loadSubjectYears)
 
 // ============ 模式 4: 按地区联动 (region) ============
 const selectedRegion = ref<string | undefined>(undefined)
@@ -243,8 +247,8 @@ async function loadRegion() {
       page: 1, limit: 500, rankVariant: 'all',
       universityTagsState: selectedRegion.value,
       currentRank: 200
-    }) as any
-    const records: any[] = res?.records ?? res?.data?.records ?? []
+    })
+    const records: UniversityAllDTO[] = res.records ?? []
     // 国家级分布
     const map = new Map<string, number>()
     for (const r of records) {
@@ -304,17 +308,20 @@ function toggleSelect(name: string) {
   if (idx >= 0) selectedForVariants.value.splice(idx, 1)
   else if (selectedForVariants.value.length < 6) selectedForVariants.value.push(name)
 }
+
+// UTable cell slot 中 row.original 被推导为 unknown, 用此 helper 恢复业务类型
+function r(row: any): any { return row?.original }
 </script>
 
 <template>
   <div>
     <!-- Hero -->
     <UContainer class="pt-10 pb-4">
-      <h1 class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl" :style="{ fontFamily: 'var(--font-display)' }">数据图表</h1>
+      <h1 class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl font-[var(--font-display)]">数据图表</h1>
       <p class="mt-2 text-base text-muted">趋势 · 对比 · 洞察 · 让选校决策有数</p>
     </UContainer>
 
-    <!-- 4 大视图 mode tab (UButton flex 横排 1 行, 等高 + 自写激活态) -->
+    <!-- 4 大视图 mode tab (pill) -->
     <UContainer class="pt-2">
       <div class="flex flex-wrap gap-2">
         <UButton
@@ -324,7 +331,8 @@ function toggleSelect(name: string) {
           :variant="mode === m.value ? 'solid' : 'outline'"
           :icon="m.icon"
           size="md"
-          class="flex-1 !flex !flex-col !items-start !gap-0.5 !rounded-xl !h-auto !min-h-[64px] !px-3 !py-2"
+          :ui="{ leadingIcon: 'size-4' }"
+          class="flex-1 !flex !flex-col !items-start !gap-0.5 rounded-full !h-auto !min-h-[64px] !px-3 !py-2"
           @click="mode = m.value"
         >
           <div class="flex flex-col items-start gap-0.5 text-left">
@@ -350,6 +358,7 @@ function toggleSelect(name: string) {
             :variant="currentRank === r.value ? 'solid' : 'outline'"
             :label="r.label"
             size="sm"
+            class="rounded-full"
             @click="currentRank = r.value"
           />
         </UFieldGroup>
@@ -362,7 +371,7 @@ function toggleSelect(name: string) {
       <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <UCard v-for="k in kpis" :key="k.label" :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-5' }">
           <div class="text-[12px] font-medium text-muted">{{ k.label }}</div>
-          <div class="mt-2 text-[36px] font-semibold leading-none tracking-tight" :style="{ color: k.color, fontFamily: 'var(--font-display)' }">{{ k.value }}</div>
+          <div class="mt-2 text-[36px] font-semibold leading-none tracking-tight font-[var(--font-display)]" :style="{ color: k.color }">{{ k.value }}</div>
           <div class="mt-2 text-[12px] text-subtle">{{ k.sub }}</div>
         </UCard>
       </div>
@@ -375,24 +384,24 @@ function toggleSelect(name: string) {
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-6' }">
           <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 class="text-[22px] font-semibold leading-tight text-default" :style="{ fontFamily: 'var(--font-display)' }">我的对比</h2>
+              <h2 class="text-[22px] font-semibold leading-tight text-default font-[var(--font-display)]">我的对比</h2>
               <p class="mt-1 text-[13px] text-muted">下方排名榜点 <span class="font-mono text-default">+ 加入对比</span> 添加, 最多 {{ MAX_WATCHLIST }} 所大学</p>
             </div>
             <div class="flex items-center gap-2">
               <UBadge v-if="watchlist.length" color="primary" variant="subtle" :label="`${watchlist.length} / ${MAX_WATCHLIST}`" />
-              <UButton v-if="watchlist.length" icon="i-lucide-trash-2" color="neutral" variant="ghost" size="sm" label="清空" @click="clearWatch" />
+              <UButton v-if="watchlist.length" icon="i-lucide-trash-2" color="neutral" variant="ghost" size="sm" label="清空" :ui="{ leadingIcon: 'size-4' }" class="rounded-full" @click="clearWatch" />
             </div>
           </div>
           <ClientOnly>
-            <div v-if="watchlist.length === 0" class="rounded-2xl border-2 border-dashed border-default bg-[var(--color-surface-1)] p-10 text-center">
-              <UIcon name="i-lucide-eye-off" class="mx-auto size-5 text-muted" />
-              <div class="mt-3 text-sm text-default">还没有添加大学</div>
-              <div class="mt-1 text-xs text-muted">从下方排名榜点 + 加入对比, 这里只画你挑的大学, 不再 137 条线堆一起</div>
-            </div>
+            <UCard v-if="watchlist.length === 0" :ui="{ root: 'rounded-2xl border-2 border-dashed border-default bg-[var(--color-surface-1)]', body: 'p-10 text-center space-y-3' }">
+              <UIcon name="i-lucide-eye-off" class="mx-auto size-4 text-muted" />
+              <div class="text-sm text-default">还没有添加大学</div>
+              <div class="text-xs text-muted">从下方排名榜点 + 加入对比, 这里只画你挑的大学, 不再 137 条线堆一起</div>
+            </UCard>
             <div v-else class="rounded-xl bg-[var(--color-surface-1)] p-4">
               <ChartSvgChart :chart="watchChart" :height="320" />
               <div class="mt-3 flex flex-wrap gap-2">
-                <UButton v-for="name in watchlist" :key="name" :label="name" icon="i-lucide-x" color="neutral" variant="outline" size="xs" @click="toggleWatch(name)" />
+                <UButton v-for="name in watchlist" :key="name" :label="name" icon="i-lucide-x" color="neutral" variant="outline" size="xs" :ui="{ leadingIcon: 'size-3.5' }" class="rounded-full" @click="toggleWatch(name)" />
               </div>
             </div>
           </ClientOnly>
@@ -404,7 +413,7 @@ function toggleSelect(name: string) {
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm overflow-hidden', body: 'p-0' }">
           <div class="flex items-center justify-between border-b border-default p-5">
             <div>
-              <h2 class="text-[22px] font-semibold leading-tight text-default" :style="{ fontFamily: 'var(--font-display)' }">Top {{ currentRank }} 排名榜</h2>
+              <h2 class="text-[22px] font-semibold leading-tight text-default font-[var(--font-display)]">Top {{ currentRank }} 排名榜</h2>
               <p class="mt-1 text-[13px] text-muted">按最新年份排名升序 · 历年曲线 = sparkline · 趋势 = 同比首年变化</p>
             </div>
           </div>
@@ -423,38 +432,40 @@ function toggleSelect(name: string) {
               :ui="{ th: 'text-[12px] font-medium text-muted', td: 'py-3 text-sm'}"
             >
               <template #rank-cell="{ row }">
-                <span :class="['rank-badge', rankBadgeTier(row.original.last)]">{{ row.original.last }}</span>
+                <span :class="['rank-badge', rankBadgeTier(r(row).last)]">{{ r(row).last }}</span>
               </template>
               <template #name-cell="{ row }">
-                <NuxtLink :to="`/universities/${encodeURIComponent(row.original.name)}`" class="text-default hover:text-[var(--color-brand-900)]" :style="{ fontFamily: 'var(--font-display)' }">{{ row.original.name }}</NuxtLink>
+                <NuxtLink :to="`/universities/${encodeURIComponent(r(row).name)}`" class="text-default hover:text-[var(--color-brand-900)] font-[var(--font-display)]">{{ r(row).name }}</NuxtLink>
               </template>
               <template #sparkline-cell="{ row }">
                 <svg :width="100" :height="28" class="overflow-visible">
-                  <path :d="sparklinePath(row.original.data, 100, 28)" fill="none" stroke="#1456f0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  <path :d="sparklinePath(r(row).data, 100, 28)" fill="none" stroke="#1456f0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
               </template>
               <template #minmax-cell="{ row }">
                 <span class="font-mono text-[13px] text-muted">
-                  <span class="text-emerald-600">{{ row.original.min }}</span>
+                  <span class="text-emerald-600">{{ r(row).min }}</span>
                   <span class="mx-1 text-subtle">/</span>
-                  <span class="text-red-500">{{ row.original.max }}</span>
+                  <span class="text-red-500">{{ r(row).max }}</span>
                 </span>
               </template>
               <template #trend-cell="{ row }">
-                <div class="inline-flex items-center gap-1.5" :class="trendColor(row.original.tone)">
-                  <UIcon :name="trendIcon(row.original.tone)" class="size-4" />
-                  <span class="text-[13px] font-medium">{{ trendLabel(row.original.tone, row.original.trend) }}</span>
+                <div class="inline-flex items-center gap-1.5" :class="trendColor(r(row).tone)">
+                  <UIcon :name="trendIcon(r(row).tone)" class="size-4" />
+                  <span class="text-[13px] font-medium">{{ trendLabel(r(row).tone, r(row).trend) }}</span>
                 </div>
               </template>
               <template #action-cell="{ row }">
                 <UButton
-                  :icon="isWatching(row.original.name) ? 'i-lucide-check' : 'i-lucide-plus'"
-                  :color="isWatching(row.original.name) ? 'primary' : 'neutral'"
-                  :variant="isWatching(row.original.name) ? 'solid' : 'outline'"
+                  :icon="isWatching(r(row).name) ? 'i-lucide-check' : 'i-lucide-plus'"
+                  :color="isWatching(r(row).name) ? 'primary' : 'neutral'"
+                  :variant="isWatching(r(row).name) ? 'solid' : 'outline'"
                   size="xs"
-                  :label="isWatching(row.original.name) ? '已加入' : '加入对比'"
-                  :disabled="!isWatching(row.original.name) && watchlist.length >= MAX_WATCHLIST"
-                  @click="toggleWatch(row.original.name)"
+                  :ui="{ leadingIcon: 'size-3.5' }"
+                  class="rounded-full"
+                  :label="isWatching(r(row).name) ? '已加入' : '加入对比'"
+                  :disabled="!isWatching(r(row).name) && watchlist.length >= MAX_WATCHLIST"
+                  @click="toggleWatch(r(row).name)"
                 />
               </template>
             </UTable>
@@ -469,7 +480,7 @@ function toggleSelect(name: string) {
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-6' }">
           <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 class="text-[22px] font-semibold leading-tight text-default" :style="{ fontFamily: 'var(--font-display)' }">4 维多校对比</h2>
+              <h2 class="text-[22px] font-semibold leading-tight text-default font-[var(--font-display)]">4 维多校对比</h2>
               <p class="mt-1 text-[13px] text-muted">勾几所大学, 拉到 QS 综合 / QS 计算机 / US News 综合 / US News 计算机 4 维 (共 N × 4 条线)</p>
             </div>
             <UBadge v-if="selectedForVariants.length" color="primary" variant="subtle" :label="`已选 ${selectedForVariants.length} / 6`" />
@@ -485,12 +496,12 @@ function toggleSelect(name: string) {
                 :color="selectedForVariants.includes(r.name) ? 'primary' : 'neutral'"
                 :variant="selectedForVariants.includes(r.name) ? 'solid' : 'outline'"
                 size="xs"
-                class="!rounded-full"
+                class="rounded-full"
                 @click="toggleSelect(r.name)"
               >
                 <span :class="['rank-badge', rankBadgeTier(r.last)]" :style="{ height: '18px', minWidth: '24px', fontSize: '10px', padding: '0 6px' }">{{ r.last }}</span>
                 <span class="ml-1">{{ r.name }}</span>
-                <UIcon v-if="selectedForVariants.includes(r.name)" name="i-lucide-check" class="ml-1 size-3" />
+                <UIcon v-if="selectedForVariants.includes(r.name)" name="i-lucide-check" class="ml-1 size-3.5" />
               </UButton>
             </div>
           </div>
@@ -499,7 +510,7 @@ function toggleSelect(name: string) {
           <div class="rounded-xl bg-[var(--color-surface-1)] p-4">
             <ClientOnly>
               <div v-if="selectedForVariants.length === 0" class="flex flex-col items-center justify-center gap-2 py-16 text-center text-muted">
-                <UIcon name="i-lucide-git-compare" class="size-5" />
+                <UIcon name="i-lucide-git-compare" class="size-4" />
                 <span class="text-sm">从上方勾几所大学, 这里画 N × 4 条对比线</span>
               </div>
               <div v-else-if="variantLoading" class="flex items-center justify-center py-16 text-muted">
@@ -534,7 +545,7 @@ function toggleSelect(name: string) {
       <UContainer class="py-4">
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-6' }">
           <div class="mb-4 flex flex-wrap items-center gap-3">
-            <h2 class="text-[22px] font-semibold leading-tight text-default" :style="{ fontFamily: 'var(--font-display)' }">按专业 / 分类排序</h2>
+            <h2 class="text-[22px] font-semibold leading-tight text-default font-[var(--font-display)]">按专业 / 分类排序</h2>
             <USelectMenu v-model="subjectRankTable" :items="subjectTableItems" value-key="value" size="sm" class="min-w-[180px]" />
             <USelectMenu
               v-if="subjectYears.length"
@@ -556,8 +567,8 @@ function toggleSelect(name: string) {
 
           <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
             <!-- 分类分布 (Top 12) -->
-            <div class="rounded-xl border border-default bg-[var(--color-surface-1)] p-4">
-              <div class="mb-2 text-[13px] font-semibold text-default">分类分布 (Top 12)</div>
+            <UCard :ui="{ root: 'rounded-2xl border border-default bg-[var(--color-surface-1)]', body: 'p-4' }">
+              <div class="mb-2 text-[13px] font-semibold text-default font-[var(--font-display)]">分类分布 (Top 12)</div>
               <div v-if="subjectLoading" class="flex items-center justify-center py-8 text-muted">
                 <UIcon name="i-lucide-loader" class="size-4 animate-spin" />
               </div>
@@ -567,13 +578,13 @@ function toggleSelect(name: string) {
                   <div class="flex-1 overflow-hidden rounded-full bg-white h-1.5">
                     <div class="h-full rounded-full" :style="{ background: variantColor(i), width: ((c.count / (subjectCategoryDist[0]?.count || 1)) * 100) + '%' }" />
                   </div>
-                  <span class="w-[40px] text-right font-mono text-[12px] font-semibold" :style="{ fontFamily: 'var(--font-data)', color: variantColor(i) }">{{ c.count }}</span>
+                  <span class="w-[40px] text-right font-mono text-[12px] font-semibold font-[var(--font-data)]" :style="{ color: variantColor(i) }">{{ c.count }}</span>
                 </div>
               </div>
-            </div>
+            </UCard>
 
             <!-- 排名榜 (按 currentRankInteger 升序) -->
-            <div class="rounded-xl border border-default bg-white lg:col-span-2">
+            <UCard :ui="{ root: 'rounded-2xl border border-default bg-white lg:col-span-2', body: 'p-0' }">
               <div v-if="subjectLoading" class="flex items-center justify-center py-10 text-muted">
                 <UIcon name="i-lucide-loader" class="size-4 animate-spin" />
                 <span class="ml-2 text-sm">加载中…</span>
@@ -591,31 +602,33 @@ function toggleSelect(name: string) {
                 :ui="{ th: 'text-[12px] font-medium text-muted', td: 'py-2.5 text-sm' }"
               >
                 <template #rank-cell="{ row }">
-                  <span :class="['rank-badge', rankBadgeTier(row.original.currentRankInteger)]" :style="{ minWidth: '36px', height: '24px', fontSize: '12px' }">{{ row.original.currentRankInteger ?? '—' }}</span>
+                  <span :class="['rank-badge', rankBadgeTier(r(row).currentRankInteger)]" :style="{ minWidth: '36px', height: '24px', fontSize: '12px' }">{{ r(row).currentRankInteger ?? '—' }}</span>
                 </template>
                 <template #name-cell="{ row }">
-                  <NuxtLink :to="`/universities/${encodeURIComponent(row.original.universityNameChinese)}`" class="font-medium text-default hover:text-[var(--color-brand-900)]">
-                    {{ row.original.universityNameChinese }}
+                  <NuxtLink :to="`/universities/${encodeURIComponent(r(row).universityNameChinese)}`" class="font-medium text-default hover:text-[var(--color-brand-900)]">
+                    {{ r(row).universityNameChinese }}
                   </NuxtLink>
                 </template>
                 <template #category-cell="{ row }">
-                  <UBadge color="primary" variant="subtle" size="xs" :label="row.original.rankingCategory || '—'" />
+                  <UBadge color="primary" variant="subtle" size="xs" :label="r(row).rankingCategory || '—'" />
                 </template>
                 <template #year-cell="{ row }">
-                  <span class="text-[12px] text-muted">{{ row.original.rankingYear || '—' }}</span>
+                  <span class="text-[12px] text-muted">{{ r(row).rankingYear || '—' }}</span>
                 </template>
                 <template #action-cell="{ row }">
                   <UButton
-                    :icon="isWatching(row.original.universityNameChinese) ? 'i-lucide-check' : 'i-lucide-plus'"
-                    :color="isWatching(row.original.universityNameChinese) ? 'primary' : 'neutral'"
-                    :variant="isWatching(row.original.universityNameChinese) ? 'solid' : 'outline'"
+                    :icon="isWatching(r(row).universityNameChinese) ? 'i-lucide-check' : 'i-lucide-plus'"
+                    :color="isWatching(r(row).universityNameChinese) ? 'primary' : 'neutral'"
+                    :variant="isWatching(r(row).universityNameChinese) ? 'solid' : 'outline'"
                     size="xs"
-                    :label="isWatching(row.original.universityNameChinese) ? '已加入' : '加入对比'"
-                    @click="toggleWatch(row.original.universityNameChinese)"
+                    :ui="{ leadingIcon: 'size-3.5' }"
+                    class="rounded-full"
+                    :label="isWatching(r(row).universityNameChinese) ? '已加入' : '加入对比'"
+                    @click="toggleWatch(r(row).universityNameChinese)"
                   />
                 </template>
               </UTable>
-            </div>
+            </UCard>
           </div>
         </UCard>
       </UContainer>
@@ -626,7 +639,7 @@ function toggleSelect(name: string) {
       <UContainer class="py-4">
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-6' }">
           <div class="mb-4">
-            <h2 class="text-[22px] font-semibold leading-tight text-default" :style="{ fontFamily: 'var(--font-display)' }">按地区联动</h2>
+            <h2 class="text-[22px] font-semibold leading-tight text-default font-[var(--font-display)]">按地区联动</h2>
             <p class="mt-1 text-[13px] text-muted">选洲 → 看国家分布 → 加对比</p>
           </div>
 
@@ -637,7 +650,7 @@ function toggleSelect(name: string) {
               :variant="!selectedRegion ? 'solid' : 'outline'"
               size="sm"
               label="全部"
-              class="!rounded-full"
+              class="rounded-full"
               @click="selectedRegion = undefined"
             />
             <UButton
@@ -647,7 +660,7 @@ function toggleSelect(name: string) {
               :color="selectedRegion === r.value ? 'primary' : 'neutral'"
               size="sm"
               :label="r.label"
-              class="!rounded-full"
+              class="rounded-full"
               :style="selectedRegion === r.value ? { background: r.color, color: '#fff', borderColor: r.color } : { color: r.color, borderColor: r.color }"
               @click="selectedRegion = selectedRegion === r.value ? undefined : r.value"
             />
@@ -659,21 +672,21 @@ function toggleSelect(name: string) {
           </div>
           <div v-else class="grid grid-cols-1 gap-5 lg:grid-cols-3">
             <!-- 国家分布 -->
-            <div class="rounded-xl border border-default bg-[var(--color-surface-1)] p-4">
-              <div class="mb-2 text-[13px] font-semibold text-default">国家分布 (Top 15)</div>
+            <UCard :ui="{ root: 'rounded-2xl border border-default bg-[var(--color-surface-1)]', body: 'p-4' }">
+              <div class="mb-2 text-[13px] font-semibold text-default font-[var(--font-display)]">国家分布 (Top 15)</div>
               <div class="space-y-1">
                 <div v-for="(c, i) in regionCountryDist" :key="c.name" class="flex items-center gap-2">
                   <span class="w-[120px] truncate text-[12px] text-default" :title="c.name">{{ c.name }}</span>
                   <div class="flex-1 overflow-hidden rounded-full bg-white h-1.5">
                     <div class="h-full rounded-full bg-[var(--color-brand-900)]" :style="{ width: ((c.count / (regionCountryDist[0]?.count || 1)) * 100) + '%' }" />
                   </div>
-                  <span class="w-[40px] text-right font-mono text-[12px] font-semibold text-[var(--color-brand-900)]" :style="{ fontFamily: 'var(--font-data)' }">{{ c.count }}</span>
+                  <span class="w-[40px] text-right font-mono text-[12px] font-semibold text-[var(--color-brand-900)] font-[var(--font-data)]">{{ c.count }}</span>
                 </div>
               </div>
-            </div>
+            </UCard>
 
             <!-- 院校列表 (Top 100 范围内, 按 currentQsAllRank 升序) -->
-            <div class="rounded-xl border border-default bg-white lg:col-span-2">
+            <UCard :ui="{ root: 'rounded-2xl border border-default bg-white lg:col-span-2', body: 'p-0' }">
               <UTable
                 :data="regionCountryList"
                 :columns="[
@@ -685,26 +698,28 @@ function toggleSelect(name: string) {
                 :ui="{ th: 'text-[12px] font-medium text-muted', td: 'py-2.5 text-sm' }"
               >
                 <template #rank-cell="{ row }">
-                  <span :class="['rank-badge', rankBadgeTier(row.original.currentQsAllRank)]" :style="{ minWidth: '36px', height: '24px', fontSize: '12px' }">{{ row.original.currentQsAllRank ?? '—' }}</span>
+                  <span :class="['rank-badge', rankBadgeTier(r(row).currentQsAllRank)]" :style="{ minWidth: '36px', height: '24px', fontSize: '12px' }">{{ r(row).currentQsAllRank ?? '—' }}</span>
                 </template>
                 <template #name-cell="{ row }">
-                  <NuxtLink :to="`/universities/${encodeURIComponent(row.original.universityNameChinese)}`" class="font-medium text-default hover:text-[var(--color-brand-900)]">{{ row.original.universityNameChinese }}</NuxtLink>
+                  <NuxtLink :to="`/universities/${encodeURIComponent(r(row).universityNameChinese)}`" class="font-medium text-default hover:text-[var(--color-brand-900)]">{{ r(row).universityNameChinese }}</NuxtLink>
                 </template>
                 <template #country-cell="{ row }">
-                  <span class="text-[12px] text-muted">{{ row.original.universityTags || '—' }}</span>
+                  <span class="text-[12px] text-muted">{{ r(row).universityTags || '—' }}</span>
                 </template>
                 <template #action-cell="{ row }">
                   <UButton
-                    :icon="isWatching(row.original.universityNameChinese) ? 'i-lucide-check' : 'i-lucide-plus'"
-                    :color="isWatching(row.original.universityNameChinese) ? 'primary' : 'neutral'"
-                    :variant="isWatching(row.original.universityNameChinese) ? 'solid' : 'outline'"
+                    :icon="isWatching(r(row).universityNameChinese) ? 'i-lucide-check' : 'i-lucide-plus'"
+                    :color="isWatching(r(row).universityNameChinese) ? 'primary' : 'neutral'"
+                    :variant="isWatching(r(row).universityNameChinese) ? 'solid' : 'outline'"
                     size="xs"
-                    :label="isWatching(row.original.universityNameChinese) ? '已加入' : '加入对比'"
-                    @click="toggleWatch(row.original.universityNameChinese)"
+                    :ui="{ leadingIcon: 'size-3.5' }"
+                    class="rounded-full"
+                    :label="isWatching(r(row).universityNameChinese) ? '已加入' : '加入对比'"
+                    @click="toggleWatch(r(row).universityNameChinese)"
                   />
                 </template>
               </UTable>
-            </div>
+            </UCard>
           </div>
         </UCard>
       </UContainer>

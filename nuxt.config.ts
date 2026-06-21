@@ -9,7 +9,7 @@ export default defineNuxtConfig({
   // 显式设 srcDir='.' 后, ~ / @ alias 必须显式配 (memory 06-18 billDesktop 立)
   srcDir: '.',
 
-  modules: ['@nuxt/ui'],
+  modules: ['@nuxt/ui', '@pinia/nuxt'],
 
   alias: {
     '~': fileURLToPath(new URL('./', import.meta.url)),
@@ -45,7 +45,8 @@ export default defineNuxtConfig({
   },
 
   ui: {
-    primary: '#1456f0',
+    // @ts-ignore @nuxt/ui v4 types omit legacy primary string, runtime still accepts it
+    primary: '#0a0a0a',
     gray: 'neutral',
     icons: 'lucide',
     fonts: false,

@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { queryAllQs } from '~/lib/api/university'
 import { queryBackup2List, fetchBackup2Tables, fetchBackup2Years } from '~/lib/api/ranking'
-import type { UniversityAllDTO, RankVariant } from '~/types'
+import type { Backup2Record, UniversityAllDTO, RankVariant } from '~/types'
 import { RANK_VARIANT_SHORT_MAP } from '~/types'
 
 useHead({ title: '学校库 · 选校系统' })
 
 // ============ 状态 (只留核心) ============
 const search = ref<string | undefined>(undefined)
+const debouncedSearch = ref<string | undefined>(undefined)
+let searchTimer: ReturnType<typeof setTimeout> | null = null
 const rankTable = ref<string>('qs')            // qs / usnews / all / 7 张新表
 const tagState = ref<string | undefined>(undefined)  // 洲
 const tag = ref<string | undefined>(undefined)       // 国家
@@ -16,10 +18,11 @@ const sortBy = ref<string>('rank')             // rank / name / country
 const yearFilter = ref<string | undefined>(undefined)
 const rankVariant = ref<RankVariant>('qs')
 
-const tableData = ref<UniversityAllDTO[]>([])
+const tableData = ref<any[]>([])
 const total = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const loadRunId = ref(0)
 
 const backup2Tables = ref<string[]>([])
 const backup2Years = ref<string[]>([])
@@ -46,8 +49,8 @@ const rankTableItems = computed(() => {
 
 onMounted(async () => {
   try {
-    const res = await fetchBackup2Tables() as any
-    backup2Tables.value = res?.data ?? res ?? []
+    const res = await fetchBackup2Tables()
+    backup2Tables.value = res.data ?? []
   } catch (e) {
     console.warn('[universities] fetch backup2 tables failed', e)
   }
@@ -61,12 +64,19 @@ watch(rankTable, async (newVal) => {
     return
   }
   try {
-    const res = await fetchBackup2Years(newVal) as any
-    backup2Years.value = res?.data ?? res ?? []
+    const res = await fetchBackup2Years(newVal)
+    backup2Years.value = res.data ?? []
   } catch (e) {
     console.warn('[universities] fetch years failed', e)
     backup2Years.value = []
   }
+})
+
+watch(search, (newVal) => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    debouncedSearch.value = newVal
+  }, 300)
 })
 
 const yearFilterItems = computed(() => [
@@ -132,6 +142,8 @@ function regionStyle(region: string) {
 async function load() {
   loading.value = true
   error.value = null
+  loadRunId.value++
+  const runId = loadRunId.value
   try {
     if (isOldTable.value) {
       rankVariant.value = rankTable.value as RankVariant
@@ -142,37 +154,43 @@ async function load() {
         universityTagsState: tagState.value,
         universityTags: tag.value,
         currentRank: maxRank.value,
-        universityNameChinese: search.value
-      }) as any
-      const records = res?.records ?? res?.data?.records ?? []
+        universityNameChinese: debouncedSearch.value
+      })
+      if (runId !== loadRunId.value) return
+      const records = res.records ?? []
       tableData.value = records
-      total.value = res?.total ?? res?.data?.total ?? 0
+      total.value = res.total ?? 0
     } else {
       const res = await queryBackup2List({
         page: 1,
         limit: 20,
         rankTable: rankTable.value,
-        universityNameChinese: search.value,
+        universityNameChinese: debouncedSearch.value,
         universityTags: tag.value,
         universityTagsState: tagState.value,
         rankingYear: yearFilter.value || undefined,
         currentRankLimit: maxRank.value
-      }) as any
-      const records = res?.records ?? res?.data?.records ?? []
+      })
+      if (runId !== loadRunId.value) return
+      const records = res.data?.records ?? []
       tableData.value = records
-      total.value = res?.total ?? res?.data?.total ?? 0
+      total.value = res.data?.total ?? 0
     }
   } catch (e: any) {
+    if (runId !== loadRunId.value) return
     console.warn('[universities] load failed', e?.message)
     error.value = '后端不可达'
     tableData.value = []
     total.value = 0
   } finally {
-    loading.value = false
+    if (runId === loadRunId.value) loading.value = false
   }
 }
 
-watch([rankTable, tagState, tag, maxRank, sortBy, yearFilter, search], () => {
+watch([rankTable, tagState, tag, maxRank, sortBy, yearFilter], () => {
+  load()
+})
+watch(debouncedSearch, () => {
   load()
 })
 
@@ -235,19 +253,23 @@ const regionDist = computed(() => {
 
 // ============ 专业分布 (只新表, 按 rankingCategory) ============
 const subjectDist = ref<{ key: string; count: number }[]>([])
+const subjectRunId = ref(0)
 async function loadSubjectDist() {
   if (isOldTable.value) {
     subjectDist.value = []
     return
   }
+  subjectRunId.value++
+  const runId = subjectRunId.value
   try {
     // 用 limit=500 抽样, 客户端 groupBy rankingCategory
     const res = await queryBackup2List({
       page: 1, limit: 500, rankTable: rankTable.value,
       rankingYear: yearFilter.value || undefined,
       currentRankLimit: maxRank.value
-    }) as any
-    const records: any[] = res?.records ?? res?.data?.records ?? []
+    })
+    if (runId !== subjectRunId.value) return
+    const records: Backup2Record[] = res.data?.records ?? []
     const map = new Map<string, number>()
     for (const r of records) {
       const k = r.rankingCategory || '未分类'
@@ -258,11 +280,17 @@ async function loadSubjectDist() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 12)
   } catch (e) {
-    subjectDist.value = []
+    if (runId === subjectRunId.value) subjectDist.value = []
   }
 }
 watch([rankTable, yearFilter, maxRank], () => { loadSubjectDist() })
 onMounted(loadSubjectDist)
+
+onBeforeUnmount(() => {
+  loadRunId.value++
+  subjectRunId.value++
+  if (searchTimer) clearTimeout(searchTimer)
+})
 
 const subjectTotal = computed(() => subjectDist.value.reduce((s, x) => s + x.count, 0))
 
@@ -286,7 +314,7 @@ function reset() {
           <div>
             <UBadge color="primary" variant="subtle" size="md" class="mb-4">
               <UIcon name="i-lucide-library" class="size-3.5" />
-              <span class="ml-1.5">{{ total > 0 ? total.toLocaleString() : '2,884' }} 所大学 · 8 大排名体系</span>
+              <span class="ml-1.5">多源排名 · 8 大排名体系</span>
             </UBadge>
             <h1 class="text-4xl font-medium leading-[1.10] tracking-tight text-default sm:text-5xl md:text-[52px]" :style="{ fontFamily: 'var(--font-display)' }">
               学校库
@@ -298,30 +326,32 @@ function reset() {
               <UBadge v-for="r in [10, 20, 50, 100, 200].map(v => ({ v, l: 'Top ' + v }))" :key="r.v" :color="maxRank === r.v ? 'primary' : 'neutral'" :variant="maxRank === r.v ? 'solid' : 'soft'" size="sm" :label="r.l" class="cursor-pointer" @click="maxRank = r.v" />
             </div>
           </div>
-          <div class="flex items-center justify-end">
-            <div class="grid grid-cols-2 gap-3 text-center md:gap-4">
-              <div class="rounded-2xl border border-default bg-white px-5 py-4 shadow-sm">
-                <div class="text-[10px] font-medium uppercase tracking-wider text-muted">院校</div>
-                <div class="mt-1 text-3xl font-bold leading-none text-[var(--color-brand-900)]" :style="{ fontFamily: 'var(--font-display)' }">{{ total > 0 ? total.toLocaleString() : '2,884' }}</div>
-                <div class="mt-1 text-[11px] text-muted">所大学</div>
-              </div>
-              <div class="rounded-2xl border border-default bg-white px-5 py-4 shadow-sm">
-                <div class="text-[10px] font-medium uppercase tracking-wider text-muted">排名</div>
-                <div class="mt-1 text-3xl font-bold leading-none text-[var(--color-brand-pink)]" :style="{ fontFamily: 'var(--font-display)' }">8</div>
-                <div class="mt-1 text-[11px] text-muted">权威体系</div>
-              </div>
-              <div class="rounded-2xl border border-default bg-white px-5 py-4 shadow-sm">
-                <div class="text-[10px] font-medium uppercase tracking-wider text-muted">跨度</div>
-                <div class="mt-1 text-3xl font-bold leading-none text-[var(--color-brand-900)]" :style="{ fontFamily: 'var(--font-display)' }">10</div>
-                <div class="mt-1 text-[11px] text-muted">年 (2018-2027)</div>
-              </div>
-              <div class="rounded-2xl border border-default bg-white px-5 py-4 shadow-sm">
-                <div class="text-[10px] font-medium uppercase tracking-wider text-muted">数据</div>
-                <div class="mt-1 text-3xl font-bold leading-none text-[var(--color-brand-pink)]" :style="{ fontFamily: 'var(--font-display)' }">158k+</div>
-                <div class="mt-1 text-[11px] text-muted">行级排名</div>
+          <ClientOnly>
+            <div class="flex items-center justify-end">
+              <div class="grid grid-cols-2 gap-3 text-center md:gap-4">
+                <div class="rounded-2xl border border-default bg-white px-5 py-4 shadow-sm">
+                  <div class="text-[10px] font-medium uppercase tracking-wider text-muted">院校</div>
+                  <div class="mt-1 text-3xl font-bold leading-none text-[var(--color-brand-900)]" :style="{ fontFamily: 'var(--font-display)' }">{{ total > 0 ? total.toLocaleString() : '2,884' }}</div>
+                  <div class="mt-1 text-[11px] text-muted">所大学</div>
+                </div>
+                <div class="rounded-2xl border border-default bg-white px-5 py-4 shadow-sm">
+                  <div class="text-[10px] font-medium uppercase tracking-wider text-muted">排名</div>
+                  <div class="mt-1 text-3xl font-bold leading-none text-[var(--color-brand-pink)]" :style="{ fontFamily: 'var(--font-display)' }">8</div>
+                  <div class="mt-1 text-[11px] text-muted">权威体系</div>
+                </div>
+                <div class="rounded-2xl border border-default bg-white px-5 py-4 shadow-sm">
+                  <div class="text-[10px] font-medium uppercase tracking-wider text-muted">跨度</div>
+                  <div class="mt-1 text-3xl font-bold leading-none text-[var(--color-brand-900)]" :style="{ fontFamily: 'var(--font-display)' }">10</div>
+                  <div class="mt-1 text-[11px] text-muted">年 (2018-2027)</div>
+                </div>
+                <div class="rounded-2xl border border-default bg-white px-5 py-4 shadow-sm">
+                  <div class="text-[10px] font-medium uppercase tracking-wider text-muted">数据</div>
+                  <div class="mt-1 text-3xl font-bold leading-none text-[var(--color-brand-pink)]" :style="{ fontFamily: 'var(--font-display)' }">158k+</div>
+                  <div class="mt-1 text-[11px] text-muted">行级排名</div>
+                </div>
               </div>
             </div>
-          </div>
+          </ClientOnly>
         </div>
       </UContainer>
     </section>
@@ -370,6 +400,7 @@ function reset() {
       </ClientOnly>
     </UContainer>
 
+    <ClientOnly>
     <!-- 顶部 Top 20 表 (4 列精简) -->
     <UContainer class="pt-6">
       <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm overflow-hidden', body: 'p-0' }">
@@ -513,7 +544,7 @@ function reset() {
               <div class="flex-1 overflow-hidden rounded-full bg-[var(--color-surface-2)] h-1.5">
                 <div
                   class="h-full rounded-full bg-[var(--color-brand-900)] transition-all"
-                  :style="{ width: ((s.count / subjectDist[0].count) * 100) + '%' }"
+                  :style="{ width: ((s.count / (subjectDist[0]?.count || 1)) * 100) + '%' }"
                 />
               </div>
               <span class="w-[48px] flex-none text-right font-mono text-[12px] font-semibold text-[var(--color-brand-900)]" :style="{ fontFamily: 'var(--font-data)' }">{{ s.count }}</span>
@@ -527,5 +558,6 @@ function reset() {
         </UCard>
       </div>
     </UContainer>
+    </ClientOnly>
   </div>
 </template>

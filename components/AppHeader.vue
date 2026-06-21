@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const open = ref(false)
+const auth = useAuthStore()
 
 const navItems = [
   { label: '首页', to: '/', icon: 'i-lucide-home' },
@@ -34,7 +35,7 @@ const isActive = (to: string) => {
           class="flex size-9 items-center justify-center rounded-xl text-white shadow-sm"
           :style="{ background: 'var(--color-brand-900)' }"
         >
-          <UIcon name="i-lucide-graduation-cap" class="size-5" />
+          <UIcon name="i-lucide-graduation-cap" class="size-4" />
         </div>
         <div class="flex flex-col leading-tight">
           <span
@@ -59,7 +60,27 @@ const isActive = (to: string) => {
       </nav>
 
       <div class="hidden items-center gap-2 md:flex">
+        <template v-if="auth.isLoggedIn">
+          <UAvatar
+            v-if="auth.avatar"
+            :src="auth.avatar"
+            :alt="auth.displayName"
+            size="sm"
+          />
+          <span class="text-sm font-medium text-default">{{ auth.displayName }}</span>
+          <UButton
+            icon="i-lucide-log-out"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            class="rounded-full"
+            @click="auth.clearUser"
+          >
+            退出
+          </UButton>
+        </template>
         <UButton
+          v-else
           to="/login"
           icon="i-lucide-log-in"
           color="primary"
@@ -107,7 +128,30 @@ const isActive = (to: string) => {
           >
             {{ item.label }}
           </UButton>
+          <template v-if="auth.isLoggedIn">
+            <div class="flex items-center gap-2 px-2 py-2">
+              <UAvatar
+                v-if="auth.avatar"
+                :src="auth.avatar"
+                :alt="auth.displayName"
+                size="sm"
+              />
+              <span class="text-sm font-medium text-default">{{ auth.displayName }}</span>
+            </div>
+            <UButton
+              icon="i-lucide-log-out"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              block
+              class="mt-2 justify-center"
+              @click="auth.clearUser(); close()"
+            >
+              退出
+            </UButton>
+          </template>
           <UButton
+            v-else
             to="/login"
             icon="i-lucide-log-in"
             color="primary"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { queryAllEcharts } from '~/lib/api/university'
 import { fetchBackup2Tables, listEchartsUniversities } from '~/lib/api/ranking'
+import type { ShowResult } from '~/types'
 
 useHead({ title: '首页 · 选校系统' })
 
@@ -19,18 +20,18 @@ async function loadStats() {
   try {
     // 并行拉多个端点拿真数据
     const [tables, universities] = await Promise.all([
-      fetchBackup2Tables().catch(() => []),
-      listEchartsUniversities().catch(() => [])
+      fetchBackup2Tables().catch((): ShowResult<string[]> => ({ code: 0, msg: '', data: [] })),
+      listEchartsUniversities().catch((): string[] => [])
     ])
-    // backup2 端点返 ShowResult.data, 容错解包
-    const tblList: any[] = (tables as any)?.data ?? (tables as any) ?? []
-    const uniList: string[] = (universities as any) ?? []
+    // backup2 端点返 ShowResult.data, listEchartsUniversities 返数组
+    const tblList: string[] = tables?.data ?? []
+    const uniList: string[] = Array.isArray(universities) ? universities : []
     const systemCount = 2 + tblList.length  // 2 旧 (qs/usnews) + 7 备份 2 榜单
-    kpis.value[0].value = uniList.length ? uniList.length.toLocaleString() : '—'
-    kpis.value[1].value = systemCount.toString()
-    kpis.value[2].value = '10'        // 2018-2027
-    kpis.value[3].value = '158k+'
-    kpis.value[4].value = '120+'
+    kpis.value[0]!.value = uniList.length ? uniList.length.toLocaleString() : '—'
+    kpis.value[1]!.value = systemCount.toString()
+    kpis.value[2]!.value = '10'        // 2018-2027
+    kpis.value[3]!.value = '158k+'
+    kpis.value[4]!.value = '120+'
     statsLoaded.value = true
   } catch (e) {
     console.warn('[home] stats load failed', e)
@@ -103,9 +104,9 @@ async function loadPreview() {
   if (import.meta.server) return
   previewLoading.value = true
   try {
-    const res = await queryAllEcharts({ currentRank: 50 }) as any
-    const allSeries: Series[] = res?.chatData?.series ?? []
-    const years: string[] = res?.legendData ?? []
+    const res = await queryAllEcharts({ currentRank: 50 })
+    const allSeries: Series[] = res.chatData?.series ?? []
+    const years: string[] = res.legendData ?? []
     previewYears.value = years
     // 过滤 data 不为 null 的, 且至少 3 个数据点, 拿前 6 所画线
     previewSeries.value = allSeries
@@ -152,6 +153,22 @@ function lastRank(s: Series) {
   const valid = s.data.filter((v: any) => typeof v === 'number') as number[]
   return valid.length ? valid[valid.length - 1] : '—'
 }
+function validData(s: Series) {
+  return s.data.filter((v: any) => v != null)
+}
+function lastDotX(s: Series) {
+  const len = validData(s).length
+  if (!len) return 0
+  return CHART_PAD + (s.data.length - 1) * ((CHART_W - 2 * CHART_PAD) / Math.max(1, s.data.length - 1))
+}
+function lastDotY(s: Series) {
+  const v = validData(s).pop()
+  if (v == null) return 0
+  return CHART_H - CHART_PAD - (Math.min(v as number, 50) / 50) * (CHART_H - 2 * CHART_PAD)
+}
+function hasAnyData(s: Series) {
+  return validData(s).length > 0
+}
 </script>
 
 <template>
@@ -172,23 +189,24 @@ function lastRank(s: Series) {
               多源排名数据<br />
               让 PhD 选校 <span class="text-gradient-brand">一目了然</span>
             </h1>
-            <p class="mt-5 text-base font-medium leading-relaxed text-muted md:text-lg">
+            <p class="mt-5 text-base font-medium leading-relaxed text-muted md:text-lg" :style="{ fontFamily: 'var(--font-ui)' }">
               整合 8 大排名体系 (QS / US News / ARWU / EduRank / MOSIUR / RUR / QS 学科 / US News 学科) ·
               综合 + 计算机科学双维度 · 历年趋势 + 院校对比
             </p>
             <div class="mt-7 flex flex-wrap items-center gap-3">
-              <UButton to="/universities" color="primary" variant="solid" size="lg" icon="i-lucide-search">
+              <UButton to="/universities" color="primary" variant="solid" size="lg" icon="i-lucide-search" class="rounded-full">
                 立即查询大学
               </UButton>
-              <UButton to="/charts" color="neutral" variant="outline" size="lg" icon="i-lucide-bar-chart-3">
+              <UButton to="/charts" color="primary" variant="outline" size="lg" icon="i-lucide-bar-chart-3" class="rounded-full">
                 查看趋势
               </UButton>
             </div>
           </div>
 
           <!-- 趋势预览卡 (真数据, 聚焦 Top 3 + Top 10 色带 + 渐变面) -->
-          <div
-            class="rounded-3xl border border-default bg-white p-6 lift-on-hover"
+          <UCard
+            class="lift-on-hover rounded-3xl border border-default bg-white ring-0"
+            :ui="{ body: 'p-6' }"
             :style="{ boxShadow: 'var(--shadow-brand-strong)' }"
           >
             <div class="mb-4 flex items-center justify-between">
@@ -200,7 +218,7 @@ function lastRank(s: Series) {
                 深度对比 →
               </NuxtLink>
             </div>
-            <div v-if="previewLoading" class="flex h-[180px] items-center justify-center text-sm text-muted">
+            <div v-if="previewLoading" class="flex h-[180px] items-center justify-center text-sm text-muted" :style="{ fontFamily: 'var(--font-ui)' }">
               <UIcon name="i-lucide-loader" class="mr-1.5 size-4 animate-spin" />
               加载趋势数据...
             </div>
@@ -253,9 +271,9 @@ function lastRank(s: Series) {
                   />
                   <!-- 末端点 (Top 3 加大) -->
                   <circle
-                    v-if="previewSeries[idx] && previewSeries[idx].data.filter((v: any) => v != null).length > 0"
-                    :cx="CHART_PAD + (previewSeries[idx].data.length - 1) * ((CHART_W - 2 * CHART_PAD) / Math.max(1, previewSeries[idx].data.length - 1))"
-                    :cy="(() => { const v = previewSeries[idx].data.filter((x: any) => x != null).pop(); return v == null ? 0 : CHART_H - CHART_PAD - (Math.min(v as number, 50) / 50) * (CHART_H - 2 * CHART_PAD) })()"
+                    v-if="previewSeries[idx] && hasAnyData(previewSeries[idx])"
+                    :cx="lastDotX(previewSeries[idx])"
+                    :cy="lastDotY(previewSeries[idx])"
                     r="1.4"
                     :fill="lineColor(idx)"
                     stroke="#fff"
@@ -264,7 +282,7 @@ function lastRank(s: Series) {
                 </template>
               </svg>
               <!-- 图例 (Top 3 强 + 其余弱) -->
-              <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] font-medium">
+              <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] font-medium" :style="{ fontFamily: 'var(--font-ui)' }">
                 <div v-for="(s, idx) in previewSeries.slice(0, 5)" :key="s.name" class="inline-flex items-center gap-1.5" :class="idx < 3 ? 'text-default' : 'text-muted'">
                   <span class="size-2 rounded-full" :style="{ background: lineColor(idx), opacity: idx < 3 ? 1 : 0.3 }" />
                   <span :class="idx < 3 ? 'text-default' : 'text-muted'">{{ s.name }}</span>
@@ -272,7 +290,7 @@ function lastRank(s: Series) {
                 </div>
               </div>
             </div>
-          </div>
+          </UCard>
         </div>
       </UContainer>
     </section>
@@ -280,10 +298,11 @@ function lastRank(s: Series) {
     <!-- ============== KPI 5 卡 数据看板 ============== -->
     <UContainer class="mt-2">
       <div class="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <div
+        <UCard
           v-for="(k, i) in kpis"
           :key="k.key"
-          class="stat-card lift-on-hover"
+          class="stat-card lift-on-hover rounded-2xl"
+          :ui="{ root: 'ring-0', body: 'p-0' }"
           :style="i === 0 ? { background: 'var(--gradient-card-soft)' } : {}"
         >
           <div class="flex items-center justify-between">
@@ -292,7 +311,7 @@ function lastRank(s: Series) {
           </div>
           <span class="stat-card__value text-brand">{{ statsLoaded ? k.value : '—' }}</span>
           <span class="stat-card__hint">{{ k.hint }}</span>
-        </div>
+        </UCard>
       </div>
     </UContainer>
 
@@ -300,40 +319,53 @@ function lastRank(s: Series) {
     <UContainer class="mt-16">
       <div class="mb-7 text-center">
         <h2 class="text-3xl font-semibold leading-tight text-default md:text-[31px]" :style="{ fontFamily: 'var(--font-display)' }">四大核心模块</h2>
-        <p class="mt-2 text-base text-muted">从查询到选校到趋势分析, 一站式覆盖</p>
+        <p class="mt-2 text-base text-muted" :style="{ fontFamily: 'var(--font-ui)' }">从查询到选校到趋势分析, 一站式覆盖</p>
       </div>
       <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
         <NuxtLink
           v-for="m in modules"
           :key="m.to"
           :to="m.to"
-          class="group relative flex flex-col gap-3 overflow-hidden rounded-3xl border bg-white p-7 transition-all duration-300 lift-on-hover"
-          :class="m.featured ? 'border-transparent md:row-span-2' : 'border-default'"
-          :style="m.featured
-            ? { background: 'var(--gradient-card-featured)', color: '#fff', boxShadow: 'var(--shadow-brand-strong)' }
-            : { boxShadow: 'rgba(0,0,0,0.08) 0px 4px 6px' }"
+          class="group relative flex flex-col transition-all duration-300"
+          :class="m.featured ? 'md:row-span-2' : ''"
         >
-          <span
-            v-if="m.featured"
-            class="absolute right-5 top-5 inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-semibold text-white"
-            :style="{ backdropFilter: 'blur(8px)' }"
-          >
-            <UIcon name="i-lucide-star" class="size-3" />主推
-          </span>
-          <div
-            class="inline-flex size-11 items-center justify-center rounded-xl"
+          <UCard
+            class="h-full lift-on-hover"
+            :ui="{
+              root: [
+                'overflow-hidden rounded-3xl ring-0 transition-all duration-300',
+                m.featured ? 'border-transparent' : 'border-default bg-white'
+              ],
+              body: 'p-0'
+            }"
             :style="m.featured
-              ? { background: 'rgba(255,255,255,0.18)', color: '#fff' }
-              : { background: 'rgba(20, 86, 240, 0.08)', color: 'var(--color-brand-900)' }"
+              ? { background: 'var(--gradient-card-featured)', color: '#fff', boxShadow: 'var(--shadow-brand-strong)' }
+              : { boxShadow: 'rgba(0,0,0,0.08) 0px 4px 6px' }"
           >
-            <UIcon :name="m.icon" class="size-6" />
-          </div>
-          <div class="text-[22px] font-semibold leading-tight" :class="m.featured ? 'text-white' : 'text-default'" :style="{ fontFamily: 'var(--font-display)' }">{{ m.title }}</div>
-          <div class="flex-1 text-sm leading-relaxed" :class="m.featured ? 'text-white/80' : 'text-muted'">{{ m.desc }}</div>
-          <div class="mt-1 inline-flex items-center gap-1.5 text-[13px] font-semibold" :class="m.featured ? 'text-white' : 'text-[var(--color-brand-900)]'">
-            <span>{{ m.cta }}</span>
-            <UIcon name="i-lucide-arrow-right" class="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-          </div>
+            <div class="flex h-full flex-col gap-3 p-7">
+              <span
+                v-if="m.featured"
+                class="absolute right-5 top-5 inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-semibold text-white"
+                :style="{ backdropFilter: 'blur(8px)' }"
+              >
+                <UIcon name="i-lucide-star" class="size-3" />主推
+              </span>
+              <div
+                class="inline-flex size-11 items-center justify-center rounded-xl"
+                :style="m.featured
+                  ? { background: 'rgba(255,255,255,0.18)', color: '#fff' }
+                  : { background: 'rgba(20, 86, 240, 0.08)', color: 'var(--color-brand-900)' }"
+              >
+                <UIcon :name="m.icon" class="size-4" />
+              </div>
+              <div class="text-[22px] font-semibold leading-tight" :class="m.featured ? 'text-white' : 'text-default'" :style="{ fontFamily: 'var(--font-display)' }">{{ m.title }}</div>
+              <div class="flex-1 text-sm leading-relaxed" :class="m.featured ? 'text-white/80' : 'text-muted'" :style="{ fontFamily: 'var(--font-ui)' }">{{ m.desc }}</div>
+              <div class="mt-1 inline-flex items-center gap-1.5 text-[13px] font-semibold" :class="m.featured ? 'text-white' : 'text-[var(--color-brand-900)]'">
+                <span>{{ m.cta }}</span>
+                <UIcon name="i-lucide-arrow-right" class="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </div>
+            </div>
+          </UCard>
         </NuxtLink>
       </div>
     </UContainer>
@@ -342,40 +374,51 @@ function lastRank(s: Series) {
     <UContainer class="mt-16">
       <div class="mb-7 text-center">
         <h2 class="text-3xl font-semibold leading-tight text-default md:text-[31px]" :style="{ fontFamily: 'var(--font-display)' }">平台特色</h2>
-        <p class="mt-2 text-base text-muted">为 PhD 申请者量身打造</p>
+        <p class="mt-2 text-base text-muted" :style="{ fontFamily: 'var(--font-ui)' }">为 PhD 申请者量身打造</p>
       </div>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div v-for="f in features" :key="f.title" class="flex flex-col gap-2.5 rounded-2xl border border-default bg-white p-5 lift-on-hover">
+        <UCard
+          v-for="f in features"
+          :key="f.title"
+          class="lift-on-hover"
+          :ui="{ root: 'rounded-2xl border border-default bg-white ring-0', body: 'p-5 flex flex-col gap-2.5' }"
+        >
           <div class="inline-flex size-9 items-center justify-center rounded-[10px]" :style="{ background: 'rgba(20, 86, 240, 0.08)', color: 'var(--color-brand-900)' }">
-            <UIcon :name="f.icon" class="size-5" />
+            <UIcon :name="f.icon" class="size-4" />
           </div>
           <div class="text-base font-semibold text-default" :style="{ fontFamily: 'var(--font-display)' }">{{ f.title }}</div>
-          <div class="text-[13px] leading-relaxed text-muted">{{ f.desc }}</div>
-        </div>
+          <div class="text-[13px] leading-relaxed text-muted" :style="{ fontFamily: 'var(--font-ui)' }">{{ f.desc }}</div>
+        </UCard>
       </div>
     </UContainer>
 
     <!-- ============== 8 排名机构 logo 墙 ============== -->
     <UContainer class="mt-16">
-      <div class="rounded-3xl border border-default bg-[var(--color-surface-1)] p-8">
+      <UCard
+        class="rounded-3xl"
+        :ui="{ root: 'bg-[var(--color-surface-1)] border border-default ring-0', body: 'p-8' }"
+      >
         <div class="mb-5 text-center">
           <div class="text-[12px] font-medium uppercase tracking-wider text-muted" :style="{ fontFamily: 'var(--font-ui)' }">数据来源</div>
           <h2 class="mt-1 text-2xl font-semibold leading-tight text-default md:text-[26px]" :style="{ fontFamily: 'var(--font-display)' }">权威 8 大排名体系</h2>
         </div>
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-8">
-          <div
+          <UCard
             v-for="org in orgLogos"
             :key="org.code"
-            class="flex flex-col items-center gap-1.5 rounded-2xl border border-default bg-white px-3 py-4 lift-on-hover"
+            class="lift-on-hover"
+            :ui="{ root: 'rounded-2xl border border-default bg-white ring-0', body: 'p-0' }"
           >
-            <div
-              class="inline-flex size-10 items-center justify-center rounded-xl text-sm font-extrabold tracking-tighter"
-              :style="{ background: org.bg, color: org.fg, fontFamily: 'var(--font-display)' }"
-            >{{ org.code }}</div>
-            <div class="text-[11px] font-medium text-default text-center leading-tight">{{ org.label }}</div>
-          </div>
+            <div class="flex flex-col items-center gap-1.5 px-3 py-4">
+              <div
+                class="inline-flex size-10 items-center justify-center rounded-xl text-sm font-extrabold tracking-tighter"
+                :style="{ background: org.bg, color: org.fg, fontFamily: 'var(--font-display)' }"
+              >{{ org.code }}</div>
+              <div class="text-center text-[11px] font-medium leading-tight text-default" :style="{ fontFamily: 'var(--font-ui)' }">{{ org.label }}</div>
+            </div>
+          </UCard>
         </div>
-      </div>
+      </UCard>
     </UContainer>
   </div>
 </template>

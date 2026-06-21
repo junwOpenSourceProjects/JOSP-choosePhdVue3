@@ -27,8 +27,8 @@ const PALETTE = [
 
 const geometry = computed(() => {
   if (!props.chart?.chatData?.series?.length) return null
-  const seriesRaw = props.chart.chatData.series
-  const years = props.chart.legendData || []
+  const seriesRaw = props.chart.chatData.series as any[]
+  const years = (props.chart.legendData || []) as string[]
   const H = props.height
   const P = 50
   const allValues: number[] = []
@@ -40,11 +40,11 @@ const geometry = computed(() => {
   const yScale = (v: number) => H - P - ((v - 0) / (maxV - 0)) * (H - P * 2)
   const series = seriesRaw.map((s: any, idx: number) => ({
     name: s.name,
-    data: s.data || [],
+    data: (s.data || []) as any[],
     color: PALETTE[idx % PALETTE.length]
   }))
-  const paths = series.map(s => {
-    const points = s.data.map((v, i) => {
+  const paths = series.map((s: any) => {
+    const points = s.data.map((v: any, i: number) => {
       const x = P + i * xStep
       const y = typeof v === 'number' ? yScale(v) : H - P
       return [x, y, v]
@@ -98,7 +98,7 @@ const yTicks = computed(() => {
       <!-- 折线 -->
       <g v-for="(p, idx) in geometry.paths" :key="'p' + idx">
         <path
-          :d="p.points.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt[0]} ${pt[1]}`).join(' ')"
+          :d="p.points.map((pt: any, i: number) => `${i === 0 ? 'M' : 'L'} ${pt[0]} ${pt[1]}`).join(' ')"
           fill="none"
           :stroke="p.color"
           stroke-width="2.5"
@@ -144,7 +144,7 @@ const yTicks = computed(() => {
   </div>
 
   <div v-else class="chart-svg-empty">
-    <UIcon name="i-lucide-bar-chart-3" class="size-8" />
+    <UIcon name="i-lucide-bar-chart-3" class="size-4" />
     <span>暂无数据</span>
   </div>
 </template>

@@ -152,3 +152,78 @@ export const RANK_VARIANT_SHORT_MAP: Record<RankVariant, string> = {
   usnews: 'US News',
   all: '汇总'
 }
+
+/** 7 张新表 rankTable 值 */
+export type Backup2Table =
+  | 'arwu_subject'
+  | 'usnews_subject'
+  | 'qs_sustainability'
+  | 'declining_trend'
+  | 'edurank_region'
+  | 'mosiur_world'
+  | 'rur_world'
+
+/** backup2 单条记录 */
+export interface Backup2Record {
+  id?: number
+  universityNameChinese: string
+  universityNameEnglish?: string | null
+  universityTags?: string | null
+  universityTagsState?: string | null
+  rankingCategory?: string | null
+  rankingYear?: string | null
+  currentRankInteger?: number | null
+  currentRankRaw?: string | null
+}
+
+/** 通用分页查询入参 */
+export interface Backup2ListParams {
+  page?: number
+  limit?: number
+  rankTable?: string
+  universityNameChinese?: string
+  universityTags?: string
+  universityTagsState?: string
+  rankingCategory?: string
+  rankingYear?: string
+  currentRankLimit?: number
+}
+
+/** 历史导入记录 */
+export interface ImportHistoryRecord {
+  id?: number
+  rankVariant?: string
+  rankingYear?: string
+  fileName?: string
+  recordCount?: number
+  importedAt?: string
+}
+
+/** 导入总量统计 */
+export interface ImportStats {
+  totalRecords?: number
+  totalFiles?: number
+  lastImportedAt?: string | null
+}
+
+/** 趋势图 4 维数据 */
+export interface TrendAllVariantsDTO {
+  qs?: Record<string, number | null>
+  qsCs?: Record<string, number | null>
+  usnews?: Record<string, number | null>
+  usnewsCs?: Record<string, number | null>
+}
+
+/** 登录/用户信息 */
+export interface LoginForm {
+  username: string
+  password: string
+}
+
+/** 后端 UserInfo */
+export interface UserInfo {
+  name: string
+  avatar: string
+  roles: string[]
+  introduction: string
+}

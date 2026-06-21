@@ -10,7 +10,17 @@ const items = ref<RankingStatusDTO[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const info = ref<string | null>(null)
+const infoTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const saving = ref(false)
+
+function scheduleInfoClear(delay = 3000) {
+  if (infoTimer.value) clearTimeout(infoTimer.value)
+  infoTimer.value = setTimeout(() => info.value = null, delay)
+}
+
+onBeforeUnmount(() => {
+  if (infoTimer.value) clearTimeout(infoTimer.value)
+})
 
 const filterConsider = ref<'all' | 'yes' | 'no'>('all')
 const filterLevel = ref<'all' | 'strong' | 'medium' | 'weak'>('all')
@@ -53,7 +63,7 @@ async function load() {
   loading.value = true
   error.value = null
   try {
-    const res = await queryRankingStatus() as any
+    const res = await queryRankingStatus()
     items.value = Array.isArray(res) ? res : []
   } catch (e: any) {
     console.warn('[choices] load failed', e?.message)
@@ -106,7 +116,7 @@ async function batchInit() {
     await insertChoosePhd()
     await load()
     info.value = '初始化成功'
-    setTimeout(() => info.value = null, 3000)
+    scheduleInfoClear()
   } catch (e: any) {
     error.value = '初始化失败: ' + (e?.message || '后端不可达')
   } finally {
@@ -121,7 +131,7 @@ async function seedRankings() {
   try {
     const res: any = await initFromQs()
     info.value = res?.data || '初始化成功'
-    setTimeout(() => info.value = null, 3000)
+    scheduleInfoClear()
   } catch (e: any) {
     const msg = e?.data?.msg || e?.message || '后端不可达'
     if (msg.includes('登录') || msg.includes('401')) {
@@ -141,7 +151,7 @@ async function openDrawer(name: string) {
   drawerLoading.value = true
   drawerChart.value = null
   try {
-    const data = await drawerData(name) as any
+    const data = await drawerData(name)
     drawerChart.value = data
   } catch (e) {
     console.warn('[choices] drawer failed', e)
@@ -160,7 +170,7 @@ const filteredItems = computed(() => {
   if (filterLevel.value === 'weak') arr = arr.filter(i => (i.statusTotal ?? -1) === 0)
   if (search.value) {
     const kw = search.value.toLowerCase()
-    arr = arr.filter(i => i.universityNameChinese?.toLowerCase().includes(kw))
+    arr = arr.filter(i => (i.universityNameChinese || '').toLowerCase().includes(kw))
   }
   if (sortBy.value === 'name') {
     arr.sort((a, b) => (a.universityNameChinese || '').localeCompare(b.universityNameChinese || '', 'zh'))
@@ -196,10 +206,9 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
     <UContainer class="py-10">
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1
-            class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl"
-            :style="{ fontFamily: 'var(--font-display)' }"
-          >我的选校</h1>
+          <h1 class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl font-[var(--font-display)]">
+            我的选校
+          </h1>
           <p class="mt-2 text-base text-muted">标记 · 评估 · 决策</p>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -210,6 +219,8 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
             size="md"
             label="刷新最新排名"
             :loading="saving"
+            :ui="{ leadingIcon: 'size-4' }"
+            class="rounded-full"
             @click="seedRankings"
           />
           <UButton
@@ -219,6 +230,8 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
             size="md"
             label="一键初始化"
             :loading="saving"
+            :ui="{ leadingIcon: 'size-4' }"
+            class="rounded-full"
             @click="batchInit"
           />
         </div>
@@ -250,17 +263,17 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
         </div>
       </div>
       <!-- 4 stats card (0 数据 → 引导插画; > 0 → 数字 + mini 进度条) -->
-      <div v-if="stats.total === 0" class="rounded-3xl border-2 border-dashed border-default bg-[var(--color-surface-1)] p-12 text-center">
-        <div class="mx-auto mb-4 flex size-16 items-center justify-center rounded-full" :style="{ background: 'rgba(20, 86, 240, 0.08)' }">
-          <UIcon name="i-lucide-target" class="size-5" :style="{ color: 'var(--color-brand-900)' }" />
+      <UCard v-if="stats.total === 0" :ui="{ root: 'rounded-2xl border-2 border-dashed border-default bg-[var(--color-surface-1)]', body: 'p-12 text-center space-y-4' }">
+        <div class="mx-auto flex size-16 items-center justify-center rounded-full" :style="{ background: 'rgba(20, 86, 240, 0.08)' }">
+          <UIcon name="i-lucide-target" class="size-4" :style="{ color: 'var(--color-brand-900)' }" />
         </div>
-        <h3 class="text-lg font-semibold text-default" :style="{ fontFamily: 'var(--font-display)' }">还没有选校, 开始第一步</h3>
-        <p class="mt-2 text-sm text-muted">点上方「一键初始化」导入全部监控大学, 或先去「学校库」收藏几所</p>
-        <div class="mt-5 flex flex-wrap justify-center gap-2">
-          <UButton to="/universities" color="primary" variant="solid" size="md" icon="i-lucide-search" label="去学校库" />
-          <UButton color="neutral" variant="outline" size="md" icon="i-lucide-zap" label="一键初始化" :loading="saving" @click="batchInit" />
+        <h3 class="text-lg font-semibold text-default font-[var(--font-display)]">还没有选校, 开始第一步</h3>
+        <p class="text-sm text-muted">点上方「一键初始化」导入全部监控大学, 或先去「学校库」收藏几所</p>
+        <div class="flex flex-wrap justify-center gap-2">
+          <UButton to="/universities" color="primary" variant="solid" size="md" icon="i-lucide-search" label="去学校库" :ui="{ leadingIcon: 'size-4' }" class="rounded-full" />
+          <UButton color="neutral" variant="outline" size="md" icon="i-lucide-zap" label="一键初始化" :loading="saving" :ui="{ leadingIcon: 'size-4' }" class="rounded-full" @click="batchInit" />
         </div>
-      </div>
+      </UCard>
       <div v-else class="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <UCard
           v-for="s in [
@@ -277,7 +290,7 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
             <span class="font-mono text-[10px]">{{ s.percent }}%</span>
           </div>
           <div class="mt-1.5 flex items-baseline gap-1">
-            <span class="text-[28px] font-semibold leading-none" :style="{ color: s.color, fontFamily: 'var(--font-display)' }">{{ s.value }}</span>
+            <span class="text-[28px] font-semibold leading-none font-[var(--font-display)]" :style="{ color: s.color }">{{ s.value }}</span>
             <span class="text-[11px] text-muted">{{ s.hint }}</span>
           </div>
           <div class="mt-2 h-1 w-full overflow-hidden rounded-full bg-[var(--color-surface-2)]">
@@ -289,9 +302,7 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
 
     <!-- Filter toolbar (视觉分组) -->
     <UContainer class="pt-4">
-      <UCard
-        :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-4 sm:p-5 space-y-3' }"
-      >
+      <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-4 sm:p-5 space-y-3' }">
         <div class="flex flex-wrap items-center gap-3">
           <UInput
             v-model="search"
@@ -299,6 +310,7 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
             placeholder="搜索大学名称 (支持中/英)..."
             size="md"
             class="flex-1 min-w-[200px]"
+            :ui="{ leadingIcon: 'size-4' }"
           />
           <USelectMenu
             v-model="sortBy"
@@ -324,6 +336,8 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
                 :icon="c.value === 'yes' ? 'i-lucide-check' : c.value === 'no' ? 'i-lucide-x' : 'i-lucide-list'"
                 :label="c.label"
                 size="sm"
+                :ui="{ leadingIcon: 'size-3.5' }"
+                class="rounded-full"
                 @click="filterConsider = c.value"
               />
             </UFieldGroup>
@@ -339,6 +353,7 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
                 :variant="filterLevel === c.value ? 'solid' : 'outline'"
                 :label="c.label"
                 size="sm"
+                class="rounded-full"
                 @click="filterLevel = c.value"
               />
             </UFieldGroup>
@@ -364,40 +379,41 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
 
     <!-- Cards grid -->
     <UContainer class="py-6">
-      <div v-if="loading" class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-default bg-white p-20 text-muted">
-        <UIcon name="i-lucide-loader" class="size-6 animate-spin" />
+      <UCard v-if="loading" :ui="{ root: 'rounded-2xl border border-default bg-white', body: 'p-20 flex flex-col items-center justify-center gap-3 text-muted' }">
+        <UIcon name="i-lucide-loader" class="size-4 animate-spin" />
         <span class="text-sm">加载中…</span>
-      </div>
+      </UCard>
 
       <UEmpty
         v-else-if="filteredItems.length === 0"
         icon="i-lucide-inbox"
         title="没有匹配的大学"
         description="尝试调整过滤条件, 或点击「一键初始化」导入全部大学"
+        size="sm"
       >
         <template #footer>
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div class="rounded-2xl border border-default bg-[var(--color-surface-1)] p-4 text-left opacity-60">
-              <div class="mb-2 flex items-center gap-2">
+            <UCard :ui="{ root: 'rounded-2xl border border-default bg-[var(--color-surface-1)] opacity-60', body: 'p-4 text-left space-y-2' }">
+              <div class="flex items-center gap-2">
                 <span class="rank-badge rank-badge--gold">1</span>
                 <span class="text-sm font-semibold text-default">麻省理工学院</span>
               </div>
               <div class="text-[11px] text-muted">示意卡 · 真实数据需初始化</div>
-            </div>
-            <div class="rounded-2xl border border-default bg-[var(--color-surface-1)] p-4 text-left opacity-60">
-              <div class="mb-2 flex items-center gap-2">
+            </UCard>
+            <UCard :ui="{ root: 'rounded-2xl border border-default bg-[var(--color-surface-1)] opacity-60', body: 'p-4 text-left space-y-2' }">
+              <div class="flex items-center gap-2">
                 <span class="rank-badge rank-badge--silver">5</span>
                 <span class="text-sm font-semibold text-default">斯坦福大学</span>
               </div>
               <div class="text-[11px] text-muted">示意卡 · 真实数据需初始化</div>
-            </div>
-            <div class="rounded-2xl border border-default bg-[var(--color-surface-1)] p-4 text-left opacity-60">
-              <div class="mb-2 flex items-center gap-2">
+            </UCard>
+            <UCard :ui="{ root: 'rounded-2xl border border-default bg-[var(--color-surface-1)] opacity-60', body: 'p-4 text-left space-y-2' }">
+              <div class="flex items-center gap-2">
                 <span class="rank-badge rank-badge--bronze">23</span>
                 <span class="text-sm font-semibold text-default">清华大学</span>
               </div>
               <div class="text-[11px] text-muted">示意卡 · 真实数据需初始化</div>
-            </div>
+            </UCard>
           </div>
         </template>
       </UEmpty>
@@ -414,13 +430,12 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
           <!-- Header -->
           <div class="flex items-start justify-between gap-3">
             <div>
-              <h3
-                class="text-lg font-semibold leading-tight text-default"
-                :style="{ fontFamily: 'var(--font-display)' }"
-              >{{ item.universityNameChinese }}</h3>
+              <h3 class="text-lg font-semibold leading-tight text-default font-[var(--font-display)]">
+                {{ item.universityNameChinese }}
+              </h3>
               <div class="mt-1.5 flex items-center gap-1.5">
                 <UBadge color="neutral" variant="soft" size="xs">
-                  <UIcon name="i-lucide-map-pin" class="size-3" />
+                  <UIcon name="i-lucide-map-pin" class="size-3.5" />
                   <span class="ml-1">{{ item.universityTags || '—' }}</span>
                 </UBadge>
               </div>
@@ -430,6 +445,8 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
               :color="item.consider === 1 ? 'primary' : 'neutral'"
               :variant="item.consider === 1 ? 'solid' : 'outline'"
               size="sm"
+              :ui="{ leadingIcon: 'size-3.5' }"
+              class="rounded-full"
               :label="item.consider === 1 ? '考虑' : '不考虑'"
               @click="toggleConsider(item)"
             />
@@ -473,6 +490,8 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
               variant="ghost"
               size="xs"
               label="详情"
+              :ui="{ leadingIcon: 'size-3.5' }"
+              class="rounded-full"
             />
             <UButton
               icon="i-lucide-line-chart"
@@ -480,6 +499,8 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
               variant="ghost"
               size="xs"
               label="趋势"
+              :ui="{ leadingIcon: 'size-3.5' }"
+              class="rounded-full"
               @click="openDrawer(item.universityNameChinese)"
             />
           </div>
@@ -491,10 +512,7 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
     <UDrawer v-model:open="drawerOpen" direction="right" :ui="{ content: 'w-full sm:max-w-2xl' }">
       <template #header>
         <div class="flex items-center justify-between">
-          <h2
-            class="text-lg font-semibold text-default"
-            :style="{ fontFamily: 'var(--font-display)' }"
-          >{{ drawerName }} · 趋势</h2>
+          <h2 class="text-lg font-semibold text-default font-[var(--font-display)]">{{ drawerName }} · 趋势</h2>
         </div>
       </template>
       <template #body>

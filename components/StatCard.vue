@@ -26,7 +26,7 @@ defineProps<{
                 : 'bg-blue-50 text-[var(--color-brand-900)]'
           ]"
         >
-          <UIcon :name="icon" class="size-5" />
+          <UIcon :name="icon" class="size-4" />
         </span>
         <span class="text-[13px] font-medium text-muted">{{ label }}</span>
       </div>

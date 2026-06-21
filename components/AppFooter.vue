@@ -28,7 +28,7 @@ const project = [
             class="flex size-9 flex-shrink-0 items-center justify-center rounded-xl text-white"
             :style="{ background: 'var(--color-brand-900)' }"
           >
-            <UIcon name="i-lucide-graduation-cap" class="size-5" />
+            <UIcon name="i-lucide-graduation-cap" class="size-4" />
           </div>
           <div class="flex-1">
             <div

@@ -9,6 +9,16 @@ const uploading = ref(false)
 const scanning = ref(false)
 const error = ref<string | null>(null)
 const successMsg = ref<string | null>(null)
+const successTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+
+function scheduleSuccessClear(delay = 4000) {
+  if (successTimer.value) clearTimeout(successTimer.value)
+  successTimer.value = setTimeout(() => successMsg.value = null, delay)
+}
+
+onBeforeUnmount(() => {
+  if (successTimer.value) clearTimeout(successTimer.value)
+})
 
 // 最近一次结果
 const lastResult = ref<{
@@ -60,9 +70,8 @@ function onFilesChange(files: File[] | null | undefined) {
     pendingFiles.value = []
     return
   }
-  const valid = (Array.isArray(files) ? files : Array.from(files)).filter(f =>
-    f.name.toLowerCase().endsWith('.txt')
-  )
+  const fileList: File[] = Array.isArray(files) ? files : Array.from(files)
+  const valid = fileList.filter(f => f.name.toLowerCase().endsWith('.txt'))
   if (valid.length === 0) {
     error.value = '只支持 .txt 格式的排名文件'
     return
@@ -94,7 +103,7 @@ async function doUpload() {
     successMsg.value = `成功导入 ${res?.data ?? 0} 条记录`
     pendingFiles.value = []
     await Promise.all([loadHistory(), loadStats()])
-    setTimeout(() => successMsg.value = null, 4000)
+    scheduleSuccessClear(4000)
   } catch (e: any) {
     error.value = '上传失败: ' + (e?.data?.msg || e?.message || '后端不可达')
   } finally {
@@ -111,7 +120,7 @@ async function doScanLocal() {
     lastResult.value = res?.data
     successMsg.value = `扫描完成: ${res?.data?.filesScanned ?? 0} 文件 / ${res?.data?.totalRecords ?? 0} 条记录`
     await Promise.all([loadHistory(), loadStats()])
-    setTimeout(() => successMsg.value = null, 5000)
+    scheduleSuccessClear(5000)
   } catch (e: any) {
     error.value = '扫描失败: ' + (e?.data?.msg || e?.message || '后端不可达')
   } finally {
@@ -132,7 +141,7 @@ async function doScanPath() {
     lastResult.value = res?.data
     successMsg.value = `扫描完成: ${res?.data?.filesScanned ?? 0} 文件 / ${res?.data?.totalRecords ?? 0} 条记录`
     await Promise.all([loadHistory(), loadStats()])
-    setTimeout(() => successMsg.value = null, 5000)
+    scheduleSuccessClear(5000)
   } catch (e: any) {
     error.value = '扫描失败: ' + (e?.data?.msg || e?.message || '后端不可达')
   } finally {
@@ -213,36 +222,32 @@ function formatSize(bytes: number): string {
   <div>
     <UContainer class="py-10">
       <h1
-        class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl"
-        :style="{ fontFamily: 'var(--font-display)' }"
+        class="text-[40px] font-medium leading-[1.10] tracking-tight text-default sm:text-5xl font-[var(--font-display)]"
       >上传中心</h1>
       <p class="mt-2 text-base text-muted">手动上传或一键扫描 · 解析后入库 · 全程幂等</p>
     </UContainer>
 
-    <!-- 总览 + scanLocal 大按钮 -->
+    <!-- 总览 -->
     <UContainer>
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-5' }">
           <div class="text-[12px] font-medium text-muted">已入库排名组数</div>
           <div
-            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-default"
-            :style="{ fontFamily: 'var(--font-display)' }"
+            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-default font-[var(--font-display)]"
           >{{ totalGroups }}</div>
           <div class="mt-2 text-[12px] text-subtle">按 (排名类型, 年份) 分组</div>
         </UCard>
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-5' }">
           <div class="text-[12px] font-medium text-muted">待上传文件</div>
           <div
-            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-default"
-            :style="{ fontFamily: 'var(--font-display)' }"
+            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-default font-[var(--font-display)]"
           >{{ pendingFiles.length }}</div>
           <div class="mt-2 text-[12px] text-subtle">.txt 排名文件</div>
         </UCard>
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-5' }">
           <div class="text-[12px] font-medium text-muted">最近一次更新</div>
           <div
-            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-default"
-            :style="{ fontFamily: 'var(--font-display)' }"
+            class="mt-2 text-[40px] font-semibold leading-none tracking-tight text-default font-[var(--font-display)]"
           >{{ latestYear ?? '—' }}</div>
           <div class="mt-2 text-[12px] text-subtle">
             <span v-if="latestYear">最新年份 · 来自历史导入</span>
@@ -258,7 +263,7 @@ function formatSize(bytes: number): string {
         <!-- 左: 拖拽上传 -->
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-6 space-y-4' }">
           <div>
-            <h2 class="text-lg font-semibold text-default" :style="{ fontFamily: 'var(--font-display)' }">拖拽上传</h2>
+            <h2 class="text-lg font-semibold text-default font-[var(--font-display)]">拖拽上传</h2>
             <p class="mt-1 text-[13px] text-muted">支持多选 .txt 格式的排名文件 (TSV 7 列)</p>
           </div>
 
@@ -272,7 +277,7 @@ function formatSize(bytes: number): string {
             @dragleave.prevent="isDragging = false"
             @drop.prevent="(e: DragEvent) => { isDragging = false; onFilesChange(Array.from(e.dataTransfer?.files ?? [])) }"
           >
-            <UIcon name="i-lucide-upload-cloud" class="size-10 text-muted" />
+            <UIcon name="i-lucide-upload-cloud" class="size-6 text-muted" />
             <div class="text-sm text-default">拖拽文件到此处</div>
             <div class="text-xs text-subtle">或</div>
             <label>
@@ -290,6 +295,7 @@ function formatSize(bytes: number): string {
                 variant="solid"
                 size="sm"
                 label="选择文件"
+                class="rounded-full"
               />
             </label>
           </div>
@@ -305,6 +311,7 @@ function formatSize(bytes: number): string {
                   variant="ghost"
                   size="xs"
                   label="预览"
+                  class="rounded-full"
                   @click="previewPending"
                 />
                 <UButton
@@ -313,6 +320,7 @@ function formatSize(bytes: number): string {
                   variant="ghost"
                   size="xs"
                   label="清空"
+                  class="rounded-full"
                   @click="clearPending"
                 />
               </div>
@@ -338,6 +346,7 @@ function formatSize(bytes: number): string {
             variant="solid"
             size="md"
             block
+            class="rounded-full"
             :label="uploading ? '上传中…' : `上传并导入 (${pendingFiles.length})`"
             :disabled="pendingFiles.length === 0"
             :loading="uploading"
@@ -348,28 +357,29 @@ function formatSize(bytes: number): string {
         <!-- 右: 一键扫描 -->
         <UCard :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-6 space-y-4' }">
           <div>
-            <h2 class="text-lg font-semibold text-default" :style="{ fontFamily: 'var(--font-display)' }">一键扫描</h2>
+            <h2 class="text-lg font-semibold text-default font-[var(--font-display)]">一键扫描</h2>
             <p class="mt-1 text-[13px] text-muted">直接读后端工作目录的 qs 排名/ 文件夹, 全部导入</p>
           </div>
 
           <div class="space-y-3">
-            <div
-              class="flex items-center justify-between gap-3 rounded-xl border border-default bg-[var(--color-surface-1)] p-4"
-            >
-              <div>
-                <div class="text-sm font-medium text-default">后端工作目录</div>
-                <div class="mt-0.5 text-xs text-muted">默认 <code class="font-mono text-[12px]">qs 排名/</code>, 15 个 QS 年度文件</div>
+            <UCard :ui="{ root: 'rounded-xl border border-default bg-[var(--color-surface-1)]', body: 'p-4' }">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <div class="text-sm font-medium text-default">后端工作目录</div>
+                  <div class="mt-0.5 text-xs text-muted">默认 <code class="font-mono text-[12px]">qs 排名/</code>, 15 个 QS 年度文件</div>
+                </div>
+                <UButton
+                  icon="i-lucide-zap"
+                  color="primary"
+                  variant="solid"
+                  size="md"
+                  label="扫描本地"
+                  class="rounded-full"
+                  :loading="scanning"
+                  @click="doScanLocal"
+                />
               </div>
-              <UButton
-                icon="i-lucide-zap"
-                color="primary"
-                variant="solid"
-                size="md"
-                label="扫描本地"
-                :loading="scanning"
-                @click="doScanLocal"
-              />
-            </div>
+            </UCard>
 
             <UFormField label="自定义路径" size="md">
               <div class="flex gap-2">
@@ -386,6 +396,7 @@ function formatSize(bytes: number): string {
                   variant="outline"
                   size="md"
                   label="扫描"
+                  class="rounded-full"
                   :loading="scanning"
                   @click="doScanPath"
                 />
@@ -428,7 +439,7 @@ function formatSize(bytes: number): string {
         :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-0 overflow-hidden' }"
       >
         <div class="border-b border-default p-5">
-          <h2 class="text-lg font-semibold text-default" :style="{ fontFamily: 'var(--font-display)' }">
+          <h2 class="text-lg font-semibold text-default font-[var(--font-display)]">
             最近一次结果
           </h2>
           <p class="mt-1 text-[13px] text-muted">
@@ -473,7 +484,7 @@ function formatSize(bytes: number): string {
       >
         <div class="flex items-center justify-between border-b border-default p-5">
           <div>
-            <h2 class="text-lg font-semibold text-default" :style="{ fontFamily: 'var(--font-display)' }">
+            <h2 class="text-lg font-semibold text-default font-[var(--font-display)]">
               导入历史
             </h2>
             <p class="mt-1 text-[13px] text-muted">数据库中所有 (排名类型 + 年份) 的组合</p>
@@ -484,6 +495,7 @@ function formatSize(bytes: number): string {
             variant="ghost"
             size="sm"
             label="刷新"
+            class="rounded-full"
             @click="loadHistory"
           />
         </div>
@@ -517,6 +529,7 @@ function formatSize(bytes: number): string {
                   variant="solid"
                   size="sm"
                   label="去登录"
+                  class="rounded-full"
                 />
               </template>
             </UEmpty>
@@ -550,7 +563,7 @@ function formatSize(bytes: number): string {
     <UModal v-model:open="previewOpen" :ui="{ content: 'sm:max-w-3xl' }">
       <template #header>
         <div>
-          <h3 class="text-base font-semibold text-default" :style="{ fontFamily: 'var(--font-display)' }">
+          <h3 class="text-base font-semibold text-default font-[var(--font-display)]">
             预览: {{ previewData?.fileName || '—' }}
           </h3>
           <p v-if="previewData" class="mt-1 text-[13px] text-muted">
@@ -560,7 +573,7 @@ function formatSize(bytes: number): string {
       </template>
       <template #body>
         <div v-if="previewLoading" class="flex h-32 items-center justify-center text-muted">
-          <UIcon name="i-lucide-loader" class="size-5 animate-spin" />
+          <UIcon name="i-lucide-loader" class="size-4 animate-spin" />
           <span class="ml-2 text-sm">解析中…</span>
         </div>
         <div v-else-if="previewData" class="space-y-3">

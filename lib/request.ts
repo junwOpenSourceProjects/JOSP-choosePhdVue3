@@ -6,28 +6,27 @@
  * - On SSR: proxy through routeRules '/api/v1/**'; auth requests should be skipped on server
  */
 
-function buildUrl(url) {
+function buildUrl(url: string): string {
   if (url.startsWith('http')) return url
-  // Routes go through /api/v1/** nuxt proxy
   return `/api/v1${url.startsWith('/') ? url : '/' + url}`
 }
 
 export const request = {
-  get(url, options = {}) {
-    return $fetch(buildUrl(url), {
+  get<T = any>(url: string, options: Record<string, any> = {}): Promise<T> {
+    return $fetch<T>(buildUrl(url), {
       method: 'GET',
       ...options
     })
   },
-  post(url, data, options = {}) {
-    return $fetch(buildUrl(url), {
+  post<T = any>(url: string, data?: any, options: Record<string, any> = {}): Promise<T> {
+    return $fetch<T>(buildUrl(url), {
       method: 'POST',
       body: data,
       ...options
     })
   },
-  put(url, data, options = {}) {
-    return $fetch(buildUrl(url), {
+  put<T = any>(url: string, data?: any, options: Record<string, any> = {}): Promise<T> {
+    return $fetch<T>(buildUrl(url), {
       method: 'PUT',
       body: data,
       ...options
