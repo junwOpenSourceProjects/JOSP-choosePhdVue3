@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { queryAllEcharts } from '~/lib/api/university'
-import { trendAllVariants, listEchartsUniversities } from '~/lib/api/ranking'
+import { trendAllVariants, listEchartsUniversities, queryBackup2List, fetchBackup2Tables } from '~/lib/api/ranking'
 
 useHead({ title: '数据图表 · 选校系统' })
 
@@ -171,6 +171,65 @@ const watchChart = computed(() => {
 function clearWatch() {
   watchlist.value = []
 }
+
+// ============ 7 张新表: 分类分布 (bar chart) ============
+const backup2CategoryDist = ref<Array<{ rankTable: string; label: string; categories: Array<{ name: string; count: number }> }>>([])
+const backup2DistLoading = ref(false)
+
+const BACKUP2_LABEL_MAP: Record<string, string> = {
+  arwu_subject: 'ARWU 学科',
+  usnews_subject: 'US News 学科',
+  mosiur_world: 'MOSIUR 全球',
+  rur_world: 'RUR 全球',
+  qs_sustainability: 'QS 可持续',
+  declining_trend: '下降趋势',
+  edurank_region: 'EduRank 地区'
+}
+
+async function loadBackup2Dist() {
+  backup2DistLoading.value = true
+  const rankTables = Object.keys(BACKUP2_LABEL_MAP)
+  // 7 张表各拿最多 500 条 (够算出 category 分布, 不需要全量)
+  const results = await Promise.allSettled(
+    rankTables.map(rt => queryBackup2List({ page: 1, limit: 500, rankTable: rt }) as any)
+  )
+  const groups: typeof backup2CategoryDist.value = []
+  results.forEach((r, i) => {
+    if (r.status !== 'fulfilled') return
+    const records: any[] = r.value?.data?.records ?? r.value?.records ?? []
+    if (records.length === 0) return
+    // 按 rankingCategory (或 rankingYear) 分组
+    const buckets: Record<string, number> = {}
+    for (const rec of records) {
+      const key = rec.rankingCategory || rec.rankingYear || '其他'
+      buckets[key] = (buckets[key] || 0) + 1
+    }
+    const categories = Object.entries(buckets)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 12)  // 最多显示 12 个
+    if (categories.length > 0) {
+      groups.push({ rankTable: rankTables[i], label: BACKUP2_LABEL_MAP[rankTables[i]], categories })
+    }
+  })
+  // 按 category 数量降序
+  groups.sort((a, b) => b.categories.length - a.categories.length)
+  backup2CategoryDist.value = groups
+  backup2DistLoading.value = false
+}
+
+function categoryBarColor(idx: number): string {
+  // 12 色渐变
+  const palette = [
+    '#1456f0', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#a855f7',
+    '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#06b6d4'
+  ]
+  return palette[idx % palette.length]
+}
+
+onMounted(() => {
+  loadBackup2Dist().catch(e => console.warn('[charts] backup2 dist failed', e))
+})
 
 // ============ Trend helpers ============
 function trendIcon(tone: string): string {
@@ -477,6 +536,64 @@ watch(currentRank, () => loadAll())
           icon="i-lucide-info"
           class="mt-4"
         />
+      </UCard>
+    </UContainer>
+
+    <!-- 备份 2 榜单分类分布 (新表数据可视化) -->
+    <UContainer v-if="backup2CategoryDist.length > 0 || backup2DistLoading" class="py-4">
+      <UCard
+        :ui="{ root: 'rounded-2xl border border-default bg-white shadow-sm', body: 'p-6' }"
+      >
+        <div class="mb-5">
+          <h2
+            class="text-[22px] font-semibold leading-tight text-default"
+            :style="{ fontFamily: 'var(--font-display)' }"
+          >备份 2 榜单 · 分类分布</h2>
+          <p class="mt-1 text-[13px] text-muted">
+            ARWU 学科 / US News 学科 等新表的数据分布 · 每个榜单的 Top 500 抽样
+            <span v-if="backup2DistLoading" class="ml-2 inline-flex items-center gap-1 text-muted">
+              <UIcon name="i-lucide-loader-2" class="size-3 animate-spin" />
+              <span>加载中…</span>
+            </span>
+          </p>
+        </div>
+        <div class="space-y-6">
+          <div
+            v-for="g in backup2CategoryDist"
+            :key="g.rankTable"
+            class="rounded-xl border border-default bg-[var(--color-surface-1)] p-4"
+          >
+            <div class="mb-3 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <UBadge color="primary" variant="subtle" size="sm">{{ g.label }}</UBadge>
+                <span class="text-[12px] text-muted">{{ g.categories.length }} 个分类</span>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <div
+                v-for="(c, i) in g.categories"
+                :key="c.name"
+                class="flex items-center gap-3"
+              >
+                <div class="w-48 shrink-0 truncate text-sm font-medium text-default" :title="c.name">
+                  {{ c.name }}
+                </div>
+                <div class="relative h-6 flex-1 overflow-hidden rounded-full bg-[var(--color-surface-2)]">
+                  <div
+                    class="absolute inset-y-0 left-0 rounded-full transition-all"
+                    :style="{
+                      width: (c.count / g.categories[0].count * 100) + '%',
+                      background: categoryBarColor(i)
+                    }"
+                  />
+                  <div class="absolute inset-0 flex items-center pl-3 text-[11px] font-semibold text-white">
+                    {{ c.count }} 所
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </UCard>
     </UContainer>
 

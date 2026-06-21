@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { queryAllQs } from '~/lib/api/university'
-import { drawerData } from '~/lib/api/ranking'
+import { drawerData, queryBackup2List } from '~/lib/api/ranking'
 import type { UniversityAllDTO } from '~/types'
 
 const route = useRoute()
@@ -15,6 +15,53 @@ const detail = ref<UniversityAllDTO | null>(null)
 const chartData = ref<any>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+// ============ 7 张新表的数据 (按 rankTable 分组) ============
+const backup2Groups = ref<Array<{ rankTable: string; label: string; records: any[] }>>([])
+const backup2Loading = ref(false)
+
+const BACKUP2_LABEL_MAP: Record<string, string> = {
+  arwu_subject: 'ARWU 学科',
+  edurank_region: 'EduRank 地区',
+  declining_trend: '下降趋势',
+  mosiur_world: 'MOSIUR 全球',
+  rur_world: 'RUR 全球',
+  usnews_subject: 'US News 学科',
+  qs_sustainability: 'QS 可持续'
+}
+
+async function loadBackup2Data() {
+  backup2Loading.value = true
+  const rankTables = Object.keys(BACKUP2_LABEL_MAP)
+  const groups: typeof backup2Groups.value = []
+  // 7 个 query 并发, 单个失败不影响其他
+  const results = await Promise.allSettled(
+    rankTables.map(rt =>
+      queryBackup2List({
+        page: 1,
+        limit: 50,
+        rankTable: rt,
+        universityNameChinese: name.value
+      }) as any
+    )
+  )
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      const records = r.value?.data?.records ?? r.value?.records ?? []
+      if (records.length > 0) {
+        groups.push({
+          rankTable: rankTables[i],
+          label: BACKUP2_LABEL_MAP[rankTables[i]],
+          records
+        })
+      }
+    }
+  })
+  // 按记录数降序
+  groups.sort((a, b) => b.records.length - a.records.length)
+  backup2Groups.value = groups
+  backup2Loading.value = false
+}
 
 async function load() {
   loading.value = true
@@ -44,6 +91,8 @@ async function load() {
   } finally {
     loading.value = false
   }
+  // 7 张新表数据 (非阻塞, 跟主数据并行)
+  loadBackup2Data().catch(e => console.warn('[detail] backup2 load failed', e))
 }
 
 function generateMockDetail(n: string): UniversityAllDTO {
@@ -332,6 +381,82 @@ const detailTableRows = computed(() => {
             <span class="font-medium text-default">{{ row.original.name }}</span>
           </template>
         </UTable>
+      </UCard>
+    </UContainer>
+
+    <!-- 其他榜单排名 (备份 2 的 7 张新表) -->
+    <UContainer v-if="backup2Groups.length > 0 || backup2Loading" class="pb-12">
+      <UCard
+        :ui="{
+          root: 'rounded-2xl border border-default bg-white shadow-sm',
+          body: 'p-6'
+        }"
+      >
+        <div class="mb-5 flex items-end justify-between gap-3">
+          <div>
+            <h2
+              class="text-[22px] font-semibold leading-tight text-default"
+              :style="{ fontFamily: 'var(--font-display)' }"
+            >其他榜单排名</h2>
+            <p class="mt-1 text-[13px] text-muted">
+              {{ backup2Groups.length }} 个榜单有数据
+              <span v-if="backup2Loading" class="ml-2 inline-flex items-center gap-1 text-muted">
+                <UIcon name="i-lucide-loader-2" class="size-3 animate-spin" />
+                <span>加载中…</span>
+              </span>
+            </p>
+          </div>
+        </div>
+
+        <div class="space-y-5">
+          <div
+            v-for="g in backup2Groups"
+            :key="g.rankTable"
+            class="rounded-xl border border-default bg-[var(--color-surface-1)] p-4"
+          >
+            <div class="mb-3 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <UBadge color="primary" variant="subtle" size="sm">
+                  {{ g.label }}
+                </UBadge>
+                <span class="text-[12px] text-muted">共 {{ g.records.length }} 条</span>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <div
+                v-for="(r, i) in g.records.slice(0, 10)"
+                :key="i"
+                class="flex items-center gap-3 rounded-lg bg-white px-3 py-2 text-[13px] transition-colors hover:bg-white/80"
+              >
+                <span
+                  :class="['rank-badge', rankBadgeTier(r.currentRankInteger), '!h-7 !text-[12px] !min-w-[36px]']"
+                >{{ r.currentRankInteger ?? '—' }}</span>
+                <span class="font-medium text-default">
+                  <template v-if="r.rankingCategory">{{ r.rankingCategory }}</template>
+                  <template v-else-if="r.universityTags">{{ r.universityTags }}</template>
+                  <template v-else>—</template>
+                </span>
+                <span
+                  v-if="r.rankingYear"
+                  class="inline-flex items-center gap-1 rounded-full border border-default bg-white px-2 py-0.5 text-[10px] font-semibold text-muted"
+                >
+                  <UIcon name="i-lucide-calendar" class="size-2.5" />
+                  {{ r.rankingYear }}
+                </span>
+                <span
+                  v-if="r.currentRankRaw && r.currentRankRaw !== '#' + r.currentRankInteger"
+                  class="ml-auto text-[10px] text-muted"
+                >原: {{ r.currentRankRaw }}</span>
+              </div>
+              <div
+                v-if="g.records.length > 10"
+                class="px-3 py-1 text-center text-[11px] text-muted"
+              >
+                还有 {{ g.records.length - 10 }} 条…
+              </div>
+            </div>
+          </div>
+        </div>
       </UCard>
     </UContainer>
   </div>

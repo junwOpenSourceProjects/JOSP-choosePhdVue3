@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { queryAllQs } from '~/lib/api/university'
-import { queryBackup2List, fetchBackup2Tables } from '~/lib/api/ranking'
+import { queryBackup2List, fetchBackup2Tables, fetchBackup2Years } from '~/lib/api/ranking'
 import type { UniversityAllDTO, RankVariant } from '~/types'
 import { RANK_VARIANT_SHORT_MAP } from '~/types'
 
@@ -33,6 +33,8 @@ const rankVariantItems = [
 // 旧表走 queryAllQs (qs/usnews/all), 新表走 queryBackup2List (rankTable=xxx)
 const rankTable = ref<string>('qs')
 const backup2Tables = ref<string[]>([])
+const backup2Years = ref<string[]>([])  // 当前新表的 distinct year (按年倒序)
+const isOldTable = computed(() => rankTable.value === 'qs' || rankTable.value === 'usnews' || rankTable.value === 'all')
 
 const rankTableItems = computed(() => {
   const builtins = [
@@ -63,6 +65,29 @@ onMounted(async () => {
   } catch (e) {
     console.warn('[universities] fetch backup2 tables failed', e)
   }
+})
+
+// rankTable 切换时, 如果是新表, 拉 distinct year
+watch(rankTable, async (newVal) => {
+  yearFilter.value = undefined  // 切榜单时清掉 year
+  if (newVal === 'qs' || newVal === 'usnews' || newVal === 'all') {
+    backup2Years.value = []
+    return
+  }
+  try {
+    const res = await fetchBackup2Years(newVal) as any
+    backup2Years.value = res?.data ?? res ?? []
+  } catch (e) {
+    console.warn('[universities] fetch years failed', e)
+    backup2Years.value = []
+  }
+})
+
+const yearFilterItems = computed(() => {
+  return [
+    { value: undefined, label: '全部年份' },
+    ...backup2Years.value.map(y => ({ value: y, label: y }))
+  ]
 })
 
 const tagStateOptions = [
@@ -281,11 +306,12 @@ function reset() {
   maxRank.value = 100
   rankTable.value = 'qs'
   sortBy.value = 'rank'
+  yearFilter.value = undefined
   currentPage.value = 1
   load()
 }
 
-watch([rankTable, tagState, tag, maxRank, sortBy], () => {
+watch([rankTable, tagState, tag, maxRank, sortBy, yearFilter], () => {
   currentPage.value = 1
   load()
 })
@@ -366,6 +392,16 @@ onMounted(() => {
             value-key="value"
             size="md"
             class="min-w-[120px]"
+          />
+          <!-- rankingYear filter: 只对 7 张新表显示 -->
+          <USelectMenu
+            v-if="!isOldTable"
+            v-model="yearFilter"
+            :items="yearFilterItems"
+            value-key="value"
+            placeholder="全部年份"
+            size="md"
+            class="min-w-[140px]"
           />
           <div class="inline-flex items-center gap-1 rounded-full border border-default bg-white px-3 py-1.5 text-[13px]">
             <span class="text-muted">排序</span>
