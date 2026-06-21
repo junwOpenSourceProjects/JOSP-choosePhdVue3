@@ -43,9 +43,10 @@ const tableData = computed(() => {
   const bestMap: Record<string, number> = {}
   for (const s of series) {
     const data = (s.data ?? []) as (number | null)[]
-    // series.name 解析维度 key: 找已知 4 个 key 哪个结尾匹配
+    // series.name 解析维度 key: 按 key 长度倒序排, 先 match 长的 (避免 'usnews' 匹到 'usnews_cs')
     let key = ''
-    for (const k of Object.keys(DEFAULT_LABELS)) {
+    const keys = Object.keys(DEFAULT_LABELS).sort((a, b) => b.length - a.length)
+    for (const k of keys) {
       if (s.name?.endsWith(k)) { key = k; break }
     }
     if (!key) continue

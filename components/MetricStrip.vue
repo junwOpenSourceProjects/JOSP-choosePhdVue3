@@ -19,23 +19,23 @@ const props = defineProps<{
   schoolName: string
 }>()
 
-// 1. 跨度 (从 legendData 算)
+// 1. 跨度 (从 legendData 算, legendData 是 1-indexed 位置数组)
 const spanText = computed(() => {
   const years = props.chart?.legendData ?? []
   if (!years.length) return { primary: '—', secondary: '暂无跨度数据' }
   return {
     primary: `${years[0]}-${years[years.length - 1]}`,
-    secondary: `跨度 ${years.length} 年`
+    secondary: `共 ${years.length} 段数据 (位置索引)`
   }
 })
 
-// 2. 最佳年: 在 4 维里找最小排名 + 对应年份
+// 2. 最佳年: 在 4 维里找最小排名 + 对应位置
 const bestEver = computed(() => {
   const series = props.chart?.chatData?.series ?? []
   const years = props.chart?.legendData ?? []
   if (!series.length || !years.length) return { primary: '—', secondary: '暂无最佳记录' }
   let best = Infinity
-  let bestYear = ''
+  let bestPos = ''
   let bestDim = ''
   for (const s of series) {
     const data = (s.data ?? []) as (number | null)[]
@@ -43,8 +43,7 @@ const bestEver = computed(() => {
       const v = data[i]
       if (v != null && v > 0 && v < best) {
         best = v
-        bestYear = years[i]
-        // 从 series.name 解析维度
+        bestPos = years[i] ?? String(i + 1)
         for (const k of ['qs', 'qs_cs', 'usnews', 'usnews_cs']) {
           if (s.name?.endsWith(k)) { bestDim = k; break }
         }
@@ -58,7 +57,7 @@ const bestEver = computed(() => {
   }
   return {
     primary: `第 ${best} 名`,
-    secondary: `${bestYear} 年 · ${DIM_NAMES[bestDim] ?? bestDim}`
+    secondary: `第 ${bestPos} 段 · ${DIM_NAMES[bestDim] ?? bestDim}`
   }
 })
 
@@ -71,12 +70,12 @@ const coverage = computed(() => {
   }
 })
 
-// 4. 最新年完整度: 最后一年的 4 维里几个有数
+// 4. 最新段完整度: 最后一位置 4 维里几个有数
 const recentCompleteness = computed(() => {
   const series = props.chart?.chatData?.series ?? []
   if (!series.length) return { primary: '—', secondary: '暂无数据' }
   const years = props.chart?.legendData ?? []
-  const lastYear = years[years.length - 1]
+  const lastPos = years[years.length - 1]
   let count = 0
   for (const s of series) {
     const data = (s.data ?? []) as (number | null)[]
@@ -86,7 +85,7 @@ const recentCompleteness = computed(() => {
   }
   return {
     primary: `${count} / ${series.length}`,
-    secondary: `${lastYear} 年 4 维完整度`
+    secondary: `第 ${lastPos} 段 4 维完整度`
   }
 })
 </script>
