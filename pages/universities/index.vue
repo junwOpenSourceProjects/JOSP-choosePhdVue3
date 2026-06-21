@@ -173,7 +173,8 @@ async function load() {
         rankVariant: rankTable.value,
         universityTagsState: tagState.value,
         universityTags: tag.value,
-        currentRank: maxRank.value
+        currentRank: maxRank.value,
+        universityNameChinese: search.value
       }) as any
       const records = res?.records ?? res?.data?.records ?? []
       tableData.value = records
@@ -311,7 +312,7 @@ function reset() {
   load()
 }
 
-watch([rankTable, tagState, tag, maxRank, sortBy, yearFilter], () => {
+watch([rankTable, tagState, tag, maxRank, sortBy, yearFilter, search], () => {
   currentPage.value = 1
   load()
 })
