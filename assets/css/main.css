@@ -67,18 +67,15 @@
   --shadow-elevated: rgba(36, 36, 36, 0.08) 0px 12px 16px -4px;
   --shadow-hover: rgba(0, 0, 0, 0.10) 0px 8px 16px -2px;
 
-  /* Hero / Decorative gradients (品牌蓝 + 粉/紫氛围) */
-  --gradient-hero: linear-gradient(135deg, rgba(20, 86, 240, 0.04) 0%, rgba(234, 94, 193, 0.03) 50%, rgba(20, 86, 240, 0.05) 100%);
-  --gradient-hero-orb-blue: radial-gradient(circle at 20% 30%, rgba(20, 86, 240, 0.12) 0%, transparent 50%);
-  --gradient-hero-orb-pink: radial-gradient(circle at 80% 20%, rgba(234, 94, 193, 0.10) 0%, transparent 50%);
-  --gradient-card-featured: linear-gradient(135deg, #1456f0 0%, #3b82f6 100%);
-  --gradient-card-soft: linear-gradient(135deg, #eff6ff 0%, #faf5ff 100%);
-  --gradient-text-brand: linear-gradient(135deg, #1456f0 0%, #ea5ec1 100%);
+  /* Hero / Decorative single colors (单色无渐变) */
+  --gradient-card-featured: #1456f0;
+  --gradient-card-soft: #eff6ff;
+  --gradient-text-brand: #1456f0;
 
-  /* Rank badge gradient tiers (金/银/铜 排名徽章) */
-  --gradient-rank-gold: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  --gradient-rank-silver: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%);
-  --gradient-rank-bronze: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
+  /* Rank badge solid color tiers (金/银/铜 排名徽章 纯色) */
+  --gradient-rank-gold: #f59e0b;
+  --gradient-rank-silver: #9ca3af;
+  --gradient-rank-bronze: #ea580c;
 
   /* Spacing scale (8px base) */
   --spacing: 8px;
@@ -290,7 +287,7 @@
   .rank-badge--bronze { background: var(--gradient-rank-bronze); }
   .rank-badge--normal { background: var(--color-surface-3); color: var(--color-ink-900); }
 
-  /* Hero decorative background (品牌氛围感) */
+  /* Hero decorative background (单色无渐变) */
   .hero-with-orb {
     position: relative;
     overflow: hidden;
@@ -300,17 +297,14 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: var(--gradient-hero), var(--gradient-hero-orb-blue), var(--gradient-hero-orb-pink);
+    background: var(--color-surface-1);
     z-index: -1;
     pointer-events: none;
   }
 
-  /* Brand gradient text (Design §1 强调色) */
+  /* Brand text color (单色无渐变) */
   .text-gradient-brand {
-    background: var(--gradient-text-brand);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--color-brand-900);
   }
 
   /* Hover lift card (MiniMax §6 Level 4) */

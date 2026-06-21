@@ -230,16 +230,16 @@ function statusColor(v: number | null | undefined): 'primary' | 'secondary' | 'n
       <!-- 决策流程 stepper (3 step, 当前脉冲光晕) -->
       <div class="mb-6 flex items-center justify-center gap-1">
         <div class="flex flex-col items-center gap-1.5">
-          <div class="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white" :style="{ background: 'var(--gradient-step-done)' }">
+          <div class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-brand-900)] text-sm font-bold text-white">
             <UIcon name="i-lucide-check" class="size-4" />
           </div>
           <span class="text-[11px] font-semibold" :style="{ color: 'var(--color-brand-900)' }">1. 导入</span>
         </div>
-        <div class="mx-2 h-0.5 w-16 sm:w-28" :style="{ background: 'var(--gradient-step-line)' }" />
+        <div class="mx-2 h-0.5 w-16 bg-[var(--color-brand-900)] sm:w-28" />
         <div class="flex flex-col items-center gap-1.5">
-          <div class="relative flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white shadow-lg" :style="{ background: 'var(--gradient-step-active)', boxShadow: '0 0 0 4px rgba(20,86,240,0.15), 0 0 0 8px rgba(20,86,240,0.08)' }">
+          <div class="relative flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-brand-900)] text-sm font-bold text-white shadow-lg" :style="{ boxShadow: '0 0 0 4px rgba(20,86,240,0.15), 0 0 0 8px rgba(20,86,240,0.08)' }">
             2
-            <span class="absolute inset-0 animate-ping rounded-full opacity-30" :style="{ background: 'var(--color-brand-900)' }" />
+            <span class="absolute inset-0 animate-ping rounded-full bg-[var(--color-brand-900)] opacity-30" />
           </div>
           <span class="text-[11px] font-semibold" :style="{ color: 'var(--color-brand-900)' }">2. 评估</span>
         </div>
