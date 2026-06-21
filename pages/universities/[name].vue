@@ -186,6 +186,38 @@ function getSeriesData(seriesName: string): number[] {
   return chartData.value?.chatData?.series?.find((s: any) => s.name === seriesName)?.data ?? []
 }
 
+// ============ 加入对比组 (localStorage 持久化) ============
+interface CompareItem { name: string; chartData: any }
+const COMPARE_KEY = 'choosephd.compare'
+const compareList = ref<CompareItem[]>([])
+
+function loadCompare() {
+  if (import.meta.server) return
+  try {
+    const raw = localStorage.getItem(COMPARE_KEY)
+    if (raw) compareList.value = JSON.parse(raw)
+  } catch {}
+}
+function saveCompare() {
+  try { localStorage.setItem(COMPARE_KEY, JSON.stringify(compareList.value)) } catch {}
+}
+function addToCompare() {
+  if (!chartData.value?.chatData) return
+  if (compareList.value.find(c => c.name === name.value)) return
+  if (compareList.value.length >= 6) {
+    compareList.value.shift()
+  }
+  compareList.value.push({ name: name.value, chartData: chartData.value })
+  saveCompare()
+  // 同时把详情表 currentQsAllRank 也写一份进去方便 charts 用
+}
+function removeFromCompare() {
+  compareList.value = compareList.value.filter(c => c.name !== name.value)
+  saveCompare()
+}
+const inCompare = computed(() => compareList.value.some(c => c.name === name.value))
+onMounted(loadCompare)
+
 const isConsidering = ref(false)
 function toggleConsider() {
   isConsidering.value = !isConsidering.value
@@ -260,14 +292,24 @@ const detailTableRows = computed(() => {
             </UBadge>
           </div>
         </div>
-        <UButton
-          :icon="isConsidering ? 'i-lucide-bookmark-check' : 'i-lucide-bookmark'"
-          :color="isConsidering ? 'primary' : 'neutral'"
-          :variant="isConsidering ? 'solid' : 'outline'"
-          size="md"
-          :label="isConsidering ? '已加入考虑' : '加入考虑'"
-          @click="toggleConsider"
-        />
+        <div class="flex items-center gap-2">
+          <UButton
+            :icon="inCompare ? 'i-lucide-list-checks' : 'i-lucide-list-plus'"
+            :color="inCompare ? 'primary' : 'neutral'"
+            :variant="inCompare ? 'solid' : 'outline'"
+            size="md"
+            :label="inCompare ? '已加入对比' : '加入对比'"
+            @click="inCompare ? removeFromCompare() : addToCompare()"
+          />
+          <UButton
+            :icon="isConsidering ? 'i-lucide-bookmark-check' : 'i-lucide-bookmark'"
+            :color="isConsidering ? 'primary' : 'neutral'"
+            :variant="isConsidering ? 'solid' : 'outline'"
+            size="md"
+            :label="isConsidering ? '已加入考虑' : '加入考虑'"
+            @click="toggleConsider"
+          />
+        </div>
       </div>
     </UContainer>
 
