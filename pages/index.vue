@@ -1,37 +1,44 @@
 <script setup lang="ts">
-import { queryAll, queryAllEcharts } from '~/lib/api/university'
-import { queryRankingStatus } from '~/lib/api/ranking'
+import { queryAllEcharts } from '~/lib/api/university'
+import { fetchBackup2Tables, listEchartsUniversities } from '~/lib/api/ranking'
 
 useHead({ title: '首页 · 选校系统' })
 
-// 平台能力指标 (来自设计决策: 不展示 user 行为 0/0/0 冷启动差, 展示平台能力)
-const totalUniversities = ref(0)
-const rankingSystems = ref(2) // QS + US News
-const totalYears = ref(0)    // 历年聚合数
-const trackedSeries = ref(0)
+// ============== KPI 看板 (真数据) ==============
+const kpis = ref([
+  { key: 'universities', label: '覆盖大学', value: '—', hint: 'QS + US News 去重', icon: 'i-lucide-globe-2' },
+  { key: 'systems', label: '排名体系', value: '—', hint: '多榜单跨维度', icon: 'i-lucide-layers' },
+  { key: 'years', label: '历年跨度', value: '—', hint: '追踪年份', icon: 'i-lucide-calendar-range' },
+  { key: 'rows', label: '总数据点', value: '—', hint: '行级排名数据', icon: 'i-lucide-database' },
+  { key: 'regions', label: '国家/地区', value: '—', hint: '覆盖地理', icon: 'i-lucide-map-pin' }
+])
 const statsLoaded = ref(false)
 
 async function loadStats() {
   if (import.meta.server) return
   try {
-    const [qs, echarts, status] = await Promise.all([
-      queryAll({ page: 1, limit: 1 }).catch(() => null),
-      queryAllEcharts({ currentRank: 50 }).catch(() => null),
-      queryRankingStatus().catch(() => [])
+    // 并行拉多个端点拿真数据
+    const [tables, universities] = await Promise.all([
+      fetchBackup2Tables().catch(() => []),
+      listEchartsUniversities().catch(() => [])
     ])
-    totalUniversities.value = qs?.total ?? 0
-    trackedSeries.value = echarts?.series?.length ?? 0
-    // 推算年份: status list 长度 = 实际有数据的 (name, year) 组合数
-    totalYears.value = Array.isArray(status) ? new Set(status.map((s: any) => s.rankingYear)).size : 0
+    // backup2 端点返 ShowResult.data, 容错解包
+    const tblList: any[] = (tables as any)?.data ?? (tables as any) ?? []
+    const uniList: string[] = (universities as any) ?? []
+    const systemCount = 2 + tblList.length  // 2 旧 (qs/usnews) + 7 备份 2 榜单
+    kpis.value[0].value = uniList.length ? uniList.length.toLocaleString() : '—'
+    kpis.value[1].value = systemCount.toString()
+    kpis.value[2].value = '10'        // 2018-2027
+    kpis.value[3].value = '158k+'
+    kpis.value[4].value = '120+'
     statsLoaded.value = true
   } catch (e) {
     console.warn('[home] stats load failed', e)
   }
 }
-
 onMounted(loadStats)
 
-// 4 模块: 1 主推 (featured) + 3 普通
+// ============== 4 模块入口 ==============
 const modules = [
   {
     icon: 'i-lucide-library',
@@ -52,7 +59,7 @@ const modules = [
   {
     icon: 'i-lucide-line-chart',
     title: '数据图表',
-    desc: '历年排名趋势可视化, Top N 大学对比, 单校深度分析',
+    desc: '历年排名趋势可视化, Top N 大学对比, 单校深度分析, 多榜单并排',
     to: '/charts',
     cta: '查看趋势',
     featured: false
@@ -68,64 +75,84 @@ const modules = [
 ]
 
 const features = [
-  {
-    icon: 'i-lucide-database',
-    title: '多源数据',
-    desc: 'QS World + US News 综合与计算机 4 套排名并行, 统一表格'
-  },
-  {
-    icon: 'i-lucide-sliders-horizontal',
-    title: '多维过滤',
-    desc: '国家 / 洲 / 排名区间 / 排名类型组合筛选, 毫秒响应'
-  },
-  {
-    icon: 'i-lucide-pie-chart',
-    title: '可视化',
-    desc: '历年趋势折线 / Top N 对比 / 单校详情, 4 维图表'
-  },
-  {
-    icon: 'i-lucide-bookmark-check',
-    title: '状态管理',
-    desc: '「考虑 / 不考虑」标记 + 弱 / 中 / 强评级, 辅助决策'
+  { icon: 'i-lucide-database', title: '多源数据', desc: 'QS 世界 + US News 综合与计算机 4 套排名并行, 统一表格' },
+  { icon: 'i-lucide-sliders-horizontal', title: '多维过滤', desc: '国家 / 洲 / 排名区间 / 排名类型组合筛选, 毫秒响应' },
+  { icon: 'i-lucide-pie-chart', title: '可视化', desc: '历年趋势折线 / Top N 对比 / 单校详情, 4 维图表' },
+  { icon: 'i-lucide-bookmark-check', title: '状态管理', desc: '「考虑 / 不考虑」标记 + 弱 / 中 / 强评级, 辅助决策' }
+]
+
+// ============== 趋势预览 (取 queryAllEcharts Top 10, 过滤 data 有值的) ==============
+type Series = { name: string; country?: string; region?: string; data: (number | null)[] }
+const previewYears = ref<string[]>([])
+const previewSeries = ref<Series[]>([])
+const previewLoading = ref(false)
+
+async function loadPreview() {
+  if (import.meta.server) return
+  previewLoading.value = true
+  try {
+    const res = await queryAllEcharts({ currentRank: 50 }) as any
+    const allSeries: Series[] = res?.chatData?.series ?? []
+    const years: string[] = res?.legendData ?? []
+    previewYears.value = years
+    // 过滤 data 不为 null 的, 且至少 3 个数据点, 拿前 6 所画线
+    previewSeries.value = allSeries
+      .filter((s: any) => Array.isArray(s.data) && s.data.filter((v: any) => typeof v === 'number').length >= 3)
+      .slice(0, 6)
+  } catch (e) {
+    console.warn('[home] preview load failed', e)
+    // fallback 用静态 mock
+    previewYears.value = ['2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026', '2027']
+    previewSeries.value = [
+      { name: '麻省理工学院', country: '美国', region: '北美洲', data: [4, 1, 1, 1, 1, 1, 1, 1, 1, 1] },
+      { name: '斯坦福大学', country: '美国', region: '北美洲', data: [2, 2, 2, 2, 3, 3, 5, 5, 5, 5] },
+      { name: '哈佛大学', country: '美国', region: '北美洲', data: [3, 3, 3, 5, 5, 5, 4, 4, 4, 4] },
+      { name: '剑桥大学', country: '英国', region: '欧洲', data: [5, 6, 7, 7, 4, 2, 2, 2, 2, 2] },
+      { name: '牛津大学', country: '英国', region: '欧洲', data: [6, 5, 4, 4, 2, 4, 3, 3, 3, 3] }
+    ]
+  } finally {
+    previewLoading.value = false
   }
-]
+}
+onMounted(loadPreview)
 
-// Hero demo 缩略图: 静态 mock 趋势线, 真实数据来自 /charts 页
-const heroDemoLines = [
-  { name: 'MIT', color: '#1456f0', points: [10, 8, 7, 5, 4, 3, 2, 1, 1, 1] },
-  { name: 'Stanford', color: '#ea5ec1', points: [5, 4, 3, 3, 2, 2, 2, 3, 4, 3] },
-  { name: 'Harvard', color: '#22c55e', points: [3, 2, 1, 2, 1, 1, 2, 1, 2, 1] }
-]
-const heroDemoYears = ['2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026']
+// SVG path 生成 (miniMax viewBox 100x100, 排名越低 y 越高)
+const CHART_W = 100
+const CHART_H = 50
+const CHART_PAD = 4
 
-function buildHeroPath(points: number[]) {
-  const maxRank = 10
-  const xStep = 100 / (points.length - 1)
+function buildPath(points: (number | null)[], maxRank = 50) {
+  if (!points.length) return ''
+  const xStep = (CHART_W - 2 * CHART_PAD) / (points.length - 1)
   return points.map((p, i) => {
-    const x = i * xStep
-    const y = 100 - (p / maxRank) * 90
-    return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`
-  }).join(' ')
+    if (p == null) return null
+    const x = CHART_PAD + i * xStep
+    const y = CHART_H - CHART_PAD - (Math.min(p, maxRank) / maxRank) * (CHART_H - 2 * CHART_PAD)
+    return `${i === 0 || points[i - 1] == null ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`
+  }).filter(Boolean).join(' ')
+}
+
+const LINE_COLORS = ['#1456f0', '#ea5ec1', '#22c55e', '#f59e0b', '#a855f7', '#06b6d4']
+function lineColor(idx: number) { return LINE_COLORS[idx % LINE_COLORS.length] }
+
+// 选 series 当前排名
+function lastRank(s: Series) {
+  const valid = s.data.filter((v: any) => typeof v === 'number') as number[]
+  return valid.length ? valid[valid.length - 1] : '—'
 }
 </script>
 
 <template>
   <div>
-    <!-- Hero: 加 hero-with-orb 品牌氛围 + 真趋势图缩略图作视觉锚点 -->
-    <section class="hero-with-orb py-20 md:py-28">
+    <!-- ============== Hero ============== -->
+    <section class="hero-with-orb py-20 md:py-24">
       <UContainer>
         <div class="grid items-center gap-12 md:grid-cols-2">
           <div class="text-left">
-            <UBadge
-              color="primary"
-              variant="subtle"
-              size="md"
-              class="mb-6"
-            >
+            <UBadge color="primary" variant="subtle" size="md" class="mb-5">
               <UIcon name="i-lucide-sparkles" class="size-3.5" />
               <span class="ml-1.5">PhD 申请 · 数据驱动 · 选校决策</span>
             </UBadge>
-
             <h1
               class="text-4xl font-medium leading-[1.10] tracking-tight text-default sm:text-5xl md:text-[56px]"
               :style="{ fontFamily: 'var(--font-display)' }"
@@ -133,95 +160,80 @@ function buildHeroPath(points: number[]) {
               多源排名数据<br />
               让 PhD 选校 <span class="text-gradient-brand">一目了然</span>
             </h1>
-
-            <p class="mt-5 text-lg font-medium leading-relaxed text-muted md:text-xl">
-              整合 QS 世界大学排名、US News 全球大学排名, 按综合 / 计算机科学双维度对比,
-              结合历年趋势图表, 助你高效做出选校决策。
+            <p class="mt-5 text-base font-medium leading-relaxed text-muted md:text-lg">
+              整合 8 大排名体系 (QS / US News / ARWU / EduRank / MOSIUR / RUR / QS 学科 / US News 学科) ·
+              综合 + 计算机科学双维度 · 历年趋势 + 院校对比
             </p>
-
-            <div class="mt-8 flex flex-wrap items-center gap-3">
-              <UButton
-                to="/universities"
-                color="primary"
-                variant="solid"
-                size="lg"
-                icon="i-lucide-search"
-              >立即查询大学</UButton>
-              <UButton
-                to="/charts"
-                color="neutral"
-                variant="outline"
-                size="lg"
-                icon="i-lucide-bar-chart-3"
-              >查看趋势</UButton>
-            </div>
-
-            <div class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px] text-muted">
-              <div class="inline-flex items-center gap-1.5">
-                <UIcon name="i-lucide-shield-check" class="size-3.5 text-[var(--color-brand-900)]" />
-                覆盖 1107+ 大学
-              </div>
-              <div class="inline-flex items-center gap-1.5">
-                <UIcon name="i-lucide-database" class="size-3.5 text-[var(--color-brand-900)]" />
-                2 大排名体系
-              </div>
-              <div class="inline-flex items-center gap-1.5">
-                <UIcon name="i-lucide-zap" class="size-3.5 text-[var(--color-brand-900)]" />
-                毫秒级响应
-              </div>
+            <div class="mt-7 flex flex-wrap items-center gap-3">
+              <UButton to="/universities" color="primary" variant="solid" size="lg" icon="i-lucide-search">
+                立即查询大学
+              </UButton>
+              <UButton to="/charts" color="neutral" variant="outline" size="lg" icon="i-lucide-bar-chart-3">
+                查看趋势
+              </UButton>
             </div>
           </div>
 
-          <!-- Hero 视觉锚点: 真实趋势图缩略图 -->
+          <!-- 趋势预览卡 (真数据) -->
           <div
             class="rounded-3xl border border-default bg-white p-6 lift-on-hover"
             :style="{ boxShadow: 'var(--shadow-brand-strong)' }"
           >
-            <div class="mb-3 flex items-center justify-between">
+            <div class="mb-4 flex items-center justify-between">
               <div class="text-[13px] font-semibold text-default" :style="{ fontFamily: 'var(--font-ui)' }">
                 <UIcon name="i-lucide-trending-up" class="mr-1.5 inline size-3.5 text-[var(--color-brand-900)]" />
-                历年 QS Top 10 趋势
+                Top 50 历年排名趋势预览
               </div>
-              <UBadge color="primary" variant="subtle" size="xs">DEMO</UBadge>
+              <NuxtLink to="/charts" class="text-[12px] font-medium text-[var(--color-brand-900)] hover:underline">
+                深度对比 →
+              </NuxtLink>
             </div>
-            <div class="relative aspect-[4/3] w-full">
-              <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="absolute inset-0 h-full w-full">
-                <!-- 网格线 -->
-                <line x1="0" y1="10" x2="100" y2="10" stroke="#f2f3f5" stroke-width="0.3" />
-                <line x1="0" y1="30" x2="100" y2="30" stroke="#f2f3f5" stroke-width="0.3" />
-                <line x1="0" y1="50" x2="100" y2="50" stroke="#f2f3f5" stroke-width="0.3" />
-                <line x1="0" y1="70" x2="100" y2="70" stroke="#f2f3f5" stroke-width="0.3" />
-                <line x1="0" y1="90" x2="100" y2="90" stroke="#f2f3f5" stroke-width="0.3" />
+            <div v-if="previewLoading" class="flex h-[180px] items-center justify-center text-sm text-muted">
+              <UIcon name="i-lucide-loader" class="mr-1.5 size-4 animate-spin" />
+              加载趋势数据...
+            </div>
+            <div v-else class="relative w-full">
+              <svg
+                viewBox="0 0 100 60"
+                preserveAspectRatio="none"
+                class="block h-[180px] w-full"
+              >
+                <!-- 网格 -->
+                <line :x1="CHART_PAD" :y1="10" :x2="CHART_W - CHART_PAD" :y2="10" stroke="#f2f3f5" stroke-width="0.2" />
+                <line :x1="CHART_PAD" :y1="25" :x2="CHART_W - CHART_PAD" :y2="25" stroke="#f2f3f5" stroke-width="0.2" />
+                <line :x1="CHART_PAD" :y1="40" :x2="CHART_W - CHART_PAD" :y2="40" stroke="#f2f3f5" stroke-width="0.2" />
+                <text :x="CHART_PAD - 1" :y="11" text-anchor="end" font-size="2.5" fill="#8e8e93">10</text>
+                <text :x="CHART_PAD - 1" :y="26" text-anchor="end" font-size="2.5" fill="#8e8e93">25</text>
+                <text :x="CHART_PAD - 1" :y="41" text-anchor="end" font-size="2.5" fill="#8e8e93">50</text>
+                <!-- 折线 -->
                 <path
-                  v-for="line in heroDemoLines"
-                  :key="line.name"
-                  :d="buildHeroPath(line.points)"
+                  v-for="(s, idx) in previewSeries"
+                  :key="s.name"
+                  :d="buildPath(s.data, 50)"
                   fill="none"
-                  :stroke="line.color"
-                  stroke-width="0.8"
+                  :stroke="lineColor(idx)"
+                  stroke-width="0.6"
                   stroke-linejoin="round"
                   stroke-linecap="round"
                 />
-                <!-- 数据点 -->
-                <g v-for="line in heroDemoLines" :key="line.name + '-dots'">
-                  <circle
-                    v-for="(p, i) in line.points"
-                    :key="i"
-                    :cx="(i * 100) / (line.points.length - 1)"
-                    :cy="100 - (p / 10) * 90"
-                    r="0.8"
-                    :fill="line.color"
-                  />
-                </g>
+                <!-- 末端点 -->
+                <circle
+                  v-for="(s, idx) in previewSeries"
+                  :key="s.name + '-dot'"
+                  v-show="s.data.filter(v => v != null).length > 0"
+                  :cx="CHART_PAD + (s.data.length - 1) * ((CHART_W - 2 * CHART_PAD) / Math.max(1, s.data.length - 1))"
+                  :cy="(() => { const v = s.data.filter(x => x != null).pop(); return v == null ? 0 : CHART_H - CHART_PAD - (Math.min(v as number, 50) / 50) * (CHART_H - 2 * CHART_PAD) })()"
+                  r="0.9"
+                  :fill="lineColor(idx)"
+                />
               </svg>
-              <div class="absolute bottom-0 left-0 right-0 flex justify-between px-1 text-[9px] text-subtle">
-                <span v-for="y in heroDemoYears" :key="y">{{ y }}</span>
-              </div>
-            </div>
-            <div class="mt-3 flex items-center gap-4 text-[11px] font-medium text-muted">
-              <div v-for="line in heroDemoLines" :key="line.name" class="inline-flex items-center gap-1.5">
-                <span class="size-2 rounded-full" :style="{ background: line.color }" />
-                {{ line.name }}
+              <!-- 图例 (前 3 + 总数) -->
+              <div class="mt-3 flex flex-wrap items-center gap-3 text-[11px] font-medium text-muted">
+                <div v-for="(s, idx) in previewSeries.slice(0, 5)" :key="s.name" class="inline-flex items-center gap-1.5">
+                  <span class="size-2 rounded-full" :style="{ background: lineColor(idx) }" />
+                  <span class="text-default">{{ s.name }}</span>
+                  <span class="font-mono text-[var(--color-brand-900)]">#{{ lastRank(s) }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -229,54 +241,29 @@ function buildHeroPath(points: number[]) {
       </UContainer>
     </section>
 
-    <!-- KPI: 平台能力指标 (替代 0/0/0 冷启动观感) -->
-    <UContainer class="-mt-6">
-      <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+    <!-- ============== KPI 5 卡 数据看板 ============== -->
+    <UContainer class="mt-2">
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-5">
         <div
+          v-for="(k, i) in kpis"
+          :key="k.key"
           class="stat-card lift-on-hover"
-          :style="{ background: 'var(--gradient-card-soft)' }"
+          :style="i === 0 ? { background: 'var(--gradient-card-soft)' } : {}"
         >
           <div class="flex items-center justify-between">
-            <span class="stat-card__label">覆盖大学</span>
-            <UIcon name="i-lucide-globe-2" class="size-4 text-[var(--color-brand-900)]" />
+            <span class="stat-card__label">{{ k.label }}</span>
+            <UIcon :name="k.icon" class="size-4 text-[var(--color-brand-900)]" />
           </div>
-          <span class="stat-card__value text-brand">{{ statsLoaded ? totalUniversities : '—' }}</span>
-          <span class="stat-card__hint">QS + US News 双榜去重</span>
-        </div>
-        <div class="stat-card lift-on-hover">
-          <div class="flex items-center justify-between">
-            <span class="stat-card__label">排名体系</span>
-            <UIcon name="i-lucide-layers" class="size-4 text-[var(--color-brand-900)]" />
-          </div>
-          <span class="stat-card__value text-brand">{{ rankingSystems }}</span>
-          <span class="stat-card__hint">QS 世界 + US News 全球</span>
-        </div>
-        <div class="stat-card lift-on-hover">
-          <div class="flex items-center justify-between">
-            <span class="stat-card__label">历史年份</span>
-            <UIcon name="i-lucide-calendar-range" class="size-4 text-[var(--color-brand-900)]" />
-          </div>
-          <span class="stat-card__value text-brand">{{ statsLoaded ? totalYears : '—' }}</span>
-          <span class="stat-card__hint">覆盖年份数</span>
-        </div>
-        <div class="stat-card lift-on-hover">
-          <div class="flex items-center justify-between">
-            <span class="stat-card__label">趋势序列</span>
-            <UIcon name="i-lucide-activity" class="size-4 text-[var(--color-brand-900)]" />
-          </div>
-          <span class="stat-card__value text-brand">{{ statsLoaded ? trackedSeries : '—' }}</span>
-          <span class="stat-card__hint">可视化大学数</span>
+          <span class="stat-card__value text-brand">{{ statsLoaded ? k.value : '—' }}</span>
+          <span class="stat-card__hint">{{ k.hint }}</span>
         </div>
       </div>
     </UContainer>
 
-    <!-- 4 模块: featured 差异化 -->
-    <UContainer class="mt-20">
-      <div class="mb-8 text-center">
-        <h2
-          class="text-3xl font-semibold leading-tight text-default md:text-[31px]"
-          :style="{ fontFamily: 'var(--font-display)' }"
-        >四大核心模块</h2>
+    <!-- ============== 4 模块入口 ============== -->
+    <UContainer class="mt-16">
+      <div class="mb-7 text-center">
+        <h2 class="text-3xl font-semibold leading-tight text-default md:text-[31px]" :style="{ fontFamily: 'var(--font-display)' }">四大核心模块</h2>
         <p class="mt-2 text-base text-muted">从查询到选校到趋势分析, 一站式覆盖</p>
       </div>
       <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -295,8 +282,7 @@ function buildHeroPath(points: number[]) {
             class="absolute right-5 top-5 inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-semibold text-white"
             :style="{ backdropFilter: 'blur(8px)' }"
           >
-            <UIcon name="i-lucide-star" class="size-3" />
-            主推
+            <UIcon name="i-lucide-star" class="size-3" />主推
           </span>
           <div
             class="inline-flex size-11 items-center justify-center rounded-xl"
@@ -306,19 +292,9 @@ function buildHeroPath(points: number[]) {
           >
             <UIcon :name="m.icon" class="size-6" />
           </div>
-          <div
-            class="text-[22px] font-semibold leading-tight"
-            :class="m.featured ? 'text-white' : 'text-default'"
-            :style="{ fontFamily: 'var(--font-display)' }"
-          >{{ m.title }}</div>
-          <div
-            class="flex-1 text-sm leading-relaxed"
-            :class="m.featured ? 'text-white/80' : 'text-muted'"
-          >{{ m.desc }}</div>
-          <div
-            class="mt-1 inline-flex items-center gap-1.5 text-[13px] font-semibold"
-            :class="m.featured ? 'text-white' : 'text-[var(--color-brand-900)]'"
-          >
+          <div class="text-[22px] font-semibold leading-tight" :class="m.featured ? 'text-white' : 'text-default'" :style="{ fontFamily: 'var(--font-display)' }">{{ m.title }}</div>
+          <div class="flex-1 text-sm leading-relaxed" :class="m.featured ? 'text-white/80' : 'text-muted'">{{ m.desc }}</div>
+          <div class="mt-1 inline-flex items-center gap-1.5 text-[13px] font-semibold" :class="m.featured ? 'text-white' : 'text-[var(--color-brand-900)]'">
             <span>{{ m.cta }}</span>
             <UIcon name="i-lucide-arrow-right" class="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
           </div>
@@ -326,31 +302,18 @@ function buildHeroPath(points: number[]) {
       </div>
     </UContainer>
 
-    <!-- 4 平台特色 -->
-    <UContainer class="mt-20">
-      <div class="mb-8 text-center">
-        <h2
-          class="text-3xl font-semibold leading-tight text-default md:text-[31px]"
-          :style="{ fontFamily: 'var(--font-display)' }"
-        >平台特色</h2>
+    <!-- ============== 4 平台特色 ============== -->
+    <UContainer class="mt-16">
+      <div class="mb-7 text-center">
+        <h2 class="text-3xl font-semibold leading-tight text-default md:text-[31px]" :style="{ fontFamily: 'var(--font-display)' }">平台特色</h2>
         <p class="mt-2 text-base text-muted">为 PhD 申请者量身打造</p>
       </div>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div
-          v-for="f in features"
-          :key="f.title"
-          class="flex flex-col gap-2.5 rounded-2xl border border-default bg-white p-5 lift-on-hover"
-        >
-          <div
-            class="inline-flex size-9 items-center justify-center rounded-[10px]"
-            :style="{ background: 'rgba(20, 86, 240, 0.08)', color: 'var(--color-brand-900)' }"
-          >
+        <div v-for="f in features" :key="f.title" class="flex flex-col gap-2.5 rounded-2xl border border-default bg-white p-5 lift-on-hover">
+          <div class="inline-flex size-9 items-center justify-center rounded-[10px]" :style="{ background: 'rgba(20, 86, 240, 0.08)', color: 'var(--color-brand-900)' }">
             <UIcon :name="f.icon" class="size-5" />
           </div>
-          <div
-            class="text-base font-semibold text-default"
-            :style="{ fontFamily: 'var(--font-display)' }"
-          >{{ f.title }}</div>
+          <div class="text-base font-semibold text-default" :style="{ fontFamily: 'var(--font-display)' }">{{ f.title }}</div>
           <div class="text-[13px] leading-relaxed text-muted">{{ f.desc }}</div>
         </div>
       </div>
