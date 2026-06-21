@@ -314,23 +314,23 @@ function toggleSelect(name: string) {
       <p class="mt-2 text-base text-muted">趋势 · 对比 · 洞察 · 让选校决策有数</p>
     </UContainer>
 
-    <!-- 4 大视图 mode tab -->
+    <!-- 4 大视图 mode tab (等高, 单色 + 选中态描边) -->
     <UContainer class="pt-2">
-      <div class="grid grid-cols-2 gap-2 md:grid-cols-4">
+      <div class="grid grid-cols-2 gap-2.5 md:grid-cols-4">
         <button
           v-for="m in modeTabs"
           :key="m.value"
           type="button"
-          class="flex flex-col items-start gap-1 rounded-xl border bg-white p-3.5 text-left transition-all"
-          :class="mode === m.value ? 'border-transparent shadow-md' : 'border-default hover:border-[var(--color-brand-900)]'"
-          :style="mode === m.value ? { background: 'var(--gradient-card-featured)', color: '#fff', boxShadow: 'var(--shadow-brand)' } : {}"
+          class="flex h-full min-h-[88px] flex-col items-start gap-1.5 rounded-2xl border bg-white p-3.5 text-left transition-all"
+          :class="mode === m.value ? 'border-[var(--color-brand-900)] shadow-md' : 'border-default hover:border-[var(--color-brand-900)]'"
+          :style="mode === m.value ? { background: 'var(--color-surface-1)', boxShadow: '0 0 0 2px var(--color-brand-900) inset' } : {}"
           @click="mode = m.value"
         >
           <div class="flex items-center gap-1.5">
-            <UIcon :name="m.icon" class="size-4" />
-            <span class="text-sm font-semibold">{{ m.label }}</span>
+            <UIcon :name="m.icon" class="size-4" :style="{ color: 'var(--color-brand-900)' }" />
+            <span class="text-sm font-semibold text-default">{{ m.label }}</span>
           </div>
-          <span class="text-[11px] opacity-80">{{ m.desc }}</span>
+          <span class="text-[12px] leading-snug text-muted">{{ m.desc }}</span>
         </button>
       </div>
     </UContainer>
