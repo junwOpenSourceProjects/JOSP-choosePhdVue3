@@ -511,9 +511,9 @@ function lineColor(idx: number) { return LINE_COLORS[idx % LINE_COLORS.length] }
   margin: 0;
   font-family: var(--font-display);
   font-size: 80px;
-  font-weight: 500;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
+  font-weight: 600;
+  line-height: 1.10;
+  letter-spacing: -0.025em;
   color: var(--color-ink);
 }
 @media (max-width: 768px) {
@@ -578,11 +578,11 @@ function lineColor(idx: number) { return LINE_COLORS[idx % LINE_COLORS.length] }
 }
 .kpi__value {
   font-family: var(--font-display);
-  font-size: 48px;
-  font-weight: 500;
-  line-height: 1;
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 1.10;
   color: var(--color-ink);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.0375em;
   font-variant-numeric: tabular-nums;
   margin-bottom: 8px;
 }
@@ -723,9 +723,9 @@ function lineColor(idx: number) { return LINE_COLORS[idx % LINE_COLORS.length] }
 .module__title {
   font-family: var(--font-display);
   font-size: 24px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--color-ink);
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   margin-top: 4px;
 }
 .module.is-featured .module__title { color: var(--color-canvas); }
@@ -872,11 +872,11 @@ function lineColor(idx: number) { return LINE_COLORS[idx % LINE_COLORS.length] }
 }
 .orgs__featured-code {
   font-family: var(--font-display);
-  font-size: 64px;
-  font-weight: 500;
+  font-size: 56px;
+  font-weight: 600;
   color: var(--color-brand-blue);
-  letter-spacing: -0.04em;
-  line-height: 1;
+  letter-spacing: -0.027em;
+  line-height: 1.10;
   font-variant-numeric: tabular-nums;
 }
 .orgs__featured-label {
