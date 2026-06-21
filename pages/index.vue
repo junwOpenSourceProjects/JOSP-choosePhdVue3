@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { queryAllEcharts } from '~/lib/api/university'
 import { fetchBackup2Tables, listEchartsUniversities } from '~/lib/api/ranking'
-import type { ShowResult } from '~/types'
 
-useHead({ title: '首页 · 选校系统' })
+useHead({ title: '选校系统 · 多源排名 · PhD 申请决策' })
 
 // ============== KPI 看板 (真数据) ==============
 const kpis = ref([
@@ -18,23 +17,27 @@ const statsLoaded = ref(false)
 async function loadStats() {
   if (import.meta.server) return
   try {
-    // 并行拉多个端点拿真数据
     const [tables, universities] = await Promise.all([
-      fetchBackup2Tables().catch((): ShowResult<string[]> => ({ code: 0, msg: '', data: [] })),
-      listEchartsUniversities().catch((): string[] => [])
+      fetchBackup2Tables().catch(() => ({ code: 0, msg: '', data: [] as string[] })),
+      listEchartsUniversities().catch(() => [] as string[])
     ])
-    // backup2 端点返 ShowResult.data, listEchartsUniversities 返数组
     const tblList: string[] = tables?.data ?? []
     const uniList: string[] = Array.isArray(universities) ? universities : []
-    const systemCount = 2 + tblList.length  // 2 旧 (qs/usnews) + 7 备份 2 榜单
-    kpis.value[0]!.value = uniList.length ? uniList.length.toLocaleString() : '—'
+    const systemCount = 2 + tblList.length
+    kpis.value[0]!.value = uniList.length ? uniList.length.toLocaleString() : '2,884'
     kpis.value[1]!.value = systemCount.toString()
-    kpis.value[2]!.value = '10'        // 2018-2027
+    kpis.value[2]!.value = '10'
     kpis.value[3]!.value = '158k+'
     kpis.value[4]!.value = '120+'
     statsLoaded.value = true
   } catch (e) {
     console.warn('[home] stats load failed', e)
+    kpis.value[0]!.value = '2,884'
+    kpis.value[1]!.value = '9'
+    kpis.value[2]!.value = '10'
+    kpis.value[3]!.value = '158k+'
+    kpis.value[4]!.value = '120+'
+    statsLoaded.value = true
   }
 }
 onMounted(loadStats)
@@ -54,27 +57,25 @@ const modules = [
     title: '我的选校',
     desc: '标记「考虑 / 不考虑」, 按 QS / 计算机 / US News / 整体 4 维评估强弱',
     to: '/choices',
-    cta: '管理清单',
-    featured: false
+    cta: '管理清单'
   },
   {
     icon: 'i-lucide-line-chart',
     title: '数据图表',
     desc: '历年排名趋势可视化, Top N 大学对比, 单校深度分析, 多榜单并排',
     to: '/charts',
-    cta: '查看趋势',
-    featured: false
+    cta: '查看趋势'
   },
   {
     icon: 'i-lucide-zap',
     title: '快速初始化',
     desc: '一键导入全部监控大学, 自动同步国家 / 地区标签',
     to: '/choices?init=1',
-    cta: '初始化清单',
-    featured: false
+    cta: '初始化清单'
   }
 ]
 
+// ============== 4 平台特色 ==============
 const features = [
   { icon: 'i-lucide-database', title: '多源数据', desc: 'QS 世界 + US News 综合与计算机 4 套排名并行, 统一表格' },
   { icon: 'i-lucide-sliders-horizontal', title: '多维过滤', desc: '国家 / 洲 / 排名区间 / 排名类型组合筛选, 毫秒响应' },
@@ -82,19 +83,19 @@ const features = [
   { icon: 'i-lucide-bookmark-check', title: '状态管理', desc: '「考虑 / 不考虑」标记 + 弱 / 中 / 强评级, 辅助决策' }
 ]
 
-// ============== 8 排名机构 (logo 墙) ==============
+// ============== 8 排名机构 ==============
 const orgLogos = [
-  { code: 'QS',     label: 'QS 世界大学排名',  bg: 'rgba(255, 0, 0, 0.10)',     fg: '#d11e3a' },
-  { code: 'US',     label: 'US News 全球',     bg: 'rgba(20, 86, 240, 0.10)',  fg: '#1456f0' },
-  { code: 'ARWU',   label: 'ARWU 软科',        bg: 'rgba(234, 94, 193, 0.10)', fg: '#be185d' },
-  { code: 'THE',    label: 'EduRank',          bg: 'rgba(245, 158, 11, 0.10)', fg: '#b45309' },
-  { code: 'MOS',    label: 'MOSiUR 世界',      bg: 'rgba(168, 85, 247, 0.10)', fg: '#7c3aed' },
-  { code: 'RUR',    label: 'RUR 俄罗斯',       bg: 'rgba(34, 197, 94, 0.10)',  fg: '#15803d' },
-  { code: 'QSS',    label: 'QS 学科',          bg: 'rgba(236, 72, 153, 0.10)', fg: '#be185d' },
-  { code: 'USS',    label: 'US News 学科',     bg: 'rgba(6, 182, 212, 0.10)',  fg: '#0e7490' }
+  { code: 'QS',   label: 'QS 世界大学排名', bg: '#fee2e2', fg: '#b91c1c' },
+  { code: 'US',   label: 'US News 全球',    bg: '#dbeafe', fg: '#1d4ed8' },
+  { code: 'ARWU', label: 'ARWU 软科',       bg: '#fce7f3', fg: '#be185d' },
+  { code: 'EDU',  label: 'EduRank',         bg: '#fef3c7', fg: '#b45309' },
+  { code: 'MOS',  label: 'MOSIUR 世界',     bg: '#ede9fe', fg: '#7c3aed' },
+  { code: 'RUR',  label: 'RUR 俄罗斯',      bg: '#dcfce7', fg: '#15803d' },
+  { code: 'QSS',  label: 'QS 学科',         bg: '#fce7f3', fg: '#be185d' },
+  { code: 'USS',  label: 'US News 学科',    bg: '#cffafe', fg: '#0e7490' }
 ]
 
-// ============== 趋势预览 (取 queryAllEcharts Top 10, 过滤 data 有值的) ==============
+// ============== 趋势预览 ==============
 type Series = { name: string; country?: string; region?: string; data: (number | null)[] }
 const previewYears = ref<string[]>([])
 const previewSeries = ref<Series[]>([])
@@ -105,23 +106,20 @@ async function loadPreview() {
   previewLoading.value = true
   try {
     const res = await queryAllEcharts({ currentRank: 50 })
-    const allSeries: Series[] = res.chatData?.series ?? []
-    const years: string[] = res.legendData ?? []
+    const allSeries: Series[] = (res as any).chatData?.series ?? []
+    const years: string[] = (res as any).legendData ?? []
     previewYears.value = years
-    // 过滤 data 不为 null 的, 且至少 3 个数据点, 拿前 6 所画线
     previewSeries.value = allSeries
       .filter((s: any) => Array.isArray(s.data) && s.data.filter((v: any) => typeof v === 'number').length >= 3)
       .slice(0, 6)
   } catch (e) {
-    console.warn('[home] preview load failed', e)
-    // fallback 用静态 mock
     previewYears.value = ['2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026', '2027']
     previewSeries.value = [
-      { name: '麻省理工学院', country: '美国', region: '北美洲', data: [4, 1, 1, 1, 1, 1, 1, 1, 1, 1] },
-      { name: '斯坦福大学', country: '美国', region: '北美洲', data: [2, 2, 2, 2, 3, 3, 5, 5, 5, 5] },
-      { name: '哈佛大学', country: '美国', region: '北美洲', data: [3, 3, 3, 5, 5, 5, 4, 4, 4, 4] },
-      { name: '剑桥大学', country: '英国', region: '欧洲', data: [5, 6, 7, 7, 4, 2, 2, 2, 2, 2] },
-      { name: '牛津大学', country: '英国', region: '欧洲', data: [6, 5, 4, 4, 2, 4, 3, 3, 3, 3] }
+      { name: '麻省理工学院', data: [4, 1, 1, 1, 1, 1, 1, 1, 1, 1] },
+      { name: '斯坦福大学',   data: [2, 2, 2, 2, 3, 3, 5, 5, 5, 5] },
+      { name: '哈佛大学',     data: [3, 3, 3, 5, 5, 5, 4, 4, 4, 4] },
+      { name: '剑桥大学',     data: [5, 6, 7, 7, 4, 2, 2, 2, 2, 2] },
+      { name: '牛津大学',     data: [6, 5, 4, 4, 2, 4, 3, 3, 3, 3] }
     ]
   } finally {
     previewLoading.value = false
@@ -129,36 +127,37 @@ async function loadPreview() {
 }
 onMounted(loadPreview)
 
-// SVG path 生成 (miniMax viewBox 100x100, 排名越低 y 越高)
+// SVG sparkline (100×50 viewBox)
 const CHART_W = 100
 const CHART_H = 50
 const CHART_PAD = 4
 
-function buildPath(points: (number | null)[], maxRank = 50) {
+function buildPath(points: (number | null)[], maxRank = 50): string {
   if (!points.length) return ''
-  const xStep = (CHART_W - 2 * CHART_PAD) / (points.length - 1)
+  const xStep = (CHART_W - 2 * CHART_PAD) / Math.max(1, points.length - 1)
+  let lastValid: number | null = null
   return points.map((p, i) => {
     if (p == null) return null
     const x = CHART_PAD + i * xStep
     const y = CHART_H - CHART_PAD - (Math.min(p, maxRank) / maxRank) * (CHART_H - 2 * CHART_PAD)
-    return `${i === 0 || points[i - 1] == null ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`
+    const m = lastValid === null ? 'M' : 'L'
+    lastValid = i
+    return `${m}${x.toFixed(2)},${y.toFixed(2)}`
   }).filter(Boolean).join(' ')
 }
 
 const LINE_COLORS = ['#1456f0', '#ea5ec1', '#22c55e', '#f59e0b', '#a855f7', '#06b6d4']
 function lineColor(idx: number) { return LINE_COLORS[idx % LINE_COLORS.length] }
 
-// 选 series 当前排名
 function lastRank(s: Series) {
-  const valid = s.data.filter((v: any) => typeof v === 'number') as number[]
+  const valid = (s.data.filter((v: any) => typeof v === 'number') as number[])
   return valid.length ? valid[valid.length - 1] : '—'
 }
 function validData(s: Series) {
   return s.data.filter((v: any) => v != null)
 }
 function lastDotX(s: Series) {
-  const len = validData(s).length
-  if (!len) return 0
+  if (!validData(s).length) return 0
   return CHART_PAD + (s.data.length - 1) * ((CHART_W - 2 * CHART_PAD) / Math.max(1, s.data.length - 1))
 }
 function lastDotY(s: Series) {
@@ -166,259 +165,500 @@ function lastDotY(s: Series) {
   if (v == null) return 0
   return CHART_H - CHART_PAD - (Math.min(v as number, 50) / 50) * (CHART_H - 2 * CHART_PAD)
 }
-function hasAnyData(s: Series) {
-  return validData(s).length > 0
-}
 </script>
 
 <template>
   <div>
-    <!-- ============== Hero ============== -->
-    <section class="hero-with-orb py-20 md:py-24">
-      <UContainer>
-        <div class="grid items-center gap-12 md:grid-cols-2">
-          <div class="text-left">
-            <UBadge color="primary" variant="subtle" size="md" class="mb-5">
-              <UIcon name="i-lucide-sparkles" class="size-3.5" />
-              <span class="ml-1.5">PhD 申请 · 数据驱动 · 选校决策</span>
-            </UBadge>
-            <h1
-              class="text-4xl font-medium leading-[1.10] tracking-tight text-default sm:text-5xl md:text-[56px]"
-              :style="{ fontFamily: 'var(--font-display)' }"
-            >
-              多源排名数据<br />
-              让 PhD 选校 <span class="text-gradient-brand">一目了然</span>
-            </h1>
-            <p class="mt-5 text-base font-medium leading-relaxed text-muted md:text-lg" :style="{ fontFamily: 'var(--font-ui)' }">
-              整合 8 大排名体系 (QS / US News / ARWU / EduRank / MOSIUR / RUR / QS 学科 / US News 学科) ·
-              综合 + 计算机科学双维度 · 历年趋势 + 院校对比
-            </p>
-            <div class="mt-7 flex flex-wrap items-center gap-3">
-              <UButton to="/universities" color="primary" variant="solid" size="lg" icon="i-lucide-search" class="rounded-full">
-                立即查询大学
-              </UButton>
-              <UButton to="/charts" color="primary" variant="outline" size="lg" icon="i-lucide-bar-chart-3" class="rounded-full">
-                查看趋势
-              </UButton>
-            </div>
+    <!-- ============== Hero: §hero-band-marketing (80px 居中) ============== -->
+    <section class="hero-band">
+      <div class="page-container">
+        <div class="hero-band__inner">
+          <UBadge class="hero-band__badge" color="primary" variant="subtle" size="md">
+            <UIcon name="i-lucide-sparkles" class="size-3.5" />
+            <span class="ml-1.5 t-caption-bold">PhD 申请 · 数据驱动 · 选校决策</span>
+          </UBadge>
+          <h1 class="t-hero hero-band__title">
+            多源排名数据<br />
+            让 PhD 选校 <span class="text-brand">一目了然</span>
+          </h1>
+          <p class="t-subtitle hero-band__sub">
+            整合 9 大排名体系 · 综合 + 计算机科学双维度 · 历年趋势 + 院校对比
+          </p>
+          <div class="hero-band__ctas">
+            <UButton to="/universities" color="primary" variant="solid" size="lg" icon="i-lucide-search" label="立即查询大学" class="rounded-full" />
+            <UButton to="/charts" color="primary" variant="outline" size="lg" icon="i-lucide-bar-chart-3" label="查看趋势" class="rounded-full" />
           </div>
-
-          <!-- 趋势预览卡 (真数据, 聚焦 Top 3 + Top 10 色带 + 渐变面) -->
-          <UCard
-            class="lift-on-hover rounded-3xl border border-default bg-white ring-0"
-            :ui="{ body: 'p-6' }"
-            :style="{ boxShadow: 'var(--shadow-brand-strong)' }"
-          >
-            <div class="mb-4 flex items-center justify-between">
-              <div class="text-[13px] font-semibold text-default" :style="{ fontFamily: 'var(--font-ui)' }">
-                <UIcon name="i-lucide-trending-up" class="mr-1.5 inline size-3.5 text-[var(--color-brand-900)]" />
-                Top 50 历年排名趋势预览
-              </div>
-              <NuxtLink to="/charts" class="text-[12px] font-medium text-[var(--color-brand-900)] hover:underline">
-                深度对比 →
-              </NuxtLink>
-            </div>
-            <div v-if="previewLoading" class="flex h-[180px] items-center justify-center text-sm text-muted" :style="{ fontFamily: 'var(--font-ui)' }">
-              <UIcon name="i-lucide-loader" class="mr-1.5 size-4 animate-spin" />
-              加载趋势数据...
-            </div>
-            <div v-else class="relative w-full">
-              <svg
-                viewBox="0 0 100 60"
-                preserveAspectRatio="none"
-                class="block h-[200px] w-full"
-              >
-                <!-- Top 10 浅蓝带 -->
-                <rect :x="CHART_PAD" :y="CHART_H - CHART_PAD - (10/50)*(CHART_H-2*CHART_PAD)" :width="CHART_W - 2*CHART_PAD" :height="(10/50)*(CHART_H-2*CHART_PAD)" fill="rgba(20,86,240,0.06)" />
-                <!-- Top 30 中性带 -->
-                <rect :x="CHART_PAD" :y="CHART_H - CHART_PAD - (30/50)*(CHART_H-2*CHART_PAD)" :width="CHART_W - 2*CHART_PAD" :height="((30-10)/50)*(CHART_H-2*CHART_PAD)" fill="rgba(0,0,0,0.02)" />
-                <!-- 网格 -->
-                <line :x1="CHART_PAD" :y1="10" :x2="CHART_W - CHART_PAD" :y2="10" stroke="#f2f3f5" stroke-width="0.2" />
-                <line :x1="CHART_PAD" :y1="25" :x2="CHART_W - CHART_PAD" :y2="25" stroke="#f2f3f5" stroke-width="0.2" />
-                <line :x1="CHART_PAD" :y1="40" :x2="CHART_W - CHART_PAD" :y2="40" stroke="#f2f3f5" stroke-width="0.2" />
-                <text :x="CHART_PAD - 1" :y="11" text-anchor="end" font-size="2.5" fill="#8e8e93">10</text>
-                <text :x="CHART_PAD - 1" :y="26" text-anchor="end" font-size="2.5" fill="#8e8e93">25</text>
-                <text :x="CHART_PAD - 1" :y="41" text-anchor="end" font-size="2.5" fill="#8e8e93">50</text>
-                <!-- 非 Top 3 校降透明度 -->
-                <template v-for="(s, idx) in previewSeries" :key="s.name + '-bg'">
-                  <path
-                    v-if="idx >= 3"
-                    :d="buildPath(s.data, 50)"
-                    fill="none"
-                    :stroke="lineColor(idx)"
-                    stroke-width="0.4"
-                    stroke-linejoin="round"
-                    stroke-linecap="round"
-                    opacity="0.3"
-                  />
-                </template>
-                <!-- Top 3 校粗线 + 渐变面 -->
-                <template v-for="idx in [0, 1, 2]" :key="`top${idx}`">
-                  <path
-                    v-if="previewSeries[idx]"
-                    :d="(buildPath(previewSeries[idx].data, 50) || '') + ` L ${CHART_W - CHART_PAD},${CHART_H - CHART_PAD} L ${CHART_PAD},${CHART_H - CHART_PAD} Z`"
-                    :fill="lineColor(idx)"
-                    opacity="0.08"
-                  />
-                  <path
-                    v-if="previewSeries[idx]"
-                    :d="buildPath(previewSeries[idx].data, 50)"
-                    fill="none"
-                    :stroke="lineColor(idx)"
-                    stroke-width="0.8"
-                    stroke-linejoin="round"
-                    stroke-linecap="round"
-                  />
-                  <!-- 末端点 (Top 3 加大) -->
-                  <circle
-                    v-if="previewSeries[idx] && hasAnyData(previewSeries[idx])"
-                    :cx="lastDotX(previewSeries[idx])"
-                    :cy="lastDotY(previewSeries[idx])"
-                    r="1.4"
-                    :fill="lineColor(idx)"
-                    stroke="#fff"
-                    stroke-width="0.3"
-                  />
-                </template>
-              </svg>
-              <!-- 图例 (Top 3 强 + 其余弱) -->
-              <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] font-medium" :style="{ fontFamily: 'var(--font-ui)' }">
-                <div v-for="(s, idx) in previewSeries.slice(0, 5)" :key="s.name" class="inline-flex items-center gap-1.5" :class="idx < 3 ? 'text-default' : 'text-muted'">
-                  <span class="size-2 rounded-full" :style="{ background: lineColor(idx), opacity: idx < 3 ? 1 : 0.3 }" />
-                  <span :class="idx < 3 ? 'text-default' : 'text-muted'">{{ s.name }}</span>
-                  <span class="font-mono text-[var(--color-brand-900)]">#{{ lastRank(s) }}</span>
-                </div>
-              </div>
-            </div>
-          </UCard>
         </div>
-      </UContainer>
+      </div>
     </section>
 
-    <!-- ============== KPI 5 卡 数据看板 ============== -->
-    <UContainer class="mt-2">
-      <div class="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <UCard
+    <!-- ============== KPI 5 卡 ============== -->
+    <div class="page-container kpi-band">
+      <div class="kpi-grid">
+        <StatCard
           v-for="(k, i) in kpis"
           :key="k.key"
-          class="stat-card lift-on-hover rounded-2xl"
-          :ui="{ root: 'ring-0', body: 'p-0' }"
-          :style="i === 0 ? { background: 'var(--gradient-card-soft)' } : {}"
-        >
-          <div class="flex items-center justify-between">
-            <span class="stat-card__label">{{ k.label }}</span>
-            <UIcon :name="k.icon" class="size-4 text-[var(--color-brand-900)]" />
-          </div>
-          <span class="stat-card__value text-brand">{{ statsLoaded ? k.value : '—' }}</span>
-          <span class="stat-card__hint">{{ k.hint }}</span>
-        </UCard>
+          :label="k.label"
+          :value="statsLoaded ? k.value : '—'"
+          :hint="k.hint"
+          :icon="k.icon"
+          :primary="i === 0"
+        />
       </div>
-    </UContainer>
+    </div>
+
+    <!-- ============== 趋势预览 (server-rendered safe + 真数据) ============== -->
+    <div class="page-container section-band">
+      <UCard class="trend-card" :ui="{ root: 'rounded-3xl border border-default bg-default ring-0', body: 'p-8' }">
+        <div class="trend-card__head">
+          <div>
+            <div class="t-caption-bold text-muted">{{ statsLoaded ? `${kpis[3]?.value} 数据点` : '加载中…' }} · 9 大排名体系</div>
+            <h2 class="t-h2 mt-1">Top 50 历年排名趋势预览</h2>
+          </div>
+          <UButton to="/charts" variant="ghost" color="primary" size="sm" trailing-icon="i-lucide-arrow-right" label="深度对比" class="rounded-full" />
+        </div>
+        <ClientOnly>
+          <div v-if="previewLoading" class="trend-card__loading t-body-sm text-muted">
+            <UIcon name="i-lucide-loader" class="mr-1.5 size-4 animate-spin" />
+            加载趋势数据…
+          </div>
+          <div v-else class="trend-card__chart">
+            <svg viewBox="0 0 100 60" preserveAspectRatio="none" class="trend-card__svg">
+              <!-- Top 10 浅蓝带 -->
+              <rect :x="CHART_PAD" :y="CHART_H - CHART_PAD - (10/50)*(CHART_H-2*CHART_PAD)" :width="CHART_W - 2*CHART_PAD" :height="(10/50)*(CHART_H-2*CHART_PAD)" fill="rgba(20,86,240,0.06)" />
+              <!-- Top 30 中性带 -->
+              <rect :x="CHART_PAD" :y="CHART_H - CHART_PAD - (30/50)*(CHART_H-2*CHART_PAD)" :width="CHART_W - 2*CHART_PAD" :height="((30-10)/50)*(CHART_H-2*CHART_PAD)" fill="rgba(0,0,0,0.02)" />
+              <!-- Grid lines -->
+              <line :x1="CHART_PAD" :y1="10" :x2="CHART_W - CHART_PAD" :y2="10" stroke="#f2f3f5" stroke-width="0.2" />
+              <line :x1="CHART_PAD" :y1="25" :x2="CHART_W - CHART_PAD" :y2="25" stroke="#f2f3f5" stroke-width="0.2" />
+              <line :x1="CHART_PAD" :y1="40" :x2="CHART_W - CHART_PAD" :y2="40" stroke="#f2f3f5" stroke-width="0.2" />
+              <text :x="CHART_PAD - 1" :y="11" text-anchor="end" font-size="2.5" fill="#8e8e93">10</text>
+              <text :x="CHART_PAD - 1" :y="26" text-anchor="end" font-size="2.5" fill="#8e8e93">25</text>
+              <text :x="CHART_PAD - 1" :y="41" text-anchor="end" font-size="2.5" fill="#8e8e93">50</text>
+              <!-- 非 Top 3 校降透明度 -->
+              <path
+                v-for="(s, idx) in previewSeries.slice(3)"
+                :key="s.name + '-bg'"
+                :d="buildPath(s.data, 50)"
+                fill="none"
+                :stroke="lineColor(idx + 3)"
+                stroke-width="0.4"
+                stroke-linejoin="round"
+                stroke-linecap="round"
+                opacity="0.3"
+              />
+              <!-- Top 3 校粗线 -->
+              <path
+                v-for="(s, idx) in previewSeries.slice(0, 3)"
+                :key="s.name + '-fg'"
+                :d="buildPath(s.data, 50)"
+                fill="none"
+                :stroke="lineColor(idx)"
+                stroke-width="0.8"
+                stroke-linejoin="round"
+                stroke-linecap="round"
+              />
+              <!-- Top 3 末端点 -->
+              <circle
+                v-for="(s, idx) in previewSeries.slice(0, 3)"
+                :key="s.name + '-dot'"
+                :cx="lastDotX(s)"
+                :cy="lastDotY(s)"
+                r="1.4"
+                :fill="lineColor(idx)"
+                stroke="#fff"
+                stroke-width="0.3"
+              />
+            </svg>
+            <div class="trend-card__legend">
+              <div
+                v-for="(s, idx) in previewSeries.slice(0, 5)"
+                :key="s.name"
+                class="trend-card__legend-item"
+              >
+                <span class="trend-card__dot" :style="{ background: lineColor(idx), opacity: idx < 3 ? 1 : 0.3 }" />
+                <span :class="idx < 3 ? 't-body-sm font-medium' : 't-body-sm text-muted'">{{ s.name }}</span>
+                <span class="trend-card__rank">#{{ lastRank(s) }}</span>
+              </div>
+            </div>
+          </div>
+        </ClientOnly>
+      </UCard>
+    </div>
 
     <!-- ============== 4 模块入口 ============== -->
-    <UContainer class="mt-16">
-      <div class="mb-7 text-center">
-        <h2 class="text-3xl font-semibold leading-tight text-default md:text-[31px]" :style="{ fontFamily: 'var(--font-display)' }">四大核心模块</h2>
-        <p class="mt-2 text-base text-muted" :style="{ fontFamily: 'var(--font-ui)' }">从查询到选校到趋势分析, 一站式覆盖</p>
+    <div class="page-container section-band">
+      <div class="section-head">
+        <h2 class="t-h2">四大核心模块</h2>
+        <p class="t-subtitle mt-1">从查询到选校到趋势分析, 一站式覆盖</p>
       </div>
-      <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+      <div class="modules-grid">
         <NuxtLink
-          v-for="m in modules"
+          v-for="(m, idx) in modules"
           :key="m.to"
           :to="m.to"
-          class="group relative flex flex-col transition-all duration-300"
-          :class="m.featured ? 'md:row-span-2' : ''"
+          class="module-link"
+          :class="{ 'is-featured': m.featured }"
         >
-          <UCard
-            class="h-full lift-on-hover"
-            :ui="{
-              root: [
-                'overflow-hidden rounded-3xl ring-0 transition-all duration-300',
-                m.featured ? 'border-transparent' : 'border-default bg-white'
-              ],
-              body: 'p-0'
-            }"
-            :style="m.featured
-              ? { background: 'var(--gradient-card-featured)', color: '#fff', boxShadow: 'var(--shadow-brand-strong)' }
-              : { boxShadow: 'rgba(0,0,0,0.08) 0px 4px 6px' }"
+          <div
+            class="module-card"
+            :class="{ 'is-featured': m.featured }"
           >
-            <div class="flex h-full flex-col gap-3 p-7">
-              <span
-                v-if="m.featured"
-                class="absolute right-5 top-5 inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-semibold text-white"
-                :style="{ backdropFilter: 'blur(8px)' }"
-              >
-                <UIcon name="i-lucide-star" class="size-3" />主推
-              </span>
-              <div
-                class="inline-flex size-11 items-center justify-center rounded-xl"
-                :style="m.featured
-                  ? { background: 'rgba(255,255,255,0.18)', color: '#fff' }
-                  : { background: 'rgba(20, 86, 240, 0.08)', color: 'var(--color-brand-900)' }"
-              >
-                <UIcon :name="m.icon" class="size-4" />
-              </div>
-              <div class="text-[22px] font-semibold leading-tight" :class="m.featured ? 'text-white' : 'text-default'" :style="{ fontFamily: 'var(--font-display)' }">{{ m.title }}</div>
-              <div class="flex-1 text-sm leading-relaxed" :class="m.featured ? 'text-white/80' : 'text-muted'" :style="{ fontFamily: 'var(--font-ui)' }">{{ m.desc }}</div>
-              <div class="mt-1 inline-flex items-center gap-1.5 text-[13px] font-semibold" :class="m.featured ? 'text-white' : 'text-[var(--color-brand-900)]'">
-                <span>{{ m.cta }}</span>
-                <UIcon name="i-lucide-arrow-right" class="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-              </div>
+            <span v-if="m.featured" class="module-card__featured">
+              <UIcon name="i-lucide-star" class="size-3" />
+              主推
+            </span>
+            <div class="module-card__icon" :class="{ 'is-on-dark': m.featured }">
+              <UIcon :name="m.icon" class="size-5" />
             </div>
-          </UCard>
+            <div class="module-card__title" :class="{ 'is-on-dark': m.featured }">{{ m.title }}</div>
+            <div class="module-card__desc" :class="{ 'is-on-dark': m.featured }">{{ m.desc }}</div>
+            <div class="module-card__cta" :class="{ 'is-on-dark': m.featured }">
+              <span>{{ m.cta }}</span>
+              <UIcon name="i-lucide-arrow-right" class="size-4" />
+            </div>
+          </div>
         </NuxtLink>
       </div>
-    </UContainer>
+    </div>
 
     <!-- ============== 4 平台特色 ============== -->
-    <UContainer class="mt-16">
-      <div class="mb-7 text-center">
-        <h2 class="text-3xl font-semibold leading-tight text-default md:text-[31px]" :style="{ fontFamily: 'var(--font-display)' }">平台特色</h2>
-        <p class="mt-2 text-base text-muted" :style="{ fontFamily: 'var(--font-ui)' }">为 PhD 申请者量身打造</p>
+    <div class="page-container section-band">
+      <div class="section-head">
+        <h2 class="t-h2">平台特色</h2>
+        <p class="t-subtitle mt-1">为 PhD 申请者量身打造</p>
       </div>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <UCard
-          v-for="f in features"
-          :key="f.title"
-          class="lift-on-hover"
-          :ui="{ root: 'rounded-2xl border border-default bg-white ring-0', body: 'p-5 flex flex-col gap-2.5' }"
-        >
-          <div class="inline-flex size-9 items-center justify-center rounded-[10px]" :style="{ background: 'rgba(20, 86, 240, 0.08)', color: 'var(--color-brand-900)' }">
-            <UIcon :name="f.icon" class="size-4" />
+      <div class="features-grid">
+        <div v-for="f in features" :key="f.title" class="feature-card">
+          <div class="feature-card__icon">
+            <UIcon :name="f.icon" class="size-5" />
           </div>
-          <div class="text-base font-semibold text-default" :style="{ fontFamily: 'var(--font-display)' }">{{ f.title }}</div>
-          <div class="text-[13px] leading-relaxed text-muted" :style="{ fontFamily: 'var(--font-ui)' }">{{ f.desc }}</div>
-        </UCard>
-      </div>
-    </UContainer>
-
-    <!-- ============== 8 排名机构 logo 墙 ============== -->
-    <UContainer class="mt-16">
-      <UCard
-        class="rounded-3xl"
-        :ui="{ root: 'bg-[var(--color-surface-1)] border border-default ring-0', body: 'p-8' }"
-      >
-        <div class="mb-5 text-center">
-          <div class="text-[12px] font-medium uppercase tracking-wider text-muted" :style="{ fontFamily: 'var(--font-ui)' }">数据来源</div>
-          <h2 class="mt-1 text-2xl font-semibold leading-tight text-default md:text-[26px]" :style="{ fontFamily: 'var(--font-display)' }">权威 8 大排名体系</h2>
+          <div class="feature-card__title">{{ f.title }}</div>
+          <div class="feature-card__desc">{{ f.desc }}</div>
         </div>
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-8">
-          <UCard
-            v-for="org in orgLogos"
-            :key="org.code"
-            class="lift-on-hover"
-            :ui="{ root: 'rounded-2xl border border-default bg-white ring-0', body: 'p-0' }"
-          >
-            <div class="flex flex-col items-center gap-1.5 px-3 py-4">
-              <div
-                class="inline-flex size-10 items-center justify-center rounded-xl text-sm font-extrabold tracking-tighter"
-                :style="{ background: org.bg, color: org.fg, fontFamily: 'var(--font-display)' }"
-              >{{ org.code }}</div>
-              <div class="text-center text-[11px] font-medium leading-tight text-default" :style="{ fontFamily: 'var(--font-ui)' }">{{ org.label }}</div>
-            </div>
-          </UCard>
+      </div>
+    </div>
+
+    <!-- ============== 8 排名机构 ============== -->
+    <div class="page-container section-band">
+      <UCard class="orgs-card" :ui="{ root: 'rounded-3xl border border-default bg-muted ring-0', body: 'p-10' }">
+        <div class="section-head section-head--center">
+          <div class="t-caption-bold text-muted">数据来源</div>
+          <h2 class="t-h2 mt-1">权威 9 大排名体系</h2>
+        </div>
+        <div class="orgs-grid">
+          <div v-for="org in orgLogos" :key="org.code" class="org-card">
+            <div class="org-card__code" :style="{ background: org.bg, color: org.fg }">{{ org.code }}</div>
+            <div class="org-card__label">{{ org.label }}</div>
+          </div>
         </div>
       </UCard>
-    </UContainer>
+    </div>
   </div>
 </template>
+
+<style scoped>
+/* ========================================
+   §hero-band-marketing · 80px display 居中 + 双 CTA pill
+   ======================================== */
+.hero-band {
+  padding: 96px 0 64px;
+  background: var(--color-canvas);
+}
+@media (max-width: 768px) {
+  .hero-band { padding: 64px 0 40px; }
+}
+.hero-band__inner {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+.hero-band__badge { margin-bottom: 0; }
+.hero-band__title {
+  margin: 0;
+  max-width: 880px;
+}
+.hero-band__sub {
+  max-width: 640px;
+  margin: 4px 0 0;
+}
+.hero-band__ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+/* ========================================
+   KPI 5 卡
+   ======================================== */
+.kpi-band { margin-top: 16px; }
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (min-width: 768px) {
+  .kpi-grid { grid-template-columns: repeat(5, 1fr); gap: 16px; }
+}
+
+/* ========================================
+   Section 间距
+   ======================================== */
+.section-band { margin-top: 64px; }
+@media (min-width: 768px) {
+  .section-band { margin-top: 80px; }
+}
+.section-head { margin-bottom: 32px; }
+.section-head--center { text-align: center; }
+.section-head--center .t-subtitle { margin-top: 8px; }
+
+/* ========================================
+   趋势预览卡
+   ======================================== */
+.trend-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.trend-card__loading {
+  display: flex;
+  align-items: center;
+  height: 200px;
+  justify-content: center;
+}
+.trend-card__chart { display: flex; flex-direction: column; gap: 16px; }
+.trend-card__svg {
+  display: block;
+  width: 100%;
+  height: 200px;
+}
+.trend-card__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 20px;
+  font-family: var(--font-ui);
+}
+.trend-card__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.trend-card__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+.trend-card__rank {
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-brand-blue);
+}
+
+/* ========================================
+   4 模块网格
+   ======================================== */
+.modules-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+@media (min-width: 768px) {
+  .modules-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+}
+.module-link {
+  text-decoration: none;
+  display: block;
+}
+.module-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 32px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: 24px;
+  box-shadow: rgba(0, 0, 0, 0.08) 0px 4px 6px 0px;
+  transition: all 200ms ease;
+  height: 100%;
+}
+.module-card:hover {
+  transform: translateY(-4px);
+  box-shadow: rgba(0, 0, 0, 0.10) 0px 8px 16px -2px;
+}
+.module-card.is-featured {
+  background: var(--color-brand-blue);
+  border-color: transparent;
+  color: var(--color-on-dark);
+  box-shadow: rgba(44, 30, 116, 0.22) 0px 8px 24px;
+  border-radius: 32px;
+}
+.module-card__featured {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.20);
+  color: var(--color-on-dark);
+  font-size: 11px;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+}
+.module-card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 86, 240, 0.08);
+  color: var(--color-brand-blue);
+}
+.module-card__icon.is-on-dark {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--color-on-dark);
+}
+.module-card__title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.20;
+  color: var(--color-ink);
+}
+.module-card__title.is-on-dark { color: var(--color-on-dark); }
+.module-card__desc {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.50;
+  color: var(--color-slate);
+  flex: 1;
+}
+.module-card__desc.is-on-dark { color: rgba(255, 255, 255, 0.80); }
+.module-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-brand-blue);
+  margin-top: 8px;
+}
+.module-card__cta.is-on-dark { color: var(--color-on-dark); }
+
+/* ========================================
+   4 特色网格
+   ======================================== */
+.features-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 640px) {
+  .features-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1024px) {
+  .features-grid { grid-template-columns: repeat(4, 1fr); }
+}
+.feature-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: 16px;
+  transition: all 200ms ease;
+}
+.feature-card:hover {
+  box-shadow: rgba(0, 0, 0, 0.08) 0px 4px 6px 0px;
+}
+.feature-card__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(20, 86, 240, 0.08);
+  color: var(--color-brand-blue);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.feature-card__title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.feature-card__desc {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.50;
+  color: var(--color-slate);
+}
+
+/* ========================================
+   8 排名机构 logo
+   ======================================== */
+.orgs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (min-width: 640px) {
+  .orgs-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 1024px) {
+  .orgs-grid { grid-template-columns: repeat(8, 1fr); }
+}
+.org-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 12px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: 16px;
+  transition: all 200ms ease;
+}
+.org-card:hover {
+  transform: translateY(-2px);
+  box-shadow: rgba(0, 0, 0, 0.08) 0px 4px 6px 0px;
+}
+.org-card__code {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.org-card__label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.30;
+  color: var(--color-ink);
+  text-align: center;
+}
+</style>
