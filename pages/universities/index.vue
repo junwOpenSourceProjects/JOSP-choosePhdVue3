@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { queryAllQs } from '~/lib/api/university'
+import { queryBackup2List, fetchBackup2Tables } from '~/lib/api/ranking'
 import type { UniversityAllDTO, RankVariant } from '~/types'
 import { RANK_VARIANT_SHORT_MAP } from '~/types'
 
@@ -11,6 +12,7 @@ const rankVariant = ref<RankVariant>('qs')      // qs / usnews / all
 const tagState = ref<string | undefined>(undefined)  // 洲
 const tag = ref<string | undefined>(undefined)       // 国家
 const maxRank = ref<number>(100)                 // 排名上限
+const yearFilter = ref<string | undefined>(undefined)
 const sortBy = ref<string>('rank')               // rank / name / country
 const currentPage = ref(1)
 const pageSize = 20
@@ -26,6 +28,42 @@ const rankVariantItems = [
   { value: 'usnews' as const, label: RANK_VARIANT_SHORT_MAP.usnews },
   { value: 'all' as const, label: RANK_VARIANT_SHORT_MAP.all }
 ]
+
+// "备份 2" 7 张新表 + 3 张旧表 = 10 个榜单类型
+// 旧表走 queryAllQs (qs/usnews/all), 新表走 queryBackup2List (rankTable=xxx)
+const rankTable = ref<string>('qs')
+const backup2Tables = ref<string[]>([])
+
+const rankTableItems = computed(() => {
+  const builtins = [
+    { value: 'qs', label: RANK_VARIANT_SHORT_MAP.qs },
+    { value: 'usnews', label: RANK_VARIANT_SHORT_MAP.usnews },
+    { value: 'all', label: RANK_VARIANT_SHORT_MAP.all }
+  ]
+  // 后端 7 张新表的中文名映射
+  const labelMap: Record<string, string> = {
+    arwu_subject: 'ARWU 学科',
+    edurank_region: 'EduRank 地区',
+    declining_trend: '下降趋势',
+    mosiur_world: 'MOSIUR 全球',
+    rur_world: 'RUR 全球',
+    usnews_subject: 'US News 学科',
+    qs_sustainability: 'QS 可持续'
+  }
+  const extras = backup2Tables.value.map(t => ({ value: t, label: labelMap[t] || t }))
+  return [...builtins, ...extras]
+})
+
+// 启动时拉一次 7 张新表清单
+onMounted(async () => {
+  try {
+    // ShowResult 包装的响应需要 .data 解包
+    const res = await fetchBackup2Tables() as any
+    backup2Tables.value = res?.data ?? res ?? []
+  } catch (e) {
+    console.warn('[universities] fetch backup2 tables failed', e)
+  }
+})
 
 const tagStateOptions = [
   { value: '亚洲', label: '亚洲' },
@@ -101,17 +139,35 @@ async function load() {
   loading.value = true
   error.value = null
   try {
-    const res = await queryAllQs({
-      page: currentPage.value,
-      limit: pageSize,
-      rankVariant: rankVariant.value,
-      universityTagsState: tagState.value,
-      universityTags: tag.value,
-      currentRank: maxRank.value
-    }) as any
-    const records = res?.records ?? res?.data?.records ?? []
-    tableData.value = records
-    total.value = res?.total ?? res?.data?.total ?? 0
+    // 旧 3 张表走 queryAllQs, 新 7 张表走 queryBackup2List
+    if (rankTable.value === 'qs' || rankTable.value === 'usnews' || rankTable.value === 'all') {
+      rankVariant.value = rankTable.value
+      const res = await queryAllQs({
+        page: currentPage.value,
+        limit: pageSize,
+        rankVariant: rankTable.value,
+        universityTagsState: tagState.value,
+        universityTags: tag.value,
+        currentRank: maxRank.value
+      }) as any
+      const records = res?.records ?? res?.data?.records ?? []
+      tableData.value = records
+      total.value = res?.total ?? res?.data?.total ?? 0
+    } else {
+      const res = await queryBackup2List({
+        page: currentPage.value,
+        limit: pageSize,
+        rankTable: rankTable.value,
+        universityNameChinese: search.value,
+        universityTags: tag.value,
+        universityTagsState: tagState.value,
+        rankingYear: yearFilter.value || undefined,
+        currentRankLimit: maxRank.value
+      }) as any
+      const records = res?.records ?? res?.data?.records ?? []
+      tableData.value = records
+      total.value = res?.total ?? res?.data?.total ?? 0
+    }
   } catch (e: any) {
     console.warn('[universities] load failed', e?.message)
     error.value = '后端不可达, 显示 mock 数据'
@@ -138,14 +194,35 @@ function generateMock(): UniversityAllDTO[] {
 }
 
 const filteredData = computed(() => {
+  // 新表的 search 在后端做, 前端不再二次过滤 (避免翻页丢数据)
+  if (rankTable.value !== 'qs' && rankTable.value !== 'usnews' && rankTable.value !== 'all') {
+    return tableData.value
+  }
   if (!search.value) return tableData.value
   const kw = search.value.toLowerCase()
   return tableData.value.filter(r => r.universityNameChinese?.toLowerCase().includes(kw))
 })
 
 const sortedData = computed(() => {
-  const arr = [...filteredData.value]
-  if (sortBy.value === 'rank') {
+  // 备份 2 新表数据走表格前, 把字段映射到 UI 通用格式 (currentQsAllRank / qsCs 等占位)
+  const normalized = tableData.value.map(r => {
+    if (rankTable.value !== 'qs' && rankTable.value !== 'usnews' && rankTable.value !== 'all') {
+      // 新表的 currentRankInteger 映射到 currentQsAllRank 占位列, 其余列留空
+      return {
+        ...r,
+        currentQsAllRank: r.currentRankInteger ?? null,
+        currentQsComputerRank: null,
+        currentUsnewsAllRank: null,
+        currentUsnewsComputerRank: null
+      } as any
+    }
+    return r
+  })
+  const arr = [...normalized]
+  // 新表按 currentRankInteger 排序; 旧表按 sortBy
+  if (rankTable.value !== 'qs' && rankTable.value !== 'usnews' && rankTable.value !== 'all') {
+    arr.sort((a: any, b: any) => (a.currentRankInteger ?? 9999) - (b.currentRankInteger ?? 9999))
+  } else if (sortBy.value === 'rank') {
     arr.sort((a, b) => getRankValue(a) - getRankValue(b))
   } else if (sortBy.value === 'name') {
     arr.sort((a, b) => (a.universityNameChinese || '').localeCompare(b.universityNameChinese || '', 'zh'))
@@ -202,13 +279,13 @@ function reset() {
   tagState.value = undefined
   tag.value = undefined
   maxRank.value = 100
-  rankVariant.value = 'qs'
+  rankTable.value = 'qs'
   sortBy.value = 'rank'
   currentPage.value = 1
   load()
 }
 
-watch([rankVariant, tagState, tag, maxRank, sortBy], () => {
+watch([rankTable, tagState, tag, maxRank, sortBy], () => {
   currentPage.value = 1
   load()
 })
@@ -246,17 +323,14 @@ onMounted(() => {
             size="md"
             class="flex-1 min-w-[240px]"
           />
-          <UFieldGroup size="md">
-            <UButton
-              v-for="v in rankVariantItems"
-              :key="v.value"
-              :color="rankVariant === v.value ? 'primary' : 'neutral'"
-              :variant="rankVariant === v.value ? 'solid' : 'outline'"
-              :label="v.label"
-              size="md"
-              @click="rankVariant = v.value"
-            />
-          </UFieldGroup>
+          <USelectMenu
+            v-model="rankTable"
+            :items="rankTableItems"
+            value-key="value"
+            placeholder="榜单类型"
+            size="md"
+            class="min-w-[180px]"
+          />
           <UButton
             icon="i-lucide-rotate-ccw"
             color="neutral"
