@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { login, info } from '~/lib/api/user'
+import { login } from '~/lib/api/user'
 
 useHead({ title: '登录 · 选校系统' })
 
-const username = ref<string | undefined>(undefined)
-const password = ref<string | undefined>(undefined)
-const loading = ref(false)
-const error = ref<string | null>(null)
-const router = useRouter()
 const auth = useAuthStore()
 
-async function onSubmit() {
+const username = ref('')
+const password = ref('')
+const loading = ref(false)
+const error = ref<string | null>(null)
+const showPassword = ref(false)
+const remember = ref(true)
+
+async function submit() {
   if (!username.value || !password.value) {
     error.value = '请输入用户名和密码'
     return
@@ -18,85 +20,124 @@ async function onSubmit() {
   loading.value = true
   error.value = null
   try {
-    const res: any = await login({ username: username.value, password: password.value })
-    if (res?.code === 20000) {
-      try {
-        const userRes = await info()
-        auth.setUser(userRes.data ?? null)
-      } catch (e) {
-        auth.setUser(null)
-      }
-      await router.push('/')
-    } else {
-      error.value = res?.msg || '登录失败'
-    }
+    const res = await login({
+      username: username.value.trim(),
+      password: password.value
+    })
+    auth.setUser(res.data)
+    await navigateTo('/choices')
   } catch (e: any) {
-    error.value = e?.data?.msg || e?.message || '登录请求失败'
+    const msg = e?.data?.msg || e?.message || '登录失败'
+    error.value = msg
   } finally {
     loading.value = false
   }
 }
+
+function fillAdmin() {
+  username.value = 'admin'
+  password.value = 'admin123'
+}
 </script>
 
 <template>
-  <div class="grid min-h-[calc(100vh-200px)] grid-cols-1 lg:grid-cols-2">
-    <!-- 左: 登录表单 -->
-    <div class="flex items-center justify-center p-6 sm:p-10">
-      <div class="w-full max-w-sm space-y-6">
-        <div>
-          <div
-            class="mb-4 inline-flex size-12 items-center justify-center rounded-2xl text-white"
-            :style="{ background: 'var(--gradient-card-featured)' }"
-          >
-            <UIcon name="i-lucide-log-in" class="size-4" />
+  <div class="login-shell">
+    <!-- 左: brand panel -->
+    <aside class="login-brand">
+      <div class="login-brand__inner">
+        <NuxtLink to="/" class="login-brand__logo">
+          <div class="login-brand__mark">
+            <UIcon name="i-lucide-graduation-cap" class="size-5" />
           </div>
-          <h1
-            class="text-[32px] font-medium leading-[1.10] tracking-tight text-default sm:text-[40px]"
-            :style="{ fontFamily: 'var(--font-display)' }"
-          >管理员登录</h1>
-          <p class="mt-2 text-sm text-muted" :style="{ fontFamily: 'var(--font-ui)' }">登录后可执行数据初始化等管理操作</p>
+          <div>
+            <div class="login-brand__name">选校系统</div>
+            <div class="login-brand__sub">PhD 申请助手</div>
+          </div>
+        </NuxtLink>
+
+        <div class="login-brand__hero">
+          <UBadge color="primary" variant="solid" size="md">
+            <UIcon name="i-lucide-sparkles" class="size-3.5" />
+            <span class="ml-1.5 t-caption-bold">PhD 选校 · 数据驱动决策</span>
+          </UBadge>
+          <h1 class="t-hero login-brand__title">
+            登录<br />开始你的<br />选校之旅
+          </h1>
+          <p class="t-subtitle login-brand__lead">
+            9 大排名体系 · 综合 + 计算机双维度 · 历年趋势 + 院校对比
+          </p>
         </div>
 
-        <!-- 安全横幅 -->
-        <UAlert
-          color="info"
-          variant="subtle"
-          icon="i-lucide-shield-alert"
-          title="安全提示"
-          description="本系统为内部使用，请勿在公共网络下输入凭证"
-        />
+        <div class="login-brand__features">
+          <div class="login-feature">
+            <UIcon name="i-lucide-database" class="size-4 text-brand" />
+            <span class="t-body-sm">9 大权威排名体系聚合</span>
+          </div>
+          <div class="login-feature">
+            <UIcon name="i-lucide-bar-chart-3" class="size-4 text-brand" />
+            <span class="t-body-sm">历年趋势 + 多维对比</span>
+          </div>
+          <div class="login-feature">
+            <UIcon name="i-lucide-bookmark-check" class="size-4 text-brand" />
+            <span class="t-body-sm">「考虑 / 不考虑」状态管理</span>
+          </div>
+        </div>
+      </div>
+      <div class="login-brand__foot">
+        © {{ new Date().getFullYear() }} 选校系统 · 数据驱动选校决策
+      </div>
+    </aside>
 
-        <form class="space-y-4" @submit.prevent="onSubmit">
-          <UFormField label="用户名" size="md">
+    <!-- 右: 登录表单 -->
+    <main class="login-form-wrap">
+      <div class="login-form">
+        <div class="login-form__head">
+          <h2 class="t-h2">欢迎回来</h2>
+          <p class="t-body-sm text-muted mt-1">登录账户继续你的选校决策</p>
+        </div>
+
+        <form class="login-form__body" @submit.prevent="submit">
+          <UFormField label="用户名" required>
             <UInput
               v-model="username"
-              type="text"
-              placeholder="请输入用户名"
               icon="i-lucide-user"
-              size="md"
-              block
+              placeholder="请输入用户名"
+              size="lg"
               autocomplete="username"
+              :ui="{ leadingIcon: 'size-4' }"
             />
           </UFormField>
-          <UFormField label="密码" size="md">
+
+          <UFormField label="密码" required>
             <UInput
               v-model="password"
-              type="password"
-              placeholder="请输入密码"
+              :type="showPassword ? 'text' : 'password'"
               icon="i-lucide-lock"
-              size="md"
-              block
+              placeholder="请输入密码"
+              size="lg"
               autocomplete="current-password"
-            />
+              :ui="{ leadingIcon: 'size-4', trailingIcon: 'size-4' }"
+            >
+              <template #trailing>
+                <UButton
+                  :icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  square
+                  @click="showPassword = !showPassword"
+                />
+              </template>
+            </UInput>
           </UFormField>
-          <UAlert
-            v-if="error"
-            color="error"
-            variant="subtle"
-            :title="error"
-            icon="i-lucide-alert-circle"
-            :close-button="{ onClick: () => error = null }"
-          />
+
+          <div class="login-form__extras">
+            <UCheckbox v-model="remember" label="记住登录状态" />
+            <UButton variant="ghost" color="primary" size="sm" label="忘记密码?" class="rounded-full" />
+          </div>
+
+          <UAlert v-if="error" color="error" variant="subtle" :title="error" icon="i-lucide-alert-circle" />
+
           <UButton
             type="submit"
             color="primary"
@@ -104,70 +145,177 @@ async function onSubmit() {
             size="lg"
             block
             :loading="loading"
-            :label="loading ? '登录中…' : '登录'"
             icon="i-lucide-log-in"
+            label="登录"
+            class="rounded-full login-form__submit"
+          />
+
+          <div class="login-form__divider"><span>或</span></div>
+
+          <UButton
+            type="button"
+            color="neutral"
+            variant="outline"
+            size="lg"
+            block
+            icon="i-lucide-key-round"
+            label="使用测试账号 admin"
             class="rounded-full"
+            @click="fillAdmin"
           />
         </form>
 
-        <p class="text-center text-[12px] text-muted" :style="{ fontFamily: 'var(--font-ui)' }">
-          忘记密码?请联系系统管理员重置
-        </p>
-      </div>
-    </div>
-
-    <!-- 右: 品牌视觉锚点 -->
-    <div
-      class="hero-with-orb relative hidden items-center justify-center overflow-hidden p-10 lg:flex"
-      :style="{ background: 'var(--gradient-card-featured)' }"
-    >
-      <div class="relative z-10 max-w-md text-white">
-        <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1.5 text-[13px] font-semibold" :style="{ backdropFilter: 'blur(8px)' }">
-          <UIcon name="i-lucide-graduation-cap" class="size-4" />
-          选校系统 · 管理员后台
-        </div>
-        <h2
-          class="text-[40px] font-medium leading-[1.10] tracking-tight sm:text-[48px]"
-          :style="{ fontFamily: 'var(--font-display)' }"
-        >数据驱动<br />选校决策</h2>
-        <p class="mt-4 text-base leading-relaxed text-white/85" :style="{ fontFamily: 'var(--font-ui)' }">
-          管理员可一键初始化排名数据、刷新最新数据、维护大学标签、监控系统状态。
-        </p>
-        <div class="mt-8 grid grid-cols-2 gap-3">
-          <UCard
-            class="rounded-2xl"
-            :ui="{ root: 'bg-white/10 border border-white/20 ring-0 backdrop-blur-sm', body: 'p-4' }"
-          >
-            <UIcon name="i-lucide-database" class="size-4" />
-            <div class="mt-2 text-[13px] font-semibold" :style="{ fontFamily: 'var(--font-display)' }">数据初始化</div>
-            <div class="mt-0.5 text-[11px] text-white/70" :style="{ fontFamily: 'var(--font-ui)' }">从 QS 文件导入</div>
-          </UCard>
-          <UCard
-            class="rounded-2xl"
-            :ui="{ root: 'bg-white/10 border border-white/20 ring-0 backdrop-blur-sm', body: 'p-4' }"
-          >
-            <UIcon name="i-lucide-refresh-cw" class="size-4" />
-            <div class="mt-2 text-[13px] font-semibold" :style="{ fontFamily: 'var(--font-display)' }">刷新排名</div>
-            <div class="mt-0.5 text-[11px] text-white/70" :style="{ fontFamily: 'var(--font-ui)' }">同步最新数据</div>
-          </UCard>
-          <UCard
-            class="rounded-2xl"
-            :ui="{ root: 'bg-white/10 border border-white/20 ring-0 backdrop-blur-sm', body: 'p-4' }"
-          >
-            <UIcon name="i-lucide-tags" class="size-4" />
-            <div class="mt-2 text-[13px] font-semibold" :style="{ fontFamily: 'var(--font-display)' }">标签维护</div>
-            <div class="mt-0.5 text-[11px] text-white/70" :style="{ fontFamily: 'var(--font-ui)' }">国家/地区映射</div>
-          </UCard>
-          <UCard
-            class="rounded-2xl"
-            :ui="{ root: 'bg-white/10 border border-white/20 ring-0 backdrop-blur-sm', body: 'p-4' }"
-          >
-            <UIcon name="i-lucide-activity" class="size-4" />
-            <div class="mt-2 text-[13px] font-semibold" :style="{ fontFamily: 'var(--font-display)' }">系统状态</div>
-            <div class="mt-0.5 text-[11px] text-white/70" :style="{ fontFamily: 'var(--font-ui)' }">健康监控</div>
-          </UCard>
+        <div class="login-form__foot">
+          <span class="t-caption text-muted">还没有账号?</span>
+          <UButton variant="ghost" color="primary" size="sm" label="联系管理员" class="rounded-full" />
         </div>
       </div>
-    </div>
+    </main>
   </div>
 </template>
+
+<style scoped>
+/* ========== 双栏布局 ========== */
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 1024px) {
+  .login-shell { grid-template-columns: 1fr 1fr; }
+}
+
+/* ========== 左 brand panel ========== */
+.login-brand {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: var(--color-canvas);
+  padding: 48px 56px;
+  border-right: 1px solid var(--color-hairline);
+  background-image: radial-gradient(circle at 20% 30%, rgba(20, 86, 240, 0.05) 0%, transparent 40%),
+                    radial-gradient(circle at 80% 70%, rgba(234, 94, 193, 0.04) 0%, transparent 40%);
+}
+@media (max-width: 1023px) {
+  .login-brand { display: none; }
+}
+.login-brand__inner { display: flex; flex-direction: column; gap: 48px; }
+.login-brand__logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+.login-brand__mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--color-brand-blue);
+  color: var(--color-canvas);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-brand__name {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.login-brand__sub {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-stone);
+  margin-top: 2px;
+}
+.login-brand__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 520px;
+}
+.login-brand__title { margin: 0; }
+.login-brand__lead { margin: 0; color: var(--color-slate); }
+
+.login-brand__features {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+.login-feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: 12px;
+}
+
+.login-brand__foot {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--color-stone);
+}
+
+/* ========== 右 form ========== */
+.login-form-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 32px;
+  background: var(--color-canvas);
+}
+.login-form {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+.login-form__head { text-align: left; }
+
+.login-form__body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.login-form__extras {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.login-form__submit { margin-top: 4px; }
+
+.login-form__divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0;
+  font-size: 12px;
+  color: var(--color-stone);
+}
+.login-form__divider::before,
+.login-form__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-hairline);
+}
+
+.login-form__foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-hairline-soft);
+}
+</style>
