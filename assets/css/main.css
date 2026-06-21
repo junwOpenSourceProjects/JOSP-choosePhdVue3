@@ -1,5 +1,17 @@
 @import "tailwindcss";
-@import "@nuxt/ui";
+
+/* Tailwind v4 source scanner: 显式告诉 scanner 扫哪些目录 (dev 模式下 @nuxt/ui
+   模块注入的 .nuxt/ui.css 里 @source "./ui" 相对路径解析失败, scanner 漏扫
+   → utility className (如 p-1.5/px-3) 不生成 → 组件 padding 失效)
+   修法: 显式 @source 扫整个项目 + components/pages/assets */
+@source "../**/*.{vue,ts,js,css}";
+@source "./**/*.{vue,ts,js,css}";
+
+/* Nuxt UI v4 compoundVariants 运行时拼接的 utility className (如 p-1/p-1.5/p-2.5
+   /p-3/p-3.5/p-4/p-4.5) scanner 扫不到运行时拼接字符串, 用 @source inline()
+   列具体类名强制生成 → UButton/UCard/UTable 等组件 size=xs/sm/md/lg/xl 的 padding 恢复
+   (从 node_modules/@nuxt/ui/dist/shared/ui.BfHSFiIO.mjs grep 出来的全部 spacing utility) */
+@source inline("p-0 p-0.5 p-0.75 p-1 p-1.5 p-2 p-2.5 p-3 p-3.5 p-4 p-4.5 p-5 p-6 p-8 p-10 p-12 p-16 px-0 px-1 px-1.5 px-2 px-2.5 px-3 px-4 px-5 px-6 px-8 px-12 px-16 py-0 py-0.5 py-1 py-1.5 py-2 py-3 py-3.5 py-4 py-6 py-7 py-8 py-12 py-16 py-24 py-32 py-40 m-0 m-0.5 m-2 m-4 m-7 m-12 mx-1 mx-2.5 mx-3 mx-4 mx-6 my-0 my-0.5 my-1 my-1.5 my-2 my-2.5 my-5 my-8 my-12 gap-0 gap-0.25 gap-0.5 gap-0.75 gap-1 gap-1.5 gap-2 gap-2.5 gap-3 gap-3.5 gap-4 gap-5 gap-6 gap-8 gap-10 gap-16 rounded-sm rounded-md rounded-lg rounded-xl rounded-2xl rounded-3xl rounded-full");
 
 /* === Design Tokens (design.md MiniMax inspired) === */
 @theme {
