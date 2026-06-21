@@ -419,6 +419,97 @@
   @media (max-width: 768px) {
     .page-container { padding: 0 16px; }
   }
+
+  /* DESIGN.md typography table 显式 token alias (template 直接 class) */
+  .t-hero {
+    font-family: var(--font-display);
+    font-size: 56px;
+    font-weight: 600;
+    line-height: 1.10;
+    letter-spacing: -1.5px;
+    color: var(--color-ink);
+  }
+  @media (min-width: 768px) {
+    .t-hero { font-size: 80px; letter-spacing: -2px; }
+  }
+  .t-h1 {
+    font-family: var(--font-display);
+    font-size: 40px;
+    font-weight: 600;
+    line-height: 1.20;
+    letter-spacing: -1px;
+    color: var(--color-ink);
+  }
+  .t-h2 {
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.5px;
+    color: var(--color-ink);
+  }
+  .t-h3 {
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.30;
+    color: var(--color-ink);
+  }
+  .t-h4 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.40;
+    color: var(--color-ink);
+  }
+  .t-subtitle {
+    font-family: var(--font-ui);
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.50;
+    color: var(--color-slate);
+  }
+  .t-body {
+    font-family: var(--font-ui);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.50;
+    color: var(--color-charcoal);
+  }
+  .t-body-sm {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.50;
+    color: var(--color-charcoal);
+  }
+  .t-caption {
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.70;
+    color: var(--color-slate);
+  }
+  .t-caption-bold {
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.50;
+    color: var(--color-charcoal);
+  }
+  .t-micro {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.50;
+    color: var(--color-stone);
+  }
+  .t-btn {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.40;
+  }
 }
 
 /* === Force light mode (DESIGN.md canvas / ink) === */
