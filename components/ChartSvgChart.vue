@@ -44,10 +44,12 @@ const geometry = computed(() => {
     color: PALETTE[idx % PALETTE.length]
   }))
   const paths = series.map((s: any) => {
-    const points = s.data.map((v: any, i: number) => {
+    const points: any[] = []
+    ;(s.data || []).forEach((v: any, i: number) => {
+      if (typeof v !== 'number') return
       const x = P + i * xStep
-      const y = typeof v === 'number' ? yScale(v) : H - P
-      return [x, y, v]
+      const y = yScale(v)
+      points.push([x, y, v])
     })
     return { ...s, points }
   })
@@ -98,6 +100,7 @@ const yTicks = computed(() => {
       <!-- 折线 -->
       <g v-for="(p, idx) in geometry.paths" :key="'p' + idx">
         <path
+          v-if="p.points.length > 0"
           :d="p.points.map((pt: any, i: number) => `${i === 0 ? 'M' : 'L'} ${pt[0]} ${pt[1]}`).join(' ')"
           fill="none"
           :stroke="p.color"
