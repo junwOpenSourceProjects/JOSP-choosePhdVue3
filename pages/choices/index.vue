@@ -312,19 +312,17 @@ const fields = [
     <!-- ============== Hero (紧凑) ============== -->
     <section class="choice-hero">
       <div class="page-container">
-        <div class="choice-hero__inner">
-          <div>
-            <UBadge color="primary" variant="subtle" size="md">
-              <UIcon name="i-lucide-clipboard-check" class="size-3.5" />
-              <span class="ml-1.5 t-caption-bold">标记 · 评估 · 决策</span>
-            </UBadge>
-            <h1 class="t-h1 mt-3">我的选校</h1>
-            <p class="t-subtitle mt-2">标记「考虑 / 不考虑」, 按 4 维强度评估, 筛选符合预期的项目</p>
-          </div>
-          <div class="choice-hero__cta">
-            <UButton icon="i-lucide-refresh-cw" color="neutral" variant="outline" size="md" label="刷新最新排名" :loading="saving" class="rounded-full" @click="seedRankings" />
-            <UButton icon="i-lucide-zap" color="primary" variant="solid" size="md" label="一键初始化" :loading="saving" class="rounded-full" @click="batchInit" />
-          </div>
+        <div class="choice-hero__eyebrow">
+          <span class="choice-hero__dot" />
+          <span class="choice-hero__eyebrow-text">决策工作台 · 3 步走完选校</span>
+        </div>
+        <h1 class="choice-hero__title">
+          我的选<span class="choice-hero__title-accent">校</span>
+        </h1>
+        <p class="choice-hero__sub">标记「考虑 / 不考虑」, 按 4 维强度评估, 筛选符合预期的项目</p>
+        <div class="choice-hero__cta">
+          <UButton icon="i-lucide-refresh-cw" color="neutral" variant="outline" size="lg" label="刷新最新排名" :loading="saving" class="rounded-full" @click="seedRankings" />
+          <UButton icon="i-lucide-zap" color="primary" variant="solid" size="lg" label="一键初始化" :loading="saving" class="rounded-full" @click="batchInit" />
         </div>
       </div>
     </section>
@@ -380,11 +378,12 @@ const fields = [
 
         <div class="decision-grid">
           <UCard class="decision-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-6' }">
-            <div class="flex items-center gap-2 mb-3">
-              <UIcon name="i-lucide-trending-up" class="size-4 text-emerald-600" />
-              <span class="t-h4">黑马识别</span>
+            <div class="decision-card__head">
+              <UIcon name="i-lucide-trending-up" class="size-4" style="color: #047857" />
+              <span class="decision-card__eyebrow">DARKHORSE</span>
             </div>
-            <div v-if="darkhorses.length" class="space-y-2">
+            <h4 class="decision-card__title">黑马识别</h4>
+            <div v-if="darkhorses.length" class="decision-card__list">
               <div v-for="d in darkhorses" :key="d.name" class="darkhorse-row">
                 <span class="darkhorse-name">{{ d.name }}</span>
                 <span class="darkhorse-trend">{{ d.trend }}</span>
@@ -394,11 +393,12 @@ const fields = [
           </UCard>
 
           <UCard class="decision-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-6' }">
-            <div class="flex items-center gap-2 mb-3">
-              <UIcon name="i-lucide-bar-chart-3" class="size-4 text-brand" />
-              <span class="t-h4">4 维差异</span>
+            <div class="decision-card__head">
+              <UIcon name="i-lucide-bar-chart-3" class="size-4" style="color: var(--color-brand-blue)" />
+              <span class="decision-card__eyebrow">DELTA</span>
             </div>
-            <div v-if="dimRanking.length" class="space-y-2">
+            <h4 class="decision-card__title">4 维差异</h4>
+            <div v-if="dimRanking.length" class="decision-card__list">
               <div v-for="r in dimRanking" :key="r.dim" class="dim-row">
                 <span class="dim-label">{{ r.dim }}</span>
                 <span class="dim-best">{{ r.best }}</span>
@@ -408,14 +408,15 @@ const fields = [
           </UCard>
 
           <UCard class="decision-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-6' }">
-            <div class="flex items-center gap-2 mb-3">
-              <UIcon name="i-lucide-clipboard-check" class="size-4 text-brand" />
-              <span class="t-h4">决策辅助</span>
+            <div class="decision-card__head">
+              <UIcon name="i-lucide-clipboard-check" class="size-4" style="color: var(--color-brand-blue)" />
+              <span class="decision-card__eyebrow">ACTIONS</span>
             </div>
-            <div class="space-y-2">
-              <UButton icon="i-lucide-download" color="neutral" variant="outline" size="sm" label="导出 CSV" class="rounded-full w-full justify-center" />
-              <UButton icon="i-lucide-share-2" color="neutral" variant="outline" size="sm" label="分享" class="rounded-full w-full justify-center" />
-              <UButton to="/universities" icon="i-lucide-plus" color="primary" variant="solid" size="sm" label="继续添加" class="rounded-full w-full justify-center" />
+            <h4 class="decision-card__title">决策辅助</h4>
+            <div class="decision-card__list">
+              <UButton icon="i-lucide-download" color="neutral" variant="outline" size="md" label="导出 CSV" class="rounded-full w-full justify-center" />
+              <UButton icon="i-lucide-share-2" color="neutral" variant="outline" size="md" label="分享" class="rounded-full w-full justify-center" />
+              <UButton to="/universities" icon="i-lucide-plus" color="primary" variant="solid" size="md" label="继续添加" class="rounded-full w-full justify-center" />
             </div>
           </UCard>
         </div>
@@ -649,19 +650,83 @@ const fields = [
 </template>
 
 <style scoped>
-/* Hero */
+/* Hero (DESIGN.md §hero-band-marketing 紧凑版) */
 .choice-hero { padding: 64px 0 32px; background: var(--color-canvas); }
 @media (min-width: 768px) {
-  .choice-hero { padding: 80px 0 48px; }
+  .choice-hero { padding: 96px 0 48px; }
 }
-.choice-hero__inner {
+.choice-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  margin-bottom: 20px;
+}
+.choice-hero__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-brand-coral);
+}
+.choice-hero__eyebrow-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.choice-hero__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 1.10;
+  letter-spacing: -1.5px;
+  color: var(--color-ink);
+}
+@media (min-width: 1024px) {
+  .choice-hero__title { font-size: 80px; letter-spacing: -2px; }
+}
+.choice-hero__title-accent {
+  font-style: italic;
+  font-weight: 600;
+  color: var(--color-brand-coral);
+  position: relative;
+  display: inline-block;
+}
+.choice-hero__title-accent::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--color-brand-coral);
+  border-radius: 9999px;
+  opacity: 0.85;
+  z-index: -1;
+}
+.choice-hero__sub {
+  margin: 16px 0 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--color-slate);
+  line-height: 1.50;
+}
+.choice-hero__cta {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 24px;
+  gap: 12px;
+  margin-top: 32px;
 }
-.choice-hero__cta { display: flex; flex-wrap: wrap; gap: 10px; }
+
+@media (max-width: 640px) {
+  .choice-hero { padding: 48px 0 24px; }
+  .choice-hero__title { font-size: 40px; }
+}
 
 /* Section 间距 */
 .section-band { margin-top: 24px; }
@@ -912,7 +977,7 @@ const fields = [
   50% { opacity: 0.5; }
 }
 
-/* Decision grid */
+/* Decision grid (DESIGN.md §card-base + eyebrow pattern) */
 .decision-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -923,6 +988,31 @@ const fields = [
   .decision-grid {
     grid-template-columns: 1fr;
   }
+}
+.decision-card__head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.decision-card__eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-stone);
+  letter-spacing: 0.08em;
+}
+.decision-card__title {
+  margin: 0 0 16px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.30;
+  color: var(--color-ink);
+}
+.decision-card__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .darkhorse-row {
   display: flex;
