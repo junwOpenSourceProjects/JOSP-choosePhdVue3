@@ -956,6 +956,9 @@ button.dist-row { width: 100%; }
   font-weight: 700;
   color: var(--color-charcoal);
   text-align: right;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  min-width: 28px;
 }
 
 @media (max-width: 640px) {
