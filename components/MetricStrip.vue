@@ -159,6 +159,8 @@ const recentCompleteness = computed(() => {
   padding: 16px 20px;
   border-bottom: 1px solid var(--color-hairline);
   border-right: 1px solid var(--color-hairline);
+  min-width: 0;
+  overflow: hidden;
 }
 @media (max-width: 767px) {
   .metric-strip__item:nth-child(2n) { border-right: 0; }
