@@ -369,13 +369,12 @@ onMounted(loadCompare)
               :icon="inCompare ? 'i-lucide-list-checks' : 'i-lucide-list-plus'"
               :color="inCompare ? 'neutral' : 'primary'"
               :variant="inCompare ? 'soft' : 'solid'"
-              size="lg"
+              size="md"
               :label="inCompare ? '已加入对比' : '加入对比'"
               class="rounded-full"
-              @click="toggleCompare"
             />
-            <UButton :to="'/charts'" color="primary" variant="solid" size="lg" icon="i-lucide-git-compare" label="去图表对比" class="rounded-full" />
-            <UButton :to="'/universities'" color="primary" variant="outline" size="lg" icon="i-lucide-library" label="浏览其他" class="rounded-full" />
+            <UButton :to="'/charts'" color="primary" variant="solid" size="md" icon="i-lucide-git-compare" label="去图表对比" class="rounded-full" />
+            <UButton :to="'/universities'" color="primary" variant="outline" size="md" icon="i-lucide-library" label="浏览其他" class="rounded-full" />
           </div>
         </div>
       </UCard>

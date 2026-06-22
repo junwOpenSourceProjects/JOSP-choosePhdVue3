@@ -346,33 +346,33 @@ function isTied(row: any, idx: number): boolean {
         <!-- Toolbar (DESIGN.md §text-input + pill) -->
         <div class="uni-toolbar">
           <div class="uni-toolbar__row">
-            <UInput v-model="search" icon="i-lucide-search" placeholder="搜索大学名称 (清华 / MIT / 麻省)..." size="xl" class="uni-toolbar__search" />
-            <USelectMenu v-model="rankTable" :items="rankTableItems" value-key="value" size="xl" class="uni-toolbar__rank">
+            <UInput v-model="search" icon="i-lucide-search" placeholder="搜索大学名称 (清华 / MIT / 麻省)..." size="sm" class="uni-toolbar__search" />
+            <USelectMenu v-model="rankTable" :items="rankTableItems" value-key="value" size="sm" class="uni-toolbar__rank">
               <template #leading>
-                <UIcon name="i-lucide-layers" class="size-4" />
+                <UIcon name="i-lucide-layers" class="size-3.5" />
               </template>
             </USelectMenu>
-            <UButton icon="i-lucide-rotate-ccw" color="neutral" variant="ghost" size="xl" label="重置" class="rounded-full" @click="reset" />
+            <UButton icon="i-lucide-rotate-ccw" color="neutral" variant="ghost" size="sm" label="重置" class="rounded-full" @click="reset" />
           </div>
           <div class="uni-toolbar__row uni-toolbar__row--second">
-            <USelectMenu v-model="tagState" :items="tagStateOptions" value-key="value" placeholder="洲 (全部)" size="lg" class="uni-toolbar__select">
+            <USelectMenu v-model="tagState" :items="tagStateOptions" value-key="value" placeholder="洲 (全部)" size="sm" class="uni-toolbar__select">
               <template #leading>
-                <UIcon name="i-lucide-globe-2" class="size-4" />
+                <UIcon name="i-lucide-globe-2" class="size-3.5" />
               </template>
             </USelectMenu>
-            <USelectMenu v-model="maxRank" :items="maxRankItems" value-key="value" size="lg" class="uni-toolbar__select">
+            <USelectMenu v-model="maxRank" :items="maxRankItems" value-key="value" size="sm" class="uni-toolbar__select">
               <template #leading>
-                <UIcon name="i-lucide-trophy" class="size-4" />
+                <UIcon name="i-lucide-trophy" class="size-3.5" />
               </template>
             </USelectMenu>
-            <USelectMenu v-if="!isOldTable" v-model="yearFilter" :items="yearFilterItems" value-key="value" placeholder="全部年份" size="lg" class="uni-toolbar__select">
+            <USelectMenu v-if="!isOldTable" v-model="yearFilter" :items="yearFilterItems" value-key="value" placeholder="全部年份" size="sm" class="uni-toolbar__select">
               <template #leading>
-                <UIcon name="i-lucide-calendar" class="size-4" />
+                <UIcon name="i-lucide-calendar" class="size-3.5" />
               </template>
             </USelectMenu>
-            <USelectMenu v-model="sortBy" :items="sortByItems" value-key="value" size="lg" class="uni-toolbar__select">
+            <USelectMenu v-model="sortBy" :items="sortByItems" value-key="value" size="sm" class="uni-toolbar__select">
               <template #leading>
-                <UIcon name="i-lucide-arrow-up-down" class="size-4" />
+                <UIcon name="i-lucide-arrow-up-down" class="size-3.5" />
               </template>
             </USelectMenu>
             <div class="uni-toolbar__total">
@@ -644,20 +644,20 @@ function isTied(row: any, idx: number): boolean {
   background: var(--color-canvas);
   border: 1px solid var(--color-hairline);
   border-radius: 20px;
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 .uni-toolbar__row {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
 }
 .uni-toolbar__row--second {
-  padding-top: 16px;
+  padding-top: 12px;
   border-top: 1px solid var(--color-hairline-soft);
 }
 .uni-toolbar__search { flex: 1; min-width: 280px; }
