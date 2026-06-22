@@ -758,17 +758,20 @@ function isTied(row: any, idx: number): boolean {
 }
 .school-card__rank {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
+  justify-content: center;
   gap: 1px;
-  height: 22px;
+  height: 24px;
+  min-width: 24px;
   padding: 0 8px;
   border-radius: 6px;
   font-family: var(--font-data);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1;
   color: var(--color-canvas);
   letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
 }
 .school-card__rank-hash { font-size: 10px; opacity: 0.6; margin-right: 1px; }
 .school-card__rank-tie {
@@ -791,16 +794,19 @@ function isTied(row: any, idx: number): boolean {
 .school-card__chip {
   display: inline-flex;
   align-items: center;
-  padding: 2px 7px;
+  justify-content: center;
+  height: 18px;
+  padding: 0 7px;
   border-radius: 5px;
   background: var(--color-surface);
   border: 1px solid var(--color-hairline);
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 600;
   color: var(--color-slate);
   letter-spacing: 0.02em;
   white-space: nowrap;
-  line-height: 1.4;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 /* bookmark 按钮 (右上角) */
 .school-card__bookmark {
