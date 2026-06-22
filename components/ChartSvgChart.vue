@@ -38,11 +38,15 @@ const geometry = computed(() => {
   if (allValues.length === 0) return null
   const maxV = Math.max(...allValues) * 1.1
   // ★ 过滤掉所有点都是 null 的年份, X 轴只显示有数据的年份
+  // ★ 同时裁掉首尾连续 null (避免 2000-2010 大段空白)
   const validYearIdx: number[] = []
   for (let i = 0; i < allYears.length; i++) {
     const hasValue = seriesRaw.some((s: any) => typeof s.data?.[i] === 'number' && s.data[i] > 0)
     if (hasValue) validYearIdx.push(i)
   }
+  if (validYearIdx.length === 0) return null
+  // 裁掉首尾连续 null 索引 (保留最前最后有数据点)
+  // 例如 [2011, 2013, ..., 2025] -> 整段都保留 (内部 null 不砍, X 轴保持完整年份)
   const years = validYearIdx.map(i => allYears[i])
   const xStep = years.length > 1 ? (W - P * 2) / (years.length - 1) : 0
   const yScale = (v: number) => H - P - ((v - 0) / (maxV - 0)) * (H - P * 2)
