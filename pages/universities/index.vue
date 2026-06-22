@@ -109,7 +109,7 @@ const sortByItems = [
   { value: 'country', label: '按国家' }
 ]
 
-// ============== 排名徽章 ==============
+// ============== 排名 tier ==============
 function rankBadgeTier(rank: number | null | undefined): string {
   if (rank == null) return 'rank-badge--normal'
   if (rank <= 3) return 'rank-badge--gold'
@@ -183,7 +183,7 @@ async function load() {
 watch([rankTable, tagState, tag, maxRank, sortBy, yearFilter], () => { load() })
 watch(debouncedSearch, () => { load() })
 
-// ============== 排序 ==============
+// ============== 排名 helper ==============
 function getRankValue(row: UniversityAllDTO): number {
   if (rankVariant.value === 'qs') return row.currentQsAllRank ?? 9999
   if (rankVariant.value === 'usnews') return row.currentUsnewsAllRank ?? 9999
@@ -290,23 +290,29 @@ function reset() {
   yearFilter.value = undefined
 }
 
-const tableColumns = [
-  { id: 'rank', header: '排名', meta: { class: { th: 'w-[88px]', td: 'w-[88px]' } } },
-  { id: 'name', header: '大学' },
-  { id: 'country', header: '国家/地区' },
-  { id: 'subject', header: '专业 / 年份', meta: { class: { th: 'text-right', td: 'text-right w-[200px]' } } },
-  { id: 'action', header: '', meta: { class: { th: 'w-[80px]', td: 'w-[80px]' } } }
-]
+// ============== 4 维排名摘要 (for card chip) ==============
+function get4Dims(row: UniversityAllDTO | any): { qs: number | null; usnews: number | null; qsCs: number | null; usnewsCs: number | null } {
+  if (isOldTable.value) {
+    return {
+      qs: row.currentQsAllRank ?? null,
+      usnews: row.currentUsnewsAllRank ?? null,
+      qsCs: row.currentQsComputerRank ?? null,
+      usnewsCs: row.currentUsnewsComputerRank ?? null
+    }
+  }
+  const r = getRankIntegerForNewTable(row)
+  return { qs: r === 9999 ? null : r, usnews: null, qsCs: null, usnewsCs: null }
+}
 </script>
 
 <template>
-  <div>
-    <!-- ============== Watchlist Sticky Bar ============== -->
+  <div class="uni-page">
+    <!-- Watchlist sticky bar -->
     <div v-if="watchCount() > 0" class="watchlist-bar">
       <div class="page-container watchlist-bar__inner">
         <div class="watchlist-bar__left">
-          <UIcon name="i-lucide-bookmark-check" class="size-4 text-brand" />
-          <span class="t-body-sm">已选 <strong class="text-brand">{{ watchCount() }}</strong> / {{ watchMax }} 所</span>
+          <UIcon name="i-lucide-bookmark-check" class="size-4" style="color: var(--color-brand-blue)" />
+          <span class="t-body-sm">已选 <strong style="color: var(--color-brand-blue)">{{ watchCount() }}</strong> / {{ watchMax }} 所</span>
           <span class="watchlist-bar__names">
             <span v-for="n in watchlist.slice(0, 5)" :key="n" class="watchlist-bar__chip">{{ n }}</span>
           </span>
@@ -318,170 +324,148 @@ const tableColumns = [
       </div>
     </div>
 
-    <!-- ============== Hero (紧凑) ============== -->
+    <!-- HERO BAND (DESIGN.md §hero-band-marketing) -->
     <section class="uni-hero">
       <div class="page-container">
-        <div class="uni-hero__inner">
-          <UBadge color="primary" variant="subtle" size="md">
-            <UIcon name="i-lucide-library" class="size-3.5" />
-            <span class="ml-1.5 t-caption-bold">多源排名 · 9 大排名体系</span>
-          </UBadge>
-          <h1 class="t-h1 uni-hero__title">学校库</h1>
-          <p class="t-subtitle uni-hero__sub">多源排名 · 多维过滤 · 一目了然</p>
+        <div class="uni-hero__eyebrow">
+          <span class="uni-hero__dot" />
+          <span class="uni-hero__eyebrow-text">{{ rankTableItems.find(t => t.value === rankTable)?.label }} · 9 大排名体系</span>
+        </div>
+        <h1 class="uni-hero__title">
+          学校<span class="uni-hero__title-accent">库</span>
+        </h1>
+        <p class="uni-hero__sub">多源排名 · 多维过滤 · 一目了然</p>
+
+        <!-- Toolbar (DESIGN.md §text-input + pill) -->
+        <div class="uni-toolbar">
+          <div class="uni-toolbar__row">
+            <UInput v-model="search" icon="i-lucide-search" placeholder="搜索大学名称 (清华 / MIT / 麻省)..." size="xl" class="uni-toolbar__search" />
+            <USelectMenu v-model="rankTable" :items="rankTableItems" value-key="value" size="xl" class="uni-toolbar__rank">
+              <template #leading>
+                <UIcon name="i-lucide-layers" class="size-4" />
+              </template>
+            </USelectMenu>
+            <UButton icon="i-lucide-rotate-ccw" color="neutral" variant="ghost" size="xl" label="重置" class="rounded-full" @click="reset" />
+          </div>
+          <div class="uni-toolbar__row uni-toolbar__row--second">
+            <USelectMenu v-model="tagState" :items="tagStateOptions" value-key="value" placeholder="洲 (全部)" size="lg" class="uni-toolbar__select">
+              <template #leading>
+                <UIcon name="i-lucide-globe-2" class="size-4" />
+              </template>
+            </USelectMenu>
+            <USelectMenu v-model="maxRank" :items="maxRankItems" value-key="value" size="lg" class="uni-toolbar__select">
+              <template #leading>
+                <UIcon name="i-lucide-trophy" class="size-4" />
+              </template>
+            </USelectMenu>
+            <USelectMenu v-if="!isOldTable" v-model="yearFilter" :items="yearFilterItems" value-key="value" placeholder="全部年份" size="lg" class="uni-toolbar__select">
+              <template #leading>
+                <UIcon name="i-lucide-calendar" class="size-4" />
+              </template>
+            </USelectMenu>
+            <USelectMenu v-model="sortBy" :items="sortByItems" value-key="value" size="lg" class="uni-toolbar__select">
+              <template #leading>
+                <UIcon name="i-lucide-arrow-up-down" class="size-4" />
+              </template>
+            </USelectMenu>
+            <div class="uni-toolbar__total">
+              <UIcon name="i-lucide-database" class="size-3.5" style="color: var(--color-brand-blue)" />
+              <span>共 <strong style="color: var(--color-brand-blue)">{{ total.toLocaleString() }}</strong> 所大学</span>
+            </div>
+          </div>
+          <UAlert v-if="error" color="warning" variant="subtle" :title="error + '，请检查后端 8081 是否运行'" icon="i-lucide-alert-circle" />
         </div>
       </div>
     </section>
 
-    <!-- ============== Toolbar ============== -->
-    <div class="page-container toolbar-band">
-      <div class="toolbar">
-        <div class="toolbar__row">
-          <UInput v-model="search" icon="i-lucide-search" placeholder="搜索大学名称 (清华 / MIT / 麻省)..." size="lg" class="toolbar__search" />
-          <USelectMenu v-model="rankTable" :items="rankTableItems" value-key="value" size="lg" class="toolbar__rank">
-            <template #leading>
-              <UIcon name="i-lucide-layers" class="size-4" />
-            </template>
-          </USelectMenu>
-          <UButton icon="i-lucide-rotate-ccw" color="neutral" variant="outline" size="lg" label="重置" class="rounded-full" @click="reset" />
-        </div>
-        <div class="toolbar__row toolbar__row--second">
-          <USelectMenu v-model="tagState" :items="tagStateOptions" value-key="value" placeholder="洲 (全部)" size="md" class="toolbar__select">
-            <template #leading>
-              <UIcon name="i-lucide-globe-2" class="size-4" />
-            </template>
-          </USelectMenu>
-          <USelectMenu v-model="maxRank" :items="maxRankItems" value-key="value" size="md" class="toolbar__select">
-            <template #leading>
-              <UIcon name="i-lucide-trophy" class="size-4" />
-            </template>
-          </USelectMenu>
-          <USelectMenu v-if="!isOldTable" v-model="yearFilter" :items="yearFilterItems" value-key="value" placeholder="全部年份" size="md" class="toolbar__select">
-            <template #leading>
-              <UIcon name="i-lucide-calendar" class="size-4" />
-            </template>
-          </USelectMenu>
-          <USelectMenu v-model="sortBy" :items="sortByItems" value-key="value" size="md" class="toolbar__select">
-            <template #leading>
-              <UIcon name="i-lucide-arrow-up-down" class="size-4" />
-            </template>
-          </USelectMenu>
-          <div class="toolbar__total">
-            <UIcon name="i-lucide-database" class="size-3.5 text-brand" />
-            共 <strong class="text-brand">{{ total.toLocaleString() }}</strong> 所大学
-          </div>
-        </div>
-        <UAlert v-if="error" color="warning" variant="subtle" :title="error" icon="i-lucide-alert-circle" />
-      </div>
-    </div>
-
     <ClientOnly>
-      <!-- ============== Top 20 表格 ============== -->
-      <div class="page-container section-band">
-        <UCard class="table-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0 overflow-hidden', body: 'p-0' }">
-          <div class="table-card__head">
-            <div class="flex items-center gap-2">
-              <UIcon name="i-lucide-trophy" class="size-4 text-brand" />
-              <span class="t-h4">Top {{ maxRank }} 前 20 院校</span>
-              <UBadge color="primary" variant="subtle" size="xs" class="ml-1">
-                {{ rankTableItems.find(t => t.value === rankTable)?.label }}
-              </UBadge>
-            </div>
-            <div class="flex items-center gap-3">
-              <div v-if="loading" class="flex items-center gap-1.5 t-micro text-muted">
-                <UIcon name="i-lucide-loader" class="size-3 animate-spin" />
-                加载中
-              </div>
-            </div>
+      <!-- Top N CARDS GRID (signature 元素) -->
+      <section class="page-container section-band">
+        <div class="grid-head">
+          <div class="grid-head__left">
+            <span class="grid-head__eyebrow">{{ rankTableItems.find(t => t.value === rankTable)?.label }}</span>
+            <h2 class="grid-head__title">Top {{ maxRank }} 前 20 院校</h2>
           </div>
-          <UTable
-            :data="sortedData"
-            :columns="tableColumns"
-            :ui="{
-              th: 'text-[12px] font-medium text-muted',
-              td: 'py-3 text-sm transition-colors duration-200 group-hover:bg-muted',
-              tr: 'group transition-colors duration-200'
-            }"
-          >
-            <template #rank-cell="{ row }">
-              <span
-                v-if="isOldTable"
-                :class="['rank-badge', rankBadgeTier(getRankField(row.original, 'all'))]"
-              >{{ getRankField(row.original, 'all') ?? '—' }}</span>
-              <span
-                v-else
-                :class="['rank-badge', getRankIntegerForNewTable(row.original) <= 10 ? 'rank-badge--silver' : 'rank-badge--normal']"
-              >{{ getRankIntegerForNewTable(row.original) === 9999 ? '—' : getRankIntegerForNewTable(row.original) }}</span>
-            </template>
-            <template #name-cell="{ row }">
-              <NuxtLink
-                :to="`/universities/${encodeURIComponent(row.original.universityNameChinese)}`"
-                class="t-body-sm font-medium text-default hover:text-brand"
-              >{{ row.original.universityNameChinese }}</NuxtLink>
-            </template>
-            <template #country-cell="{ row }">
-              <div class="flex flex-col leading-tight">
-                <span class="t-body-sm text-default">{{ row.original.universityTags || '—' }}</span>
-                <span
-                  v-if="row.original.universityTagsState"
-                  class="mt-1 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 t-micro font-semibold"
-                  :style="regionStyle(row.original.universityTagsState)"
-                >
-                  <span class="size-1.5 rounded-full" :style="{ background: regionColor(row.original.universityTagsState) }" />
-                  {{ row.original.universityTagsState }}
-                </span>
-              </div>
-            </template>
-            <template #subject-cell="{ row }">
-              <div class="flex flex-col items-end leading-tight">
-                <span v-if="!isOldTable && row.original.rankingCategory" class="t-body-sm text-default">{{ row.original.rankingCategory }}</span>
-                <span v-if="!isOldTable && row.original.rankingYear" class="t-micro text-muted">年份 {{ row.original.rankingYear }}</span>
-                <span v-if="isOldTable" class="t-micro text-muted">QS #{{ row.original.currentQsAllRank ?? '—' }} · US #{{ row.original.currentUsnewsAllRank ?? '—' }}</span>
-              </div>
-            </template>
-            <template #action-cell="{ row }">
-              <div class="flex items-center justify-end gap-2">
-                <UButton
-                  :icon="inWatchlist(row.original.universityNameChinese) ? 'i-lucide-check' : 'i-lucide-plus'"
-                  :color="inWatchlist(row.original.universityNameChinese) ? 'primary' : 'neutral'"
-                  :variant="inWatchlist(row.original.universityNameChinese) ? 'solid' : 'outline'"
-                  size="xs"
-                  :disabled="!inWatchlist(row.original.universityNameChinese) && watchCount() >= watchMax"
-                  :title="inWatchlist(row.original.universityNameChinese) ? '已加入对比, 点击移除' : '加入对比 (最多 5 所)'"
-                  class="rounded-full"
-                  @click.stop="toggleWatch(row.original.universityNameChinese)"
-                />
-                <UButton
-                  :to="`/universities/${encodeURIComponent(row.original.universityNameChinese)}`"
-                  color="primary"
-                  variant="subtle"
-                  size="xs"
-                  trailing-icon="i-lucide-chevron-right"
-                  label="详情"
-                  class="rounded-full"
-                />
-              </div>
-            </template>
-            <template #empty>
-              <div class="empty-state">
-                <UIcon name="i-lucide-search-x" class="size-5" />
-                <span class="t-body-sm">暂无数据, 试试调整筛选</span>
-              </div>
-            </template>
-          </UTable>
-        </UCard>
-      </div>
+          <div v-if="loading" class="grid-head__loading">
+            <UIcon name="i-lucide-loader" class="size-3.5 animate-spin" />
+            加载中
+          </div>
+        </div>
 
-      <!-- ============== 2 维分布 ============== -->
-      <div class="page-container section-band">
-        <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <!-- 按地区 -->
-          <UCard class="dist-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-6' }">
+        <div v-if="sortedData.length" class="school-grid">
+          <article
+            v-for="(row, idx) in sortedData"
+            :key="row.universityNameChinese + idx"
+            class="school-card"
+          >
+            <div class="school-card__rank-row">
+              <span
+                :class="['school-card__rank', isOldTable ? rankBadgeTier(getRankField(row, 'all')) : (getRankIntegerForNewTable(row) <= 10 ? 'school-card__rank--silver' : 'school-card__rank--normal')]"
+              >
+                #{{ isOldTable ? (getRankField(row, 'all') ?? '—') : (getRankIntegerForNewTable(row) === 9999 ? '—' : getRankIntegerForNewTable(row)) }}
+              </span>
+              <span v-if="isOldTable" class="school-card__chips">
+                <span v-if="get4Dims(row).qs" class="school-card__chip">QS #{{ get4Dims(row).qs }}</span>
+                <span v-if="get4Dims(row).usnews" class="school-card__chip">US #{{ get4Dims(row).usnews }}</span>
+              </span>
+              <span v-else-if="row.rankingCategory" class="school-card__chip">{{ row.rankingCategory }}</span>
+            </div>
+            <NuxtLink :to="`/universities/${encodeURIComponent(row.universityNameChinese)}`" class="school-card__name">
+              {{ row.universityNameChinese }}
+            </NuxtLink>
+            <div class="school-card__meta">
+              <span class="school-card__country">{{ row.universityTags || '—' }}</span>
+              <span
+                v-if="row.universityTagsState"
+                class="school-card__region"
+                :style="regionStyle(row.universityTagsState)"
+              >
+                <span class="school-card__region-dot" :style="{ background: regionColor(row.universityTagsState) }" />
+                {{ row.universityTagsState }}
+              </span>
+            </div>
+            <div class="school-card__foot">
+              <UButton
+                :icon="inWatchlist(row.universityNameChinese) ? 'i-lucide-check' : 'i-lucide-plus'"
+                :color="inWatchlist(row.universityNameChinese) ? 'primary' : 'neutral'"
+                :variant="inWatchlist(row.universityNameChinese) ? 'solid' : 'outline'"
+                size="xs"
+                :disabled="!inWatchlist(row.universityNameChinese) && watchCount() >= watchMax"
+                class="rounded-full school-card__action"
+                @click.stop="toggleWatch(row.universityNameChinese)"
+              >
+                {{ inWatchlist(row.universityNameChinese) ? '已选' : '加入对比' }}
+              </UButton>
+              <UButton
+                :to="`/universities/${encodeURIComponent(row.universityNameChinese)}`"
+                color="primary"
+                variant="ghost"
+                size="xs"
+                trailing-icon="i-lucide-arrow-right"
+                label="详情"
+                class="rounded-full school-card__action"
+              />
+            </div>
+          </article>
+        </div>
+        <div v-else class="empty-state">
+          <UIcon name="i-lucide-search-x" class="size-12" />
+          <p class="t-h4">{{ error ? '后端不可达' : '暂无数据' }}</p>
+          <p class="t-body-sm" style="color: var(--color-slate)">{{ error ? '请检查后端服务后刷新' : '试试调整筛选条件' }}</p>
+          <UButton v-if="error" icon="i-lucide-rotate-ccw" label="重试" color="primary" variant="solid" size="md" class="rounded-full" @click="load" />
+        </div>
+      </section>
+
+      <!-- 2 维分布 -->
+      <section class="page-container section-band">
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div class="dist-card">
             <div class="dist-card__head">
               <div class="flex items-center gap-2">
-                <UIcon name="i-lucide-globe-2" class="size-4 text-brand" />
+                <UIcon name="i-lucide-globe-2" class="size-4" style="color: var(--color-brand-blue)" />
                 <span class="t-h4">按地区查看</span>
               </div>
-              <span class="t-micro text-muted">点击切换筛选</span>
+              <span class="t-micro" style="color: var(--color-stone)">点击切换筛选</span>
             </div>
             <div v-if="regionDist.length" class="dist-list">
               <button
@@ -498,28 +482,23 @@ const tableColumns = [
                 <span class="dist-row__count">{{ r.count }}</span>
               </button>
             </div>
-            <div v-else class="empty-state">
+            <div v-else class="empty-state empty-state--mini">
               <UIcon name="i-lucide-globe-2" class="size-5" />
               <span class="t-body-sm">该榜单暂无地区数据</span>
             </div>
-          </UCard>
+          </div>
 
-          <!-- 按专业 -->
-          <UCard class="dist-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-6' }">
+          <div class="dist-card">
             <div class="dist-card__head">
               <div class="flex items-center gap-2">
-                <UIcon name="i-lucide-book-marked" class="size-4 text-brand" />
+                <UIcon name="i-lucide-book-marked" class="size-4" style="color: var(--color-brand-blue)" />
                 <span class="t-h4">按专业查看</span>
               </div>
-              <span v-if="isOldTable" class="t-micro text-muted">仅新榜单显示</span>
-              <span v-else class="t-micro text-muted">{{ subjectTotal }} 行 · 前 12</span>
+              <span v-if="isOldTable" class="t-micro" style="color: var(--color-stone)">仅新榜单显示</span>
+              <span v-else class="t-micro" style="color: var(--color-stone)">{{ subjectTotal }} 行 · 前 12</span>
             </div>
             <div v-if="!isOldTable && subjectDist.length" class="dist-list">
-              <div
-                v-for="s in subjectDist"
-                :key="s.key"
-                class="dist-row"
-              >
+              <div v-for="s in subjectDist" :key="s.key" class="dist-row">
                 <span class="dist-row__dot" style="background: #1456f0" />
                 <span class="dist-row__name">{{ s.key }}</span>
                 <span class="dist-row__bar">
@@ -528,27 +507,26 @@ const tableColumns = [
                 <span class="dist-row__count">{{ s.count }}</span>
               </div>
             </div>
-            <div v-else class="empty-state">
+            <div v-else class="empty-state empty-state--mini">
               <UIcon name="i-lucide-book-marked" class="size-5" />
               <span class="t-body-sm">{{ isOldTable ? '切换到新榜单看专业分布' : '暂无专业数据' }}</span>
             </div>
-          </UCard>
+          </div>
         </div>
-      </div>
+      </section>
     </ClientOnly>
   </div>
 </template>
 
 <style scoped>
-/* Watchlist sticky bar */
+/* ===== Watchlist sticky bar (DESIGN.md promo-banner 黑底) ===== */
 .watchlist-bar {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-hairline);
+  background: var(--color-ink);
+  color: var(--color-canvas);
   padding: 12px 0;
-  box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 2px 0px;
 }
 .watchlist-bar__inner {
   display: flex;
@@ -561,6 +539,7 @@ const tableColumns = [
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  color: var(--color-canvas);
 }
 .watchlist-bar__names {
   display: flex;
@@ -570,122 +549,343 @@ const tableColumns = [
 .watchlist-bar__chip {
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: 9999px;
-  background: var(--color-canvas);
-  border: 1px solid var(--color-hairline);
+  background: rgba(255, 255, 255, 0.12);
   font-size: 12px;
   font-weight: 500;
-  color: var(--color-ink);
+  color: var(--color-canvas);
 }
 .watchlist-bar__cta {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: var(--color-ink);
-  color: var(--color-canvas);
+  background: var(--color-canvas);
+  color: var(--color-ink);
   border-radius: 9999px;
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
   transition: background 0.15s ease;
 }
-.watchlist-bar__cta:hover {
-  background: #181e25;
-}
+.watchlist-bar__cta:hover { background: var(--color-hairline-soft); }
 @media (max-width: 768px) {
   .watchlist-bar__names { display: none; }
 }
 
-/* §hero-band-marketing 紧凑版 */
+/* ===== HERO BAND (DESIGN.md §hero-band-marketing) ===== */
 .uni-hero {
   padding: 64px 0 32px;
   background: var(--color-canvas);
 }
 @media (min-width: 768px) {
-  .uni-hero { padding: 80px 0 48px; }
+  .uni-hero { padding: 96px 0 48px; }
 }
-.uni-hero__inner {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
+.uni-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  margin-bottom: 20px;
 }
-.uni-hero__title { margin: 4px 0 0; }
-.uni-hero__sub { margin: 0; }
+.uni-hero__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-brand-coral);
+}
+.uni-hero__eyebrow-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.uni-hero__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 1.10;
+  letter-spacing: -1.5px;
+  color: var(--color-ink);
+}
+@media (min-width: 1024px) {
+  .uni-hero__title { font-size: 80px; letter-spacing: -2px; }
+}
+.uni-hero__title-accent {
+  font-style: italic;
+  font-weight: 600;
+  color: var(--color-brand-coral);
+  /* 0 渐变铁律: 纯色 + 底部小色块代替 bg-clip text */
+  position: relative;
+  display: inline-block;
+}
+.uni-hero__title-accent::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--color-brand-coral);
+  border-radius: 9999px;
+  opacity: 0.85;
+  z-index: -1;
+}
+.uni-hero__sub {
+  margin: 16px 0 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--color-slate);
+  line-height: 1.50;
+}
 
-/* Toolbar */
-.toolbar-band { margin-top: 8px; }
-.toolbar {
+/* ===== Toolbar (DESIGN.md §text-input) ===== */
+.uni-toolbar {
+  margin-top: 40px;
   background: var(--color-canvas);
   border: 1px solid var(--color-hairline);
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 2px 0px;
+  gap: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
-.toolbar__row {
+.uni-toolbar__row {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   align-items: center;
 }
-.toolbar__row--second {
-  padding-top: 12px;
+.uni-toolbar__row--second {
+  padding-top: 16px;
   border-top: 1px solid var(--color-hairline-soft);
 }
-.toolbar__search { flex: 1; min-width: 280px; }
-.toolbar__rank { min-width: 180px; }
-.toolbar__select { min-width: 140px; }
-.toolbar__total {
+.uni-toolbar__search { flex: 1; min-width: 280px; }
+.uni-toolbar__rank { min-width: 200px; }
+.uni-toolbar__select { min-width: 140px; }
+.uni-toolbar__total {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: 8px;
+  padding: 8px 16px;
   border-radius: 9999px;
   background: var(--color-surface);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--color-ink);
 }
 
-/* Table card */
-.section-band { margin-top: 24px; }
-.table-card__head {
+/* ===== Section bands ===== */
+.section-band { margin-top: 32px; }
+
+/* ===== Grid head (DESIGN.md §heading-sm + eyebrow) ===== */
+.grid-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+.grid-head__left { display: flex; flex-direction: column; gap: 6px; }
+.grid-head__eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-brand-blue);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.grid-head__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.5px;
+  color: var(--color-ink);
+}
+@media (min-width: 768px) {
+  .grid-head__title { font-size: 40px; letter-spacing: -1px; }
+}
+.grid-head__loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-stone);
+}
+
+/* ===== School grid (signature element) ===== */
+.school-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 640px) {
+  .school-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1024px) {
+  .school-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 1440px) {
+  .school-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ===== School card (DESIGN.md §card-base) ===== */
+.school-card {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: all 200ms ease;
+  position: relative;
+  overflow: hidden;
+}
+.school-card:hover {
+  border-color: var(--color-ink);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+.school-card__rank-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--color-hairline);
+  gap: 8px;
+  min-height: 36px;
 }
+.school-card__rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-family: var(--font-data);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-canvas);
+  letter-spacing: -0.01em;
+}
+.school-card__rank--gold { background: #f59e0b; }
+.school-card__rank--silver { background: var(--color-ink); }
+.school-card__rank--bronze { background: #ea580c; }
+.school-card__rank--normal { background: var(--color-surface-soft); color: var(--color-ink); }
+.school-card__chips {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.school-card__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-ink);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.school-card__name {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.30;
+  color: var(--color-ink);
+  text-decoration: none;
+  margin-top: -4px;
+}
+.school-card__name:hover { color: var(--color-brand-blue); }
+.school-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.school-card__country {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+.school-card__region {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  width: fit-content;
+}
+.school-card__region-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+}
+.school-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-hairline-soft);
+  margin-top: auto;
+}
+.school-card__action { font-size: 12px; font-weight: 600; }
+
+/* ===== Empty state ===== */
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 40px 20px;
-  color: var(--color-slate);
+  gap: 12px;
+  padding: 80px 32px;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-hairline);
+  border-radius: 20px;
+  color: var(--color-stone);
+  text-align: center;
+}
+.empty-state--mini {
+  padding: 24px 16px;
+  background: transparent;
+  border: none;
 }
 
-/* Dist card */
+/* ===== Dist cards (DESIGN.md §card-base) ===== */
+.dist-card {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: 16px;
+  padding: 24px;
+}
 .dist-card__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 .dist-list { display: flex; flex-direction: column; gap: 8px; }
 .dist-row {
   display: grid;
-  grid-template-columns: 12px 100px 1fr auto;
+  grid-template-columns: 12px 110px 1fr 32px;
   align-items: center;
   gap: 12px;
-  padding: 6px 8px;
+  padding: 8px 12px;
   border-radius: 8px;
   background: transparent;
   border: none;
@@ -694,12 +894,16 @@ const tableColumns = [
   transition: background 160ms ease;
   font-family: var(--font-ui);
 }
+button.dist-row { width: 100%; }
 .dist-row:hover { background: var(--color-surface-soft); }
 .dist-row__dot { width: 10px; height: 10px; border-radius: 9999px; }
 .dist-row__name {
   font-size: 14px;
   font-weight: 500;
   color: var(--color-charcoal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .dist-row__name.is-active { color: var(--color-brand-blue); font-weight: 600; }
 .dist-row__bar {
@@ -712,32 +916,20 @@ const tableColumns = [
   display: block;
   height: 100%;
   border-radius: 9999px;
+  transition: width 240ms ease;
 }
 .dist-row__count {
+  font-family: var(--font-data);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-charcoal);
-  min-width: 32px;
   text-align: right;
 }
 
-/* Rank badge (DESIGN.md §rounded.md 8px) */
-:deep(.rank-badge) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 40px;
-  height: 32px;
-  padding: 0 10px;
-  border-radius: 8px;
-  font-family: var(--font-data);
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--color-canvas);
+@media (max-width: 640px) {
+  .uni-hero { padding: 48px 0 24px; }
+  .uni-hero__title { font-size: 40px; }
+  .uni-toolbar { padding: 16px; }
+  .uni-toolbar__total { width: 100%; justify-content: center; }
 }
-:deep(.rank-badge--gold)   { background: #f59e0b; }
-:deep(.rank-badge--silver) { background: #9ca3af; color: var(--color-ink); }
-:deep(.rank-badge--bronze) { background: #ea580c; }
-:deep(.rank-badge--normal) { background: var(--color-surface-soft); color: var(--color-ink); }
 </style>
