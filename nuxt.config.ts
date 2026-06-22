@@ -12,13 +12,10 @@ export default defineNuxtConfig({
   dir: {
     pages: 'pages',
     layouts: 'layouts',
-    components: 'components',
-    composables: 'composables',
     middleware: 'middleware',
     plugins: 'plugins',
     assets: 'assets',
-    public: 'public',
-    stores: 'stores'
+    public: 'public'
   },
 
   modules: ['@nuxt/ui', '@pinia/nuxt'],
@@ -35,11 +32,37 @@ export default defineNuxtConfig({
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'description', content: 'PhD 申请选校系统 · 多源排名数据 · 选校清单管理 · 趋势可视化' }
+      ],
+      link: [
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+        { rel: 'preload', as: 'style', href: 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap' },
+        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap' }
       ]
     }
   },
 
   css: ['~/assets/css/main.css'],
+
+  vite: {
+    build: {
+      chunkSizeWarningLimit: 1500,
+      rollupOptions: {
+        output: {
+          manualChunks(id: string) {
+            // 把 ECharts 拆到独立 chunk，避免污染首屏 bundle
+            if (id.includes('node_modules/echarts') || id.includes('node_modules/vue-echarts')) {
+              return 'echarts'
+            }
+            // 把 @nuxt/ui 的图标集合拆到独立 chunk
+            if (id.includes('node_modules/@iconify')) {
+              return 'icons'
+            }
+          }
+        }
+      }
+    }
+  },
 
   runtimeConfig: {
     public: {

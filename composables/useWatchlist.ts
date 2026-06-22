@@ -1,81 +1,50 @@
 /**
  * composables/useWatchlist.ts
  *
- * 全局选校清单 (FIFO 5 所)
- * - Pinia store 持久化到 localStorage (key: choosePhd.watchlist.v1)
- * - 跨页面共享 (首页 / 学校库 / 详情 / 我的选校 都能用)
- * - add(name) / remove(name) / toggle(name) / clear() / has(name)
- * - onMounted 从 localStorage hydrate
+ * 选校清单的兼容包装。状态已迁移到 `stores/watchlist.ts`(Pinia),
+ * 本文件保留**旧 API 调用形式**,让 T-01 之前的现有页面(详情页 / 学校库 / 选校)不需要改动。
+ *
+ * 旧 API 契约(完全保留):
+ *   list     : Ref<string[]>                 — 名字数组的 Vue ref
+ *   count()  : () => number                  — 同步取长度(模板里 `watchCount()` 仍要能 work)
+ *   max      : number                        — FIFO 上限(5→6 同步增大)
+ *   has(name): boolean                       — 同步判断
+ *   add/remove/toggle/clear: function        — 同步副作用
+ *
+ * 新 API 在 T-02 / T-03 期间逐步切换到 `useWatchlistStore()`(Pinia 直接调用)。
+ *
+ * ⚠️ 不再 re-export `useWatchlistStore`(会被 Nuxt auto-import 识别为重复,
+ *    见 `nuxt prepare` 警告)。需要 store 本身请直接 import `~/stores/watchlist` 或
+ *    用 Nuxt auto-import(`useWatchlistStore` from `stores/watchlist.ts`)。
  */
 
-import { ref, watch } from 'vue'
-
-const STORAGE_KEY = 'choosePhd.watchlist.v1'
-const MAX = 5
-
-const watchlist = ref<string[]>([])
-let hydrated = false
-
-function hydrate() {
-  if (hydrated || typeof window === 'undefined') return
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed)) watchlist.value = parsed.slice(0, MAX)
-    }
-  } catch (e) {
-    console.warn('[watchlist] hydrate failed', e)
-  }
-  hydrated = true
-}
-
-function persist() {
-  if (typeof window === 'undefined') return
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(watchlist.value))
-  } catch (e) {
-    console.warn('[watchlist] persist failed', e)
-  }
-}
-
 export function useWatchlist() {
-  hydrate()
+  const store = useWatchlistStore()
 
-  watch(watchlist, persist, { deep: true })
-
-  function add(name: string) {
-    if (watchlist.value.includes(name)) return
-    if (watchlist.value.length >= MAX) watchlist.value.shift()
-    watchlist.value.push(name)
+  // 首次进入触发 hydrate(SSR 跳过,client 端 lazy)
+  if (import.meta.client) {
+    store.hydrate()
   }
 
-  function remove(name: string) {
-    const idx = watchlist.value.indexOf(name)
-    if (idx >= 0) watchlist.value.splice(idx, 1)
-  }
-
-  function toggle(name: string) {
-    if (watchlist.value.includes(name)) remove(name)
-    else add(name)
-  }
-
-  function clear() {
-    watchlist.value = []
-  }
-
-  function has(name: string): boolean {
-    return watchlist.value.includes(name)
-  }
+  // 把 store.items 投影为 string[] ref(老 API 类型)
+  const list = computed<string[]>(() => store.list)
 
   return {
-    list: watchlist,
-    count: () => watchlist.value.length,
-    max: MAX,
-    add,
-    remove,
-    toggle,
-    clear,
-    has,
+    /** 旧 API:Ref<string[]> 名字数组 */
+    list,
+    /** 旧 API:`watchCount()` 同步取长度(模板里 `> 0` 比较) */
+    count: (): number => store.count,
+    /** 旧 API:number FIFO 上限 */
+    max: 6 as const,
+    /** 旧 API:同步判断是否已加入 */
+    has: (name: string): boolean => store.has(name),
+    /** 旧 API:同步添加 */
+    add: (name: string): boolean => store.add(name),
+    /** 旧 API:同步移除 */
+    remove: (name: string): void => store.remove(name),
+    /** 旧 API:同步切换 */
+    toggle: (name: string): boolean => store.toggle(name),
+    /** 旧 API:同步清空 */
+    clear: (): void => store.clear(),
   }
 }

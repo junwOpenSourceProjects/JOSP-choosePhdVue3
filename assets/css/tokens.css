@@ -1,0 +1,127 @@
+/* =============================================================
+ * tokens.css — DESIGN.md token 集中登记
+ * 改 token 在这里改;其他 .vue / .css 通过 Tailwind utility class 或
+ * var(--color-*) / var(--radius-*) / var(--font-*) 引用。
+ * Source of truth: ../DESIGN.md
+ * ============================================================= */
+
+@theme {
+  /* ============== Brand & Accent ============== */
+  --color-brand-coral: #ff5530;
+  --color-brand-magenta: #ea5ec1;
+  --color-brand-blue: #1456f0;
+  --color-brand-blue-mid: #3b82f6;
+  --color-brand-blue-deep: #1d4ed8;
+  --color-brand-blue-700: #17437d;
+  --color-brand-cyan: #3daeff;
+  --color-brand-blue-200: #bfdbfe;
+  --color-brand-purple: #a855f7;
+
+  /* Brand Blue aliases (legacy compat) */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #1456f0;
+  --color-brand-deep: #17437d;
+
+  /* Brand Pink alias (legacy compat) */
+  --color-brand-pink: #ea5ec1;
+
+  /* ============== Text (DESIGN.md) ============== */
+  --color-ink: #0a0a0a;
+  --color-ink-strong: #000000;
+  --color-charcoal: #222222;
+  --color-slate: #45515e;
+  --color-steel: #5f5f5f;
+  --color-stone: #8e8e93;
+  --color-muted: #a8aab2;
+
+  /* Text aliases (legacy compat) */
+  --color-ink-100: #ffffff;
+  --color-ink-200: #f2f3f5;
+  --color-ink-300: #e5e7eb;
+  --color-ink-400: #f0f0f0;
+  --color-ink-500: #8e8e93;
+  --color-ink-600: #5f5f5f;
+  --color-ink-700: #45515e;
+  --color-ink-800: #181e25;
+  --color-ink-900: #18181b;
+  --color-ink-1000: #222222;
+
+  /* ============== Surfaces (DESIGN.md) ============== */
+  --color-canvas: #ffffff;
+  --color-surface: #f7f8fa;
+  --color-surface-soft: #f2f3f5;
+  --color-hairline: #e5e7eb;
+  --color-hairline-soft: #eaecf0;
+
+  /* Surfaces aliases (legacy compat) */
+  --color-surface-0: #ffffff;
+  --color-surface-1: #f7f8fa;
+  --color-surface-2: #f2f3f5;
+  --color-surface-3: #f0f0f0;
+  --color-surface-dark: #0a0a0a;
+
+  /* ============== Semantic component colors ============== */
+  --color-primary: #1456f0;
+  --color-footer-bg: #0a0a0a;
+  --color-on-dark: #ffffff;
+
+  /* ============== Semantic (DESIGN.md) ============== */
+  --color-success-bg: #e8ffea;
+  --color-success-text: #1ba673;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  /* ============== Border (DESIGN.md) ============== */
+  --color-border: #e5e7eb;
+  --color-border-light: #f2f3f5;
+
+  /* ============== Radii (DESIGN.md) ============== */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
+  --radius-hero: 32px;
+  --radius-pill: 9999px;
+
+  /* ============== Shadows (DESIGN.md elevation levels) ============== */
+  --shadow-flat: 0 0 0 transparent;
+  --shadow-subtle: rgba(0, 0, 0, 0.04) 0px 1px 2px 0px;
+  --shadow-card: rgba(0, 0, 0, 0.08) 0px 4px 6px 0px;
+  --shadow-atmospheric: rgba(0, 0, 0, 0.08) 0px 0px 22px 0px;
+  --shadow-elevated: rgba(36, 36, 36, 0.08) 0px 12px 16px -4px;
+  --shadow-hover: rgba(0, 0, 0, 0.10) 0px 8px 16px -2px;
+  --shadow-brand: rgba(44, 30, 116, 0.16) 0px 0px 15px;
+  --shadow-brand-strong: rgba(44, 30, 116, 0.22) 0px 8px 24px;
+  --shadow-brand-offset: rgba(44, 30, 116, 0.11) 6.5px 2px 17.5px;
+
+  /* ============== Decorative single colors ============== */
+  --gradient-card-featured: #1456f0;
+  --gradient-card-soft: #eff6ff;
+  --gradient-text-brand: #1456f0;
+
+  /* ============== Rank badge tiers ============== */
+  --gradient-rank-gold: #f59e0b;
+  --gradient-rank-silver: #9ca3af;
+  --gradient-rank-bronze: #ea580c;
+
+  /* ============== Spacing scale (8px base) ============== */
+  --spacing: 8px;
+
+  /* ============== Fonts: DM Sans across every surface per DESIGN.md ============== */
+  --font-display: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-ui: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-data: 'DM Sans', 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-cn: 'DM Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+}

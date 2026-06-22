@@ -3,6 +3,65 @@
 // 后端不动,前端按 Java field 名一一对应
 // ============================================
 
+// ============================================
+// T-01 新增:UI-only 类型(架构文档 C.8 节)
+// ============================================
+
+/** 异步加载 5 态 */
+export type AsyncStatus = 'idle' | 'loading' | 'success' | 'error' | 'empty'
+
+/** 品牌色调(4 色产品身份卡 / rank 维度映射) */
+export type BrandTone = 'coral' | 'magenta' | 'blue' | 'purple' | 'neutral'
+
+/** 状态色(弱/中/强) */
+export type StatusTone = 'weak' | 'medium' | 'strong' | 'neutral'
+
+/** 全局 toast 消息(供 useToast + AppToast 共享) */
+export interface ToastMessage {
+  id: string
+  tone: 'success' | 'error' | 'info' | 'warning'
+  text: string
+  /** ms,默认 4000 */
+  duration?: number
+}
+
+/** 首页 4 张产品身份卡(对应 ProductMatrixCard 组件 props) */
+export interface ProductMatrixItem {
+  tone: BrandTone
+  eyebrow: string
+  title: string
+  subtitle: string
+  meta: string
+  to: string
+  visual: 'sparkline' | 'globe' | 'mini-table' | 'pills'
+}
+
+/** 图表页 KPI 卡(对应 KPICardGroup 组件 props) */
+export interface KPIData {
+  label: string
+  value: string | number
+  caption?: string
+  tone?: BrandTone
+}
+
+/** 学校库筛选(对应 FilterToolbar 组件 v-model) */
+export interface UniversityFilter {
+  rankTable: 'qs' | 'usnews' | 'arwu_subject' | 'edurank' | 'mosiur' | 'rur'
+  region?: string
+  country?: string
+  topN?: number
+  year?: number
+  sort?: 'rank' | 'name' | 'updatedAt'
+  search?: string
+}
+
+/** 4 维排名(详情页 / 趋势图 / 矩阵 共用) */
+export type RankDimension = 'qs' | 'qsCs' | 'usnews' | 'usnewsCs'
+
+/** 固定顺序,所有 sparkline / 矩阵 / school-hero 共用此顺序 */
+export const RANK_DIMENSION_ORDER: readonly RankDimension[] = ['qs', 'qsCs', 'usnews', 'usnewsCs']
+
+
 /** 后端 ShowResult<T> 包装 */
 export interface ShowResult<T> {
   code: number

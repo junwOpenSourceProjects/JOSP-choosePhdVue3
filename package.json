@@ -8,14 +8,21 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "typecheck": "nuxt typecheck",
+    "check:icons": "node scripts/check-icon-sizes.mjs",
+    "check:tokens": "node scripts/check-token-drift.mjs",
+    "check:budget": "node scripts/check-bundle-budget.mjs",
+    "check:all": "pnpm run check:icons && pnpm run check:tokens && pnpm run check:budget"
   },
   "dependencies": {
     "@nuxt/ui": "^4.9.0",
     "@pinia/nuxt": "^0.11.3",
+    "echarts": "^6.1.0",
     "nuxt": "^4.4.8",
     "pinia": "^3.0.4",
     "vue": "^3.5.38",
+    "vue-echarts": "^8.0.1",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
