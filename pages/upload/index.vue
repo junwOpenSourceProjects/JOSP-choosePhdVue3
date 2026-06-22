@@ -273,7 +273,7 @@ function formatSize(bytes: number): string {
             @dragleave.prevent="isDragging = false"
             @drop.prevent="(e: DragEvent) => { isDragging = false; onFilesChange(Array.from(e.dataTransfer?.files ?? [])) }"
           >
-            <UIcon name="i-lucide-upload-cloud" class="size-6 text-muted" />
+            <UIcon name="i-lucide-upload-cloud" class="size-5 text-muted" />
             <div class="text-sm text-default">拖拽文件到此处</div>
             <div class="text-xs text-subtle">或</div>
             <label>

@@ -442,7 +442,7 @@ function isTied(row: any, idx: number): boolean {
           </article>
         </div>
         <div v-else class="empty-state">
-          <UIcon name="i-lucide-search-x" class="size-8" />
+          <UIcon name="i-lucide-search-x" class="size-6 text-muted" />
           <p class="t-h4">{{ error ? '后端不可达' : '暂无数据' }}</p>
           <p class="t-body-sm" style="color: var(--color-slate)">{{ error ? '请检查后端服务后刷新' : '试试调整筛选条件' }}</p>
           <UButton v-if="error" icon="i-lucide-rotate-ccw" label="重试" color="primary" variant="solid" size="md" class="rounded-full" @click="load" />

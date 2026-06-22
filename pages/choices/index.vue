@@ -429,7 +429,7 @@ const fields = [
       <!-- 决策流程 stepper (3 step) -->
       <div class="stepper">
         <div class="stepper__step is-done">
-          <div class="stepper__dot"><UIcon name="i-lucide-check" class="size-3.5" /></div>
+          <div class="stepper__dot"><UIcon name="i-lucide-check" class="size-3" /></div>
           <span class="stepper__label">1. 导入</span>
         </div>
         <div class="stepper__line is-done" />
@@ -446,8 +446,8 @@ const fields = [
 
       <!-- 0 数据时引导插画 -->
       <UCard v-if="stats.total === 0" class="empty-card" :ui="{ root: 'rounded-3xl border-2 border-dashed border-default bg-muted ring-0', body: 'p-12 text-center' }">
-        <div class="mx-auto flex size-12 items-center justify-center rounded-full empty-card__icon">
-          <UIcon name="i-lucide-target" class="size-5" />
+        <div class="mx-auto flex size-10 items-center justify-center rounded-full empty-card__icon">
+          <UIcon name="i-lucide-target" class="size-4" />
         </div>
         <h3 class="t-h3 mt-4">还没有选校, 开始第一步</h3>
         <p class="t-body-sm text-muted mt-2">点上方「一键初始化」导入全部监控大学, 或先去「学校库」收藏几所</p>
@@ -750,13 +750,13 @@ const fields = [
   gap: 4px;
 }
 .stepper__dot {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 9999px;
   background: var(--color-surface-soft);
   color: var(--color-stone);
   font-family: var(--font-ui);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   display: flex;
   align-items: center;
