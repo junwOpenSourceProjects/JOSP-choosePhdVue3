@@ -269,17 +269,17 @@ function sparklinePath(data: number[], width = 100, height = 28): string {
 
 <template>
   <div>
-    <!-- ============== Hero (紧凑) ============== -->
+    <!-- ============== Hero (DESIGN.md §hero-band-marketing) ============== -->
     <section class="chart-hero">
       <div class="page-container">
-        <div class="chart-hero__inner">
-          <UBadge color="primary" variant="subtle" size="md">
-            <UIcon name="i-lucide-line-chart" class="size-3.5" />
-            <span class="ml-1.5 t-caption-bold">趋势 · 对比 · 洞察</span>
-          </UBadge>
-          <h1 class="t-h1 mt-3">数据图表</h1>
-          <p class="t-subtitle mt-2">让选校决策有数</p>
+        <div class="chart-hero__eyebrow">
+          <span class="chart-hero__dot" />
+          <span class="chart-hero__eyebrow-text">趋势 · 对比 · 洞察</span>
         </div>
+        <h1 class="chart-hero__title">
+          数据<span class="chart-hero__title-accent">图表</span>
+        </h1>
+        <p class="chart-hero__sub">让选校决策有数</p>
       </div>
     </section>
 
@@ -626,12 +626,76 @@ function sparklinePath(data: number[], width = 100, height = 28): string {
 </template>
 
 <style scoped>
-/* Hero */
+/* Hero (DESIGN.md §hero-band-marketing) */
 .chart-hero { padding: 64px 0 32px; background: var(--color-canvas); }
 @media (min-width: 768px) {
-  .chart-hero { padding: 80px 0 48px; }
+  .chart-hero { padding: 96px 0 48px; }
 }
-.chart-hero__inner { display: flex; flex-direction: column; gap: 12px; }
+.chart-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  margin-bottom: 20px;
+}
+.chart-hero__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-brand-coral);
+}
+.chart-hero__eyebrow-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.chart-hero__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 1.10;
+  letter-spacing: -1.5px;
+  color: var(--color-ink);
+}
+@media (min-width: 1024px) {
+  .chart-hero__title { font-size: 80px; letter-spacing: -2px; }
+}
+.chart-hero__title-accent {
+  font-style: italic;
+  font-weight: 600;
+  color: var(--color-brand-coral);
+  position: relative;
+  display: inline-block;
+}
+.chart-hero__title-accent::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--color-brand-coral);
+  border-radius: 9999px;
+  opacity: 0.85;
+  z-index: -1;
+}
+.chart-hero__sub {
+  margin: 16px 0 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--color-slate);
+  line-height: 1.50;
+}
+@media (max-width: 640px) {
+  .chart-hero { padding: 48px 0 24px; }
+  .chart-hero__title { font-size: 40px; }
+}
 
 /* Section 间距 */
 .section-band { margin-top: 24px; }
