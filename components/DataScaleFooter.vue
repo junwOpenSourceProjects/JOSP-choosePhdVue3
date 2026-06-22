@@ -81,6 +81,7 @@
   line-height: 1;
   letter-spacing: -0.03em;
   color: #ffffff;
+  font-variant-numeric: tabular-nums;
 }
 
 .data-scale__label {

@@ -214,6 +214,7 @@ const tierClass = computed(() => {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
+  font-variant-numeric: tabular-nums;
 }
 .rank-card__rank--none {
   font-size: 16px;

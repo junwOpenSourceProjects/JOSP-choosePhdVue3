@@ -966,13 +966,19 @@ const fields = [
   gap: 8px;
 }
 .compare-grid__rank-num {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 24px;
   font-family: 'Roboto', system-ui, sans-serif;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 8px;
+  padding: 0 10px;
+  border-radius: 6px;
   letter-spacing: -0.01em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 .compare-grid__rank-num--gold {
   background: rgba(245, 158, 11, 0.12);

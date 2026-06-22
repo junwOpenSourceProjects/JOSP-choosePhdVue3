@@ -369,6 +369,8 @@ function rankCount(d: UniversityAllDTO | null | undefined): number {
   line-height: 1.0;
   color: var(--color-brand-blue);
   letter-spacing: -1px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
 }
 @media (min-width: 1024px) {
   .school-hero__rank-value { font-size: 64px; }

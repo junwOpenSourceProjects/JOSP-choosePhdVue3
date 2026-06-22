@@ -313,12 +313,18 @@ function avgRank(row: SchoolRow): string {
 }
 
 .compare-table__rank {
-  display: inline-block;
-  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 24px;
+  font-size: 13px;
   font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 8px;
+  padding: 0 10px;
+  border-radius: 6px;
   letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .compare-table__rank--gold {
@@ -343,7 +349,8 @@ function avgRank(row: SchoolRow): string {
 .compare-table__rank--avg {
   background: var(--ui-text, #0a0a0a);
   color: var(--ui-bg, #ffffff);
-  font-size: 14px;
+  font-size: 13px;
+  height: 24px;
 }
 
 .compare-table__avg-row {

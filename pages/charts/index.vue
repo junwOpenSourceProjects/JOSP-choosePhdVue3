@@ -837,6 +837,9 @@ function sparklinePath(data: number[], width = 100, height = 28): string {
   font-size: 12px;
   font-weight: 700;
   text-align: right;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  min-width: 24px;
 }
 
 /* Subject table */
