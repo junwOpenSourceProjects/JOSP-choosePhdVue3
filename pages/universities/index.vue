@@ -303,6 +303,13 @@ function get4Dims(row: UniversityAllDTO | any): { qs: number | null; usnews: num
   const r = getRankIntegerForNewTable(row)
   return { qs: r === 9999 ? null : r, usnews: null, qsCs: null, usnewsCs: null }
 }
+
+function isTied(row: any, idx: number): boolean {
+  if (!sortedData.value[idx + 1]) return false
+  const cur = getRankIntegerForNewTable(row)
+  const next = getRankIntegerForNewTable(sortedData.value[idx + 1])
+  return cur === next && cur < 9999
+}
 </script>
 
 <template>
@@ -384,7 +391,7 @@ function get4Dims(row: UniversityAllDTO | any): { qs: number | null; usnews: num
         <div class="grid-head">
           <div class="grid-head__left">
             <span class="grid-head__eyebrow">{{ rankTableItems.find(t => t.value === rankTable)?.label }}</span>
-            <h2 class="grid-head__title">Top {{ maxRank }} 前 20 院校</h2>
+            <h2 class="grid-head__title">{{ rankTableItems.find(t => t.value === rankTable)?.label }} Top {{ maxRank }} 院校</h2>
           </div>
           <div v-if="loading" class="grid-head__loading">
             <UIcon name="i-lucide-loader" class="size-3.5 animate-spin" />
@@ -398,17 +405,25 @@ function get4Dims(row: UniversityAllDTO | any): { qs: number | null; usnews: num
             :key="row.universityNameChinese + idx"
             class="school-card"
           >
-            <div class="school-card__rank-row">
+            <div class="school-card__head">
               <span
                 :class="['school-card__rank', isOldTable ? rankBadgeTier(getRankField(row, 'all')) : (getRankIntegerForNewTable(row) <= 10 ? 'school-card__rank--silver' : 'school-card__rank--normal')]"
               >
-                #{{ isOldTable ? (getRankField(row, 'all') ?? '—') : (getRankIntegerForNewTable(row) === 9999 ? '—' : getRankIntegerForNewTable(row)) }}
+                <span class="school-card__rank-hash">#</span>{{ isOldTable ? (getRankField(row, 'all') ?? '—') : (getRankIntegerForNewTable(row) === 9999 ? '—' : getRankIntegerForNewTable(row)) }}<sup v-if="isTied(row, idx)" class="school-card__rank-tie">T</sup>
               </span>
-              <span v-if="isOldTable" class="school-card__chips">
+              <span v-if="isOldTable && (get4Dims(row).qs || get4Dims(row).usnews)" class="school-card__chips">
                 <span v-if="get4Dims(row).qs" class="school-card__chip">QS #{{ get4Dims(row).qs }}</span>
                 <span v-if="get4Dims(row).usnews" class="school-card__chip">US #{{ get4Dims(row).usnews }}</span>
               </span>
-              <span v-else-if="row.rankingCategory" class="school-card__chip">{{ row.rankingCategory }}</span>
+              <span v-else-if="!isOldTable && row.rankingCategory" class="school-card__chip">{{ row.rankingCategory }}</span>
+              <button
+                class="school-card__bookmark"
+                :class="inWatchlist(row.universityNameChinese) ? 'school-card__bookmark--on' : ''"
+                :aria-label="inWatchlist(row.universityNameChinese) ? '已加入对比' : '加入对比'"
+                @click.stop="toggleWatch(row.universityNameChinese)"
+              >
+                <UIcon :name="inWatchlist(row.universityNameChinese) ? 'i-lucide-bookmark-check' : 'i-lucide-bookmark'" class="size-4" />
+              </button>
             </div>
             <NuxtLink :to="`/universities/${encodeURIComponent(row.universityNameChinese)}`" class="school-card__name">
               {{ row.universityNameChinese }}
@@ -424,32 +439,10 @@ function get4Dims(row: UniversityAllDTO | any): { qs: number | null; usnews: num
                 {{ row.universityTagsState }}
               </span>
             </div>
-            <div class="school-card__foot">
-              <UButton
-                :icon="inWatchlist(row.universityNameChinese) ? 'i-lucide-check' : 'i-lucide-plus'"
-                :color="inWatchlist(row.universityNameChinese) ? 'primary' : 'neutral'"
-                :variant="inWatchlist(row.universityNameChinese) ? 'solid' : 'outline'"
-                size="xs"
-                :disabled="!inWatchlist(row.universityNameChinese) && watchCount() >= watchMax"
-                class="rounded-full school-card__action"
-                @click.stop="toggleWatch(row.universityNameChinese)"
-              >
-                {{ inWatchlist(row.universityNameChinese) ? '已选' : '加入对比' }}
-              </UButton>
-              <UButton
-                :to="`/universities/${encodeURIComponent(row.universityNameChinese)}`"
-                color="primary"
-                variant="ghost"
-                size="xs"
-                trailing-icon="i-lucide-arrow-right"
-                label="详情"
-                class="rounded-full school-card__action"
-              />
-            </div>
           </article>
         </div>
         <div v-else class="empty-state">
-          <UIcon name="i-lucide-search-x" class="size-12" />
+          <UIcon name="i-lucide-search-x" class="size-8" />
           <p class="t-h4">{{ error ? '后端不可达' : '暂无数据' }}</p>
           <p class="t-body-sm" style="color: var(--color-slate)">{{ error ? '请检查后端服务后刷新' : '试试调整筛选条件' }}</p>
           <UButton v-if="error" icon="i-lucide-rotate-ccw" label="重试" color="primary" variant="solid" size="md" class="rounded-full" @click="load" />
@@ -483,7 +476,7 @@ function get4Dims(row: UniversityAllDTO | any): { qs: number | null; usnews: num
               </button>
             </div>
             <div v-else class="empty-state empty-state--mini">
-              <UIcon name="i-lucide-globe-2" class="size-5" />
+              <UIcon name="i-lucide-globe-2" class="size-3.5" />
               <span class="t-body-sm">该榜单暂无地区数据</span>
             </div>
           </div>
@@ -508,7 +501,7 @@ function get4Dims(row: UniversityAllDTO | any): { qs: number | null; usnews: num
               </div>
             </div>
             <div v-else class="empty-state empty-state--mini">
-              <UIcon name="i-lucide-book-marked" class="size-5" />
+              <UIcon name="i-lucide-book-marked" class="size-3.5" />
               <span class="t-body-sm">{{ isOldTable ? '切换到新榜单看专业分布' : '暂无专业数据' }}</span>
             </div>
           </div>
@@ -738,44 +731,53 @@ function get4Dims(row: UniversityAllDTO | any): { qs: number | null; usnews: num
   .school-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
-/* ===== School card (DESIGN.md §card-base) ===== */
+/* ===== School card v3 (DESIGN.md §card-base + 信息层级反转) ===== */
 .school-card {
   background: var(--color-canvas);
   border: 1px solid var(--color-hairline);
   border-radius: 16px;
-  padding: 24px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   transition: all 200ms ease;
   position: relative;
-  overflow: hidden;
+  min-height: 132px;
 }
 .school-card:hover {
   border-color: var(--color-ink);
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
 }
-.school-card__rank-row {
+/* 头部: 排名小徽章 + QS/US chip + bookmark (右上) */
+.school-card__head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 36px;
+  gap: 6px;
+  min-height: 22px;
 }
 .school-card__rank {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 36px;
-  padding: 0 14px;
-  border-radius: 8px;
+  align-items: baseline;
+  gap: 1px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
   font-family: var(--font-data);
-  font-size: 18px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1;
   color: var(--color-canvas);
   letter-spacing: -0.01em;
+}
+.school-card__rank-hash { font-size: 10px; opacity: 0.6; margin-right: 1px; }
+.school-card__rank-tie {
+  font-size: 8px;
+  font-weight: 700;
+  margin-left: 1px;
+  top: -4px;
+  color: inherit;
+  opacity: 0.7;
 }
 .school-card__rank--gold { background: #f59e0b; }
 .school-card__rank--silver { background: var(--color-ink); }
@@ -785,66 +787,90 @@ function get4Dims(row: UniversityAllDTO | any): { qs: number | null; usnews: num
   display: inline-flex;
   gap: 4px;
   flex-wrap: wrap;
-  justify-content: flex-end;
 }
 .school-card__chip {
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
-  border-radius: 6px;
+  padding: 2px 7px;
+  border-radius: 5px;
   background: var(--color-surface);
   border: 1px solid var(--color-hairline);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  color: var(--color-ink);
+  color: var(--color-slate);
   letter-spacing: 0.02em;
   white-space: nowrap;
+  line-height: 1.4;
 }
+/* bookmark 按钮 (右上角) */
+.school-card__bookmark {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--color-hairline);
+  color: var(--color-slate);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.school-card__bookmark:hover {
+  background: var(--color-surface);
+  border-color: var(--color-ink);
+  color: var(--color-ink);
+}
+.school-card__bookmark--on {
+  background: var(--color-brand-blue);
+  border-color: var(--color-brand-blue);
+  color: var(--color-canvas);
+}
+/* 主标题: 学校名 18px weight 600 — 信息层级反转 */
 .school-card__name {
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   line-height: 1.30;
+  letter-spacing: -0.01em;
   color: var(--color-ink);
   text-decoration: none;
-  margin-top: -4px;
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .school-card__name:hover { color: var(--color-brand-blue); }
+/* meta: 国家 + 洲 chip */
 .school-card__meta {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: auto;
 }
 .school-card__country {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
-  color: var(--color-ink);
+  color: var(--color-slate);
 }
 .school-card__region {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: 5px;
+  padding: 2px 8px;
   border-radius: 9999px;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
-  width: fit-content;
+  line-height: 1.5;
 }
 .school-card__region-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 9999px;
 }
-.school-card__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding-top: 16px;
-  border-top: 1px solid var(--color-hairline-soft);
-  margin-top: auto;
-}
-.school-card__action { font-size: 12px; font-weight: 600; }
 
 /* ===== Empty state ===== */
 .empty-state {
