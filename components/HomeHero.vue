@@ -112,15 +112,17 @@ defineProps<{
 }
 
 .home-hero__title-line1 {
-  font-size: 80px;
+  font-size: 56px;
   color: var(--ui-text);
+  letter-spacing: -1.5px;
 }
 
 .home-hero__title-line2 {
-  font-size: 80px;
+  font-size: 56px;
   display: flex;
   align-items: baseline;
   gap: 16px;
+  letter-spacing: -1.5px;
 }
 
 .home-hero__title-emph {
