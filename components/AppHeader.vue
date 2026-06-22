@@ -1,44 +1,49 @@
 <script setup lang="ts">
 /**
- * DESIGN.md §Top Navigation (Marketing)
- * 白底 + 64px 高 + 底边 1px hairline-soft
- * 左: wordmark + 副标 · 中: link list · 右: 黑色 pill "登录" / 头像 + 退出
+ * AppHeader · 顶部导航
+ *
+ * - 白底 64px，底部 hairline
+ * - 桌面：brand + 导航 pill + 登录/用户
+ * - 移动：抽屉菜单
  */
 const route = useRoute()
-const open = ref(false)
 const auth = useAuthStore()
+const drawerOpen = ref(false)
 
 const navItems = [
   { label: '首页', to: '/', icon: 'i-lucide-home' },
   { label: '学校库', to: '/universities', icon: 'i-lucide-library-big' },
   { label: '上传中心', to: '/upload', icon: 'i-lucide-upload' },
   { label: '我的选校', to: '/choices', icon: 'i-lucide-bookmark-check' },
-  { label: '数据图表', to: '/charts', icon: 'i-lucide-line-chart' }
+  { label: '数据图表', to: '/charts', icon: 'i-lucide-line-chart' },
 ]
 
-function close() { open.value = false }
-const isActive = (to: string) => {
+function isActive(to: string): boolean {
   if (to === '/') return route.path === '/'
   return route.path === to || route.path.startsWith(to + '/')
+}
+
+function closeDrawer() {
+  drawerOpen.value = false
 }
 </script>
 
 <template>
-  <header class="nav-root">
-    <div class="nav-inner">
-      <!-- 左: brand -->
-      <NuxtLink to="/" class="brand" @click="close">
-        <div class="brand__mark">
+  <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-[var(--color-hairline-soft)]">
+    <div class="page-container flex items-center h-16 gap-6">
+      <!-- Brand -->
+      <NuxtLink to="/" class="flex items-center gap-2.5 shrink-0 no-underline" @click="closeDrawer">
+        <span class="w-9 h-9 rounded-xl bg-ink text-white flex items-center justify-center">
           <UIcon name="i-lucide-graduation-cap" class="size-4" />
-        </div>
-        <div class="brand__txt">
-          <span class="brand__name">选校系统</span>
-          <span class="brand__sub">PhD 申请助手</span>
-        </div>
+        </span>
+        <span class="flex flex-col leading-tight">
+          <span class="font-display text-[17px] font-semibold tracking-tight text-ink">选校系统</span>
+          <span class="text-[11px] text-stone">PhD 申请助手</span>
+        </span>
       </NuxtLink>
 
-      <!-- 中: 桌面 nav -->
-      <nav class="nav-list">
+      <!-- Desktop nav pills -->
+      <nav class="hidden md:flex flex-1 items-center justify-center gap-1">
         <UButton
           v-for="item in navItems"
           :key="item.to"
@@ -46,13 +51,14 @@ const isActive = (to: string) => {
           :variant="isActive(item.to) ? 'solid' : 'ghost'"
           :color="isActive(item.to) ? 'primary' : 'neutral'"
           size="sm"
+          :icon="item.icon"
           :label="item.label"
           class="rounded-full"
         />
       </nav>
 
-      <!-- 右: 账户 -->
-      <div class="nav-right">
+      <!-- Right account -->
+      <div class="hidden md:flex items-center gap-2">
         <template v-if="auth.isLoggedIn">
           <UAvatar
             v-if="auth.avatar"
@@ -60,7 +66,7 @@ const isActive = (to: string) => {
             :alt="auth.displayName"
             size="xs"
           />
-          <span class="nav-username">{{ auth.displayName }}</span>
+          <span class="text-sm font-medium text-ink">{{ auth.displayName }}</span>
           <UButton
             label="退出"
             color="neutral"
@@ -81,159 +87,60 @@ const isActive = (to: string) => {
         />
       </div>
 
-      <!-- 移动端 menu button -->
+      <!-- Mobile menu trigger -->
       <UButton
-        :icon="open ? 'i-lucide-x' : 'i-lucide-menu'"
+        :icon="drawerOpen ? 'i-lucide-x' : 'i-lucide-menu'"
         color="neutral"
         variant="ghost"
         size="sm"
         square
-        class="nav-burger"
-        @click="open = !open"
+        class="md:hidden ml-auto rounded-full"
+        aria-label="打开菜单"
+        @click="drawerOpen = !drawerOpen"
       />
     </div>
 
-    <!-- 移动端 drawer -->
-    <Transition
-      enter-active-class="transition-all duration-200 ease-out"
-      leave-active-class="transition-all duration-150 ease-in"
-      enter-from-class="opacity-0 -translate-y-2"
-      leave-to-class="opacity-0 -translate-y-2"
-    >
-      <div v-if="open" class="nav-mobile">
-        <UButton
-          v-for="item in navItems"
-          :key="item.to"
-          :to="item.to"
-          :variant="isActive(item.to) ? 'solid' : 'ghost'"
-          :color="isActive(item.to) ? 'primary' : 'neutral'"
-          size="sm"
-          :label="item.label"
-          block
-          class="justify-start rounded-full"
-          @click="close"
-        />
-        <div class="nav-mobile-sep" />
-        <UButton
-          v-if="auth.isLoggedIn"
-          label="退出登录"
-          color="neutral"
-          variant="outline"
-          size="sm"
-          block
-          class="rounded-full"
-          @click="auth.clearUser(); close()"
-        />
-        <UButton
-          v-else
-          to="/login"
-          label="登录"
-          color="primary"
-          variant="solid"
-          size="sm"
-          block
-          class="rounded-full"
-          @click="close"
-        />
-      </div>
-    </Transition>
+    <!-- Mobile drawer -->
+    <UDrawer v-model:open="drawerOpen" direction="bottom" :ui="{ content: 'h-auto rounded-t-2xl pb-safe' }">
+      <template #body>
+        <div class="flex flex-col gap-2 p-2 pb-4">
+          <UButton
+            v-for="item in navItems"
+            :key="item.to"
+            :to="item.to"
+            :variant="isActive(item.to) ? 'solid' : 'ghost'"
+            :color="isActive(item.to) ? 'primary' : 'neutral'"
+            size="md"
+            :icon="item.icon"
+            :label="item.label"
+            block
+            class="justify-start rounded-full"
+            @click="closeDrawer"
+          />
+          <div class="h-px bg-[var(--color-hairline-soft)] my-1" />
+          <UButton
+            v-if="auth.isLoggedIn"
+            label="退出登录"
+            color="neutral"
+            variant="outline"
+            size="md"
+            block
+            class="rounded-full"
+            @click="auth.clearUser(); closeDrawer()"
+          />
+          <UButton
+            v-else
+            to="/login"
+            label="登录"
+            color="primary"
+            variant="solid"
+            size="md"
+            block
+            class="rounded-full"
+            @click="closeDrawer"
+          />
+        </div>
+      </template>
+    </UDrawer>
   </header>
 </template>
-
-<style scoped>
-/* DESIGN.md §Top Navigation (Marketing): 64px · 白底 · 底 1px hairline-soft */
-.nav-root {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  background: var(--color-canvas);
-  border-bottom: 1px solid var(--color-hairline-soft);
-  backdrop-filter: blur(8px);
-}
-.nav-inner {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 0 32px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-@media (max-width: 768px) {
-  .nav-inner { padding: 0 16px; gap: 12px; }
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-.brand__mark {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-lg);
-  background: var(--color-primary);
-  color: var(--color-canvas);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.brand__txt { display: flex; flex-direction: column; line-height: 1.2; }
-.brand__name {
-  font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-  color: var(--color-ink);
-}
-.brand__sub {
-  font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--color-stone);
-  margin-top: 2px;
-}
-.nav-list {
-  display: none;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-@media (min-width: 768px) {
-  .nav-list { display: flex; }
-}
-.nav-right {
-  display: none;
-  align-items: center;
-  gap: 8px;
-}
-@media (min-width: 768px) {
-  .nav-right { display: flex; }
-}
-.nav-username {
-  font-family: var(--font-ui);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-ink);
-}
-.nav-burger {
-  margin-left: auto;
-}
-@media (min-width: 768px) {
-  .nav-burger { display: none; }
-}
-.nav-mobile {
-  border-top: 1px solid var(--color-hairline-soft);
-  padding: 12px 16px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: var(--color-canvas);
-}
-.nav-mobile-sep {
-  height: 1px;
-  background: var(--color-hairline-soft);
-  margin: 4px 0;
-}
-</style>

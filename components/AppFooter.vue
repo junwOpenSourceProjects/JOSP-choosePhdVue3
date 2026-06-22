@@ -1,17 +1,25 @@
 <script setup lang="ts">
-/**
- * DESIGN.md §footer-region
- * 4 列 link grid · 黑底 · section padding
- */
-const sections = [
+interface FooterLink {
+  label: string
+  to?: string
+  href?: string
+  external?: boolean
+}
+
+interface FooterSection {
+  title: string
+  links: FooterLink[]
+}
+
+const sections: FooterSection[] = [
   {
     title: '数据',
     links: [
       { label: 'QS 世界排名', to: '/universities?rankTable=qs' },
       { label: 'US News 综合', to: '/universities?rankTable=usnews' },
       { label: 'ARWU 软科', to: '/universities?rankTable=arwu_subject' },
-      { label: 'QS 学科', to: '/universities?rankTable=qs_sustainability' }
-    ]
+      { label: 'QS 可持续', to: '/universities?rankTable=qs_sustainability' },
+    ],
   },
   {
     title: '工具',
@@ -19,154 +27,69 @@ const sections = [
       { label: '学校库', to: '/universities' },
       { label: '数据图表', to: '/charts' },
       { label: '我的选校', to: '/choices' },
-      { label: '上传中心', to: '/upload' }
-    ]
+      { label: '上传中心', to: '/upload' },
+    ],
   },
   {
     title: '关于',
     links: [
       { label: '项目文档', href: '/SPEC.md', external: true },
       { label: '设计规范', href: '/DESIGN.md', external: true },
-      { label: '数据来源', to: '/universities' }
-    ]
-  }
+      { label: '数据来源', to: '/universities' },
+    ],
+  },
+  {
+    title: '支持',
+    links: [
+      { label: '帮助中心', href: '#', external: true },
+      { label: '联系我们', href: '#', external: true },
+      { label: '使用反馈', href: '#', external: true },
+    ],
+  },
 ]
 </script>
 
 <template>
-  <footer class="footer">
-    <div class="footer__inner">
-      <div class="footer__top">
-        <div class="footer__brand">
-          <div class="footer__mark">
-            <UIcon name="i-lucide-graduation-cap" class="size-4" />
-          </div>
-          <div>
-            <div class="footer__name">选校系统</div>
-            <div class="footer__sub">PhD 申请 · 数据驱动 · 选校决策</div>
+  <footer class="bg-ink text-white mt-20 md:mt-24">
+    <div class="page-container py-14 md:py-16 pb-8">
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-10 md:gap-8 pb-12 border-b border-white/10">
+        <!-- Brand -->
+        <div class="col-span-2 md:col-span-1">
+          <div class="flex items-start gap-3">
+            <span class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+              <UIcon name="i-lucide-graduation-cap" class="size-4" />
+            </span>
+            <div>
+              <div class="font-display text-[17px] font-semibold text-white">选校系统</div>
+              <div class="text-[13px] text-white/60 mt-1.5">PhD 申请 · 数据驱动 · 选校决策</div>
+            </div>
           </div>
         </div>
-        <div class="footer__grid">
-          <div v-for="s in sections" :key="s.title" class="footer__col">
-            <div class="footer__heading">{{ s.title }}</div>
-            <template v-for="l in s.links" :key="l.label">
-              <a
-                v-if="l.external"
-                :href="l.href"
-                target="_blank"
-                rel="noopener"
-                class="footer__link"
-              >{{ l.label }}</a>
-              <NuxtLink
-                v-else
-                :to="l.to"
-                class="footer__link"
-              >{{ l.label }}</NuxtLink>
-            </template>
-          </div>
+
+        <!-- Link columns -->
+        <div v-for="s in sections" :key="s.title" class="flex flex-col gap-2.5">
+          <div class="text-sm font-semibold text-white mb-1">{{ s.title }}</div>
+          <template v-for="l in s.links" :key="l.label">
+            <a
+              v-if="l.href"
+              :href="l.href"
+              target="_blank"
+              rel="noopener"
+              class="text-sm text-white/60 hover:text-white transition-colors"
+            >{{ l.label }}</a>
+            <NuxtLink
+              v-else
+              :to="l.to"
+              class="text-sm text-white/60 hover:text-white transition-colors"
+            >{{ l.label }}</NuxtLink>
+          </template>
         </div>
       </div>
-      <div class="footer__bottom">
+
+      <div class="flex flex-wrap justify-between gap-3 pt-6 text-xs text-white/50">
         <span>© {{ new Date().getFullYear() }} 选校系统</span>
         <span>数据来源 · QS / US News / ARWU / EduRank / MOSIUR / RUR</span>
       </div>
     </div>
   </footer>
 </template>
-
-<style scoped>
-/* DESIGN.md §footer-region: footer-bg · padding section · 黑底 */
-.footer {
-  background: var(--color-footer-bg);
-  color: var(--color-on-dark);
-  margin-top: 80px;
-}
-.footer__inner {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 64px 32px 32px;
-}
-@media (max-width: 768px) {
-  .footer__inner { padding: 48px 16px 24px; }
-}
-.footer__top {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 40px;
-  padding-bottom: 48px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
-}
-@media (min-width: 768px) {
-  .footer__top {
-    grid-template-columns: 1fr 2fr;
-    gap: 64px;
-  }
-}
-.footer__brand {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-.footer__mark {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.10);
-  color: var(--color-on-dark);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.footer__name {
-  font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--color-on-dark);
-}
-.footer__sub {
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--color-muted);
-  margin-top: 6px;
-}
-.footer__grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 32px;
-}
-@media (min-width: 768px) {
-  .footer__grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-.footer__col { display: flex; flex-direction: column; gap: 10px; }
-.footer__heading {
-  font-family: var(--font-ui);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-on-dark);
-  margin-bottom: 4px;
-}
-.footer__link {
-  font-family: var(--font-ui);
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--color-muted);
-  text-decoration: none;
-  padding: 2px 0;
-  transition: color 160ms ease;
-}
-.footer__link:hover { color: var(--color-on-dark); }
-.footer__bottom {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 24px;
-  font-family: var(--font-ui);
-  font-size: 12px;
-  color: var(--color-muted);
-}
-</style>

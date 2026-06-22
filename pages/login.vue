@@ -12,6 +12,18 @@ const error = ref<string | null>(null)
 const showPassword = ref(false)
 const remember = ref(true)
 
+const brandStats = [
+  { value: '2,884', label: '覆盖大学' },
+  { value: '9', label: '排名体系' },
+  { value: '10y', label: '历年数据' },
+]
+
+const brandFeatures = [
+  { icon: 'i-lucide-database', text: '9 大权威排名体系聚合' },
+  { icon: 'i-lucide-bar-chart-3', text: '历年趋势 + 多维对比' },
+  { icon: 'i-lucide-bookmark-check', text: '「考虑 / 不考虑」状态管理' },
+]
+
 async function submit() {
   if (!username.value || !password.value) {
     error.value = '请输入用户名和密码'
@@ -20,11 +32,11 @@ async function submit() {
   loading.value = true
   error.value = null
   try {
-    const res = await login({
+    await login({
       username: username.value.trim(),
-      password: password.value
+      password: password.value,
     })
-    auth.setUser(res.data)
+    await auth.fetchUser()
     await navigateTo('/choices')
   } catch (e: any) {
     const msg = e?.data?.msg || e?.message || '登录失败'
@@ -41,100 +53,88 @@ function fillAdmin() {
 </script>
 
 <template>
-  <div class="login-shell">
-    <!-- 左: brand panel -->
-    <aside class="login-brand">
-      <div class="login-brand__inner">
-        <NuxtLink to="/" class="login-brand__logo">
-          <div class="login-brand__mark">
+  <div class="min-h-[calc(100vh-64px)] grid grid-cols-1 lg:grid-cols-2">
+    <!-- 左：品牌面板 -->
+    <aside class="hidden lg:flex flex-col justify-between bg-ink text-white p-12 xl:p-14">
+      <div class="flex flex-col gap-12">
+        <NuxtLink to="/" class="flex items-center gap-3 no-underline">
+          <span class="w-11 h-11 rounded-[14px] bg-white text-ink flex items-center justify-center">
             <UIcon name="i-lucide-graduation-cap" class="size-5" />
-          </div>
+          </span>
           <div>
-            <div class="login-brand__name">选校系统</div>
-            <div class="login-brand__sub">PhD 申请助手</div>
+            <div class="font-display text-xl font-semibold text-white">选校系统</div>
+            <div class="text-xs text-white/60 mt-0.5">PhD 申请助手</div>
           </div>
         </NuxtLink>
 
-        <div class="login-brand__hero">
-          <UBadge color="primary" variant="solid" size="md">
-            <UIcon name="i-lucide-sparkles" class="size-3.5" />
-            <span class="ml-1.5 t-caption-bold">PhD 选校 · 数据驱动决策</span>
-          </UBadge>
-          <h1 class="t-hero login-brand__title">
+        <div class="flex flex-col gap-5 max-w-lg">
+          <span class="inline-flex items-center gap-1.5 w-fit px-3 py-1.5 rounded-full bg-white/10 text-[13px] font-semibold">
+            <UIcon name="i-lucide-sparkles" class="size-4" />
+            PhD 选校 · 数据驱动决策
+          </span>
+          <h1 class="font-display text-5xl xl:text-6xl font-semibold leading-[1.05] tracking-tight text-white">
             登录<br />开始你的<br />选校之旅
           </h1>
-          <p class="t-subtitle login-brand__lead">
+          <p class="text-lg font-medium text-white/70">
             9 大排名体系 · 综合 + 计算机双维度 · 历年趋势 + 院校对比
           </p>
         </div>
 
-        <div class="login-brand__stats">
-          <div class="login-stat">
-            <div class="login-stat__value">2,884</div>
-            <div class="login-stat__label">覆盖大学</div>
-          </div>
-          <div class="login-stat__sep" />
-          <div class="login-stat">
-            <div class="login-stat__value">9</div>
-            <div class="login-stat__label">排名体系</div>
-          </div>
-          <div class="login-stat__sep" />
-          <div class="login-stat">
-            <div class="login-stat__value">10y</div>
-            <div class="login-stat__label">历年数据</div>
+        <div class="flex items-center gap-6 py-6 border-y border-white/10 max-w-lg">
+          <div v-for="stat in brandStats" :key="stat.label" class="flex-1">
+            <div class="font-display text-4xl xl:text-5xl font-semibold tracking-tight text-white">{{ stat.value }}</div>
+            <div class="text-xs text-white/50 mt-1.5">{{ stat.label }}</div>
           </div>
         </div>
 
-        <div class="login-brand__features">
-          <div class="login-feature">
-            <UIcon name="i-lucide-database" class="size-4 text-brand" />
-            <span class="t-body-sm">9 大权威排名体系聚合</span>
-          </div>
-          <div class="login-feature">
-            <UIcon name="i-lucide-bar-chart-3" class="size-4 text-brand" />
-            <span class="t-body-sm">历年趋势 + 多维对比</span>
-          </div>
-          <div class="login-feature">
-            <UIcon name="i-lucide-bookmark-check" class="size-4 text-brand" />
-            <span class="t-body-sm">「考虑 / 不考虑」状态管理</span>
+        <div class="flex flex-col gap-3 max-w-lg">
+          <div v-for="f in brandFeatures" :key="f.text" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
+            <UIcon :name="f.icon" class="size-4 text-white/80" />
+            <span class="text-sm font-medium text-white/90">{{ f.text }}</span>
           </div>
         </div>
       </div>
-      <div class="login-brand__foot">
+
+      <div class="text-xs text-white/40">
         © {{ new Date().getFullYear() }} 选校系统 · 数据驱动选校决策
       </div>
     </aside>
 
-    <!-- 右: 登录表单 -->
-    <main class="login-form-wrap">
-      <div class="login-form">
-        <div class="login-form__head">
+    <!-- 右：登录表单 -->
+    <main class="flex items-center justify-center bg-white px-6 py-12 md:py-16">
+      <div class="w-full max-w-md flex flex-col gap-8">
+        <div>
           <h2 class="t-h2">欢迎回来</h2>
           <p class="t-body-sm text-muted mt-1">登录账户继续你的选校决策</p>
         </div>
 
-        <form class="login-form__body" @submit.prevent="submit">
+        <form class="flex flex-col gap-5" @submit.prevent="submit">
           <UFormField label="用户名" required>
             <UInput
               v-model="username"
-              icon="i-lucide-user"
-              placeholder="请输入用户名"
               size="lg"
+              placeholder="请输入用户名"
               autocomplete="username"
-              :ui="{ leadingIcon: 'size-4' }"
-            />
+              class="w-full"
+            >
+              <template #leading>
+                <UIcon name="i-lucide-user" class="size-4 text-stone" />
+              </template>
+            </UInput>
           </UFormField>
 
           <UFormField label="密码" required>
             <UInput
               v-model="password"
               :type="showPassword ? 'text' : 'password'"
-              icon="i-lucide-lock"
-              placeholder="请输入密码"
               size="lg"
+              placeholder="请输入密码"
               autocomplete="current-password"
-              :ui="{ leadingIcon: 'size-4', trailingIcon: 'size-4' }"
+              class="w-full"
             >
+              <template #leading>
+                <UIcon name="i-lucide-lock" class="size-4 text-stone" />
+              </template>
               <template #trailing>
                 <UButton
                   :icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
@@ -142,13 +142,15 @@ function fillAdmin() {
                   variant="ghost"
                   size="xs"
                   square
+                  class="rounded-full"
+                  aria-label="切换密码可见性"
                   @click="showPassword = !showPassword"
                 />
               </template>
             </UInput>
           </UFormField>
 
-          <div class="login-form__extras">
+          <div class="flex items-center justify-between flex-wrap gap-2">
             <UCheckbox v-model="remember" label="记住登录状态" />
             <UButton variant="ghost" color="primary" size="sm" label="忘记密码?" class="rounded-full" />
           </div>
@@ -164,25 +166,29 @@ function fillAdmin() {
             :loading="loading"
             icon="i-lucide-log-in"
             label="登录"
-            class="rounded-full login-form__submit"
+            class="rounded-full mt-1"
           />
 
-          <div class="login-form__divider"><span>或</span></div>
+          <div class="flex items-center gap-3 my-1 text-xs text-stone">
+            <span class="h-px flex-1 bg-hairline" />
+            <span>或</span>
+            <span class="h-px flex-1 bg-hairline" />
+          </div>
 
           <UButton
             type="button"
-            color="neutral"
+            color="primary"
             variant="outline"
             size="lg"
             block
             icon="i-lucide-key-round"
             label="使用测试账号 admin"
-            class="rounded-full"
+            class="rounded-full bg-white"
             @click="fillAdmin"
           />
         </form>
 
-        <div class="login-form__foot">
+        <div class="flex items-center justify-center gap-2 pt-4 border-t border-hairline-soft">
           <span class="t-caption text-muted">还没有账号?</span>
           <UButton variant="ghost" color="primary" size="sm" label="联系管理员" class="rounded-full" />
         </div>
@@ -190,181 +196,3 @@ function fillAdmin() {
     </main>
   </div>
 </template>
-
-<style scoped>
-/* ========== 双栏布局 ========== */
-.login-shell {
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: 1fr;
-}
-@media (min-width: 1024px) {
-  .login-shell { grid-template-columns: 1fr 1fr; }
-}
-
-/* ========== 左 brand panel ========== */
-.login-brand {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  background: var(--color-canvas);
-  padding: 48px 56px;
-  border-right: 1px solid var(--color-hairline);
-}
-@media (max-width: 1023px) {
-  .login-brand { display: none; }
-}
-.login-brand__inner { display: flex; flex-direction: column; gap: 48px; }
-.login-brand__logo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-decoration: none;
-}
-.login-brand__mark {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  background: var(--color-brand-blue);
-  color: var(--color-canvas);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.login-brand__name {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--color-ink);
-}
-.login-brand__sub {
-  font-family: var(--font-ui);
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--color-stone);
-  margin-top: 2px;
-}
-.login-brand__hero {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  max-width: 520px;
-}
-.login-brand__title { margin: 0; }
-.login-brand__lead { margin: 0; color: var(--color-slate); }
-
-.login-brand__features {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 8px;
-}
-.login-brand__stats {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 24px 0;
-  border-top: 1px solid var(--color-hairline);
-  border-bottom: 1px solid var(--color-hairline);
-}
-.login-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1;
-}
-.login-stat__value {
-  font-family: var(--font-display);
-  font-size: 40px;
-  font-weight: 600;
-  line-height: 1.10;
-  color: var(--color-ink);
-  letter-spacing: -1px;
-  font-variant-numeric: tabular-nums;
-}
-.login-stat__label {
-  font-family: var(--font-ui);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-stone);
-}
-.login-stat__sep {
-  width: 1px;
-  height: 48px;
-  background: var(--color-hairline);
-}
-.login-feature {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-hairline-soft);
-  border-radius: 12px;
-}
-
-.login-brand__foot {
-  font-family: var(--font-ui);
-  font-size: 12px;
-  color: var(--color-stone);
-}
-
-/* ========== 右 form ========== */
-.login-form-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 32px;
-  background: var(--color-canvas);
-}
-.login-form {
-  width: 100%;
-  max-width: 440px;
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-}
-.login-form__head { text-align: left; }
-
-.login-form__body {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.login-form__extras {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.login-form__submit { margin-top: 4px; }
-
-.login-form__divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 4px 0;
-  font-size: 12px;
-  color: var(--color-stone);
-}
-.login-form__divider::before,
-.login-form__divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--color-hairline);
-}
-
-.login-form__foot {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding-top: 16px;
-  border-top: 1px solid var(--color-hairline-soft);
-}
-</style>

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
- * DESIGN.md §testimonial-stat-row
- * 大数字 {typography.heading-lg} (40px) · 副标 {typography.body-sm} {colors.steel}
- * 白底 + 16px 圆角 + 1px hairline border
+ * StatCard · 大数字统计卡
+ *
+ * 用 UCard 包裹，保持 DESIGN.md 白底 + hairline 边框。
  */
 defineProps<{
   label: string
@@ -14,32 +14,24 @@ defineProps<{
 </script>
 
 <template>
-  <div class="stat">
+  <UCard
+    :ui="{
+      root: 'rounded-2xl border border-default bg-default ring-0',
+      body: 'p-5',
+    }"
+  >
     <div class="stat__head">
       <span class="stat__label">{{ label }}</span>
-      <UIcon v-if="icon" :name="icon" class="stat__icon" />
+      <UIcon v-if="icon" :name="icon" class="size-4 text-stone" />
     </div>
-    <div class="stat__value" :class="{ 'is-primary': primary }">
+    <div class="stat__value" :class="{ 'stat__value--primary': primary }">
       {{ value }}
     </div>
     <div v-if="hint" class="stat__hint">{{ hint }}</div>
-  </div>
+  </UCard>
 </template>
 
 <style scoped>
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 24px;
-  background: var(--color-canvas);
-  border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-xl);
-  transition: box-shadow 200ms ease;
-}
-.stat:hover {
-  box-shadow: rgba(0, 0, 0, 0.08) 0px 4px 6px 0px;
-}
 .stat__head {
   display: flex;
   align-items: center;
@@ -52,11 +44,6 @@ defineProps<{
   line-height: 1.7;
   color: var(--color-slate);
 }
-.stat__icon {
-  width: 16px;
-  height: 16px;
-  color: var(--color-steel);
-}
 .stat__value {
   font-family: var(--font-display);
   font-size: 32px;
@@ -64,8 +51,9 @@ defineProps<{
   line-height: 1.25;
   letter-spacing: -0.5px;
   color: var(--color-ink);
+  margin-top: 8px;
 }
-.stat__value.is-primary {
+.stat__value--primary {
   color: var(--color-brand-blue);
 }
 .stat__hint {
@@ -74,5 +62,6 @@ defineProps<{
   font-weight: 400;
   line-height: 1.5;
   color: var(--color-stone);
+  margin-top: 4px;
 }
 </style>

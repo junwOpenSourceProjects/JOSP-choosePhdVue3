@@ -140,13 +140,31 @@ function generateMockChart() {
 }
 
 // ============== 4 维排名数据派生 (不依赖 rankTab, 4 维全显示) ==============
-const rankCards = computed(() => {
+interface RankCard {
+  label: string
+  suffix: string
+  icon: string
+  color: string
+  rankField: string
+  rank: number | null
+  series: (number | null)[]
+  years: string[]
+}
+
+const FALLBACK_CARDS: Omit<RankCard, 'rank' | 'series' | 'years'>[] = [
+  { label: 'QS 综合', suffix: 'qs', icon: 'i-lucide-globe-2', color: '#ff5530', rankField: 'currentQsAllRank' },
+  { label: 'US News 综合', suffix: 'usnews', icon: 'i-lucide-award', color: '#ea5ec1', rankField: 'currentUsnewsAllRank' },
+  { label: 'QS 计算机', suffix: 'qs_cs', icon: 'i-lucide-cpu', color: '#1456f0', rankField: 'currentQsComputerRank' },
+  { label: 'US News 计算机', suffix: 'usnews_cs', icon: 'i-lucide-code-2', color: '#a855f7', rankField: 'currentUsnewsComputerRank' }
+]
+
+const rankCards = computed<RankCard[]>(() => {
   if (!detail.value || !chartData.value?.chatData) {
-    return FALLBACK_CARDS.map(c => ({ ...c, series: [] as (number | null)[], years: [] as string[] }))
+    return FALLBACK_CARDS.map(c => ({ ...c, rank: null, series: [] as (number | null)[], years: [] as string[] }))
   }
   const years = chartData.value.legendData ?? []
   return FALLBACK_CARDS.map(c => {
-    const series = chartData.value.chatData.series.find((s: any) => s.name?.endsWith(c.suffix))
+    const series = chartData.value!.chatData.series.find((s: any) => s.name?.endsWith(c.suffix))
     return {
       ...c,
       rank: (detail.value as any)[c.rankField] as number | null,
@@ -155,13 +173,6 @@ const rankCards = computed(() => {
     }
   })
 })
-
-const FALLBACK_CARDS = [
-  { label: 'QS 综合', suffix: 'qs', icon: 'i-lucide-globe-2', color: '#1456f0', rankField: 'currentQsAllRank' },
-  { label: 'QS 计算机', suffix: 'qs_cs', icon: 'i-lucide-cpu', color: '#3b82f6', rankField: 'currentQsComputerRank' },
-  { label: 'US News 综合', suffix: 'usnews', icon: 'i-lucide-award', color: '#ea5ec1', rankField: 'currentUsnewsAllRank' },
-  { label: 'US News 计算机', suffix: 'usnews_cs', icon: 'i-lucide-code-2', color: '#a855f7', rankField: 'currentUsnewsComputerRank' }
-]
 
 // ============== 对比组 (localStorage) ==============
 const COMPARE_KEY = 'choosephd.compare'
@@ -192,14 +203,6 @@ const inCompare = computed(() => compareList.value.some(c => c.name === name.val
 // ============== 杂项 ==============
 function back() { router.back() }
 
-function rankBadgeTier(rank: number | null | undefined): string {
-  if (rank == null) return 'rank-badge--normal'
-  if (rank <= 3) return 'rank-badge--gold'
-  if (rank <= 10) return 'rank-badge--silver'
-  if (rank <= 50) return 'rank-badge--bronze'
-  return 'rank-badge--normal'
-}
-
 onMounted(loadCompare)
 </script>
 
@@ -222,7 +225,7 @@ onMounted(loadCompare)
     <div class="page-container section-band">
       <div class="section-head">
         <div class="t-caption-bold text-muted">4 维排名 · 综合/计算机 × QS/US News</div>
-        <h2 class="t-h3 mt-1">排名一览</h2>
+        <h2 class="t-h2 mt-1">排名一览</h2>
         <p class="t-caption mt-1 text-muted">最新年大数字 · 历年 sparkline · 与 5 年前对比徽章</p>
       </div>
       <div class="rank-grid">
@@ -248,20 +251,12 @@ onMounted(loadCompare)
     <div v-if="chartData" class="page-container section-band">
       <UCard class="trend-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-6' }">
         <div class="mb-5">
-          <h2 class="t-h3">历年排名趋势</h2>
+          <h2 class="t-h2">历年排名趋势</h2>
           <p class="t-caption mt-1">4 个维度 · 历年变化 (越低越好)</p>
         </div>
-        <ClientOnly>
-          <div class="trend-card__chart">
-            <ChartSvgChart :chart="chartData" :height="320" />
-          </div>
-          <template #fallback>
-            <div class="trend-card__loading">
-              <UIcon name="i-lucide-loader" class="mr-1.5 size-4 animate-spin" />
-              <span class="t-body-sm text-muted">加载趋势数据…</span>
-            </div>
-          </template>
-        </ClientOnly>
+        <div class="trend-card__chart">
+          <VChart :chart="chartData" :height="320" />
+        </div>
       </UCard>
     </div>
 
@@ -269,7 +264,7 @@ onMounted(loadCompare)
     <div v-if="chartData" class="page-container section-band">
       <UCard class="matrix-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0 overflow-hidden', body: 'p-6' }">
         <div class="mb-5">
-          <h2 class="t-h3">历年数据明细</h2>
+          <h2 class="t-h2">历年数据明细</h2>
           <p class="t-caption mt-1">年份 × 4 维排名 · 绿色高亮 = 该维度历史最佳</p>
         </div>
         <RankingMatrix :chart="chartData" />
@@ -287,11 +282,11 @@ onMounted(loadCompare)
         >
           <div class="flex-1 text-left">
             <div class="t-caption-bold text-muted">多榜单覆盖</div>
-            <h2 class="t-h3 mt-1">其他榜单排名</h2>
+            <h2 class="t-h2 mt-1">其他榜单排名</h2>
             <p class="t-caption mt-1 text-muted">
               {{ backup2Groups.length }} 个榜单有数据
               <span v-if="backup2Loading" class="ml-2 inline-flex items-center gap-1 text-muted">
-                <UIcon name="i-lucide-loader-2" class="size-3.5 animate-spin" />
+                <UIcon name="i-lucide-loader-2" class="size-4 animate-spin" />
                 加载中…
               </span>
               <span v-else-if="backup2Groups.length > 0" class="ml-2">
@@ -301,7 +296,7 @@ onMounted(loadCompare)
           </div>
           <UIcon
             :name="otherRankingsOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-            class="size-5 text-muted"
+            class="size-4 text-muted"
           />
         </button>
 
@@ -326,16 +321,14 @@ onMounted(loadCompare)
                   :key="i"
                   class="other-rank-row"
                 >
-                  <span :class="['rank-badge', rankBadgeTier(r.currentRankInteger), 'rank-badge--sm']">
-                    {{ r.currentRankInteger ?? '—' }}
-                  </span>
+                  <RankBadge :rank="r.currentRankInteger" size="sm" />
                   <span class="other-rank-row__title">
                     <template v-if="r.rankingCategory">{{ r.rankingCategory }}</template>
                     <template v-else-if="r.universityTags">{{ r.universityTags }}</template>
                     <template v-else>—</template>
                   </span>
                   <span v-if="r.rankingYear" class="other-rank-row__year">
-                    <UIcon name="i-lucide-calendar" class="size-3" />
+                    <UIcon name="i-lucide-calendar" class="size-4" />
                     {{ r.rankingYear }}
                   </span>
                   <span
@@ -354,8 +347,8 @@ onMounted(loadCompare)
     </div>
 
     <!-- ============== 7. 底 CTA ============== -->
-    <div class="page-container section-band">
-      <UCard class="bottom-cta" :ui="{ root: 'rounded-3xl border border-default bg-brand ring-0', body: 'p-8' }">
+    <div class="page-container section-band section-band--last">
+      <div class="bottom-cta">
         <div class="bottom-cta__inner">
           <div>
             <div class="t-caption-bold is-on-dark">{{ name }}</div>
@@ -365,19 +358,25 @@ onMounted(loadCompare)
             </p>
           </div>
           <div class="bottom-cta__actions">
-            <UButton
-              :icon="inCompare ? 'i-lucide-list-checks' : 'i-lucide-list-plus'"
-              :color="inCompare ? 'neutral' : 'primary'"
-              :variant="inCompare ? 'soft' : 'solid'"
-              size="md"
-              :label="inCompare ? '已加入对比' : '加入对比'"
-              class="rounded-full"
-            />
-            <UButton :to="'/charts'" color="primary" variant="solid" size="md" icon="i-lucide-git-compare" label="去图表对比" class="rounded-full" />
-            <UButton :to="'/universities'" color="primary" variant="outline" size="md" icon="i-lucide-library" label="浏览其他" class="rounded-full" />
+            <button
+              type="button"
+              :class="['bottom-cta__btn', inCompare ? 'bottom-cta__btn--ghost' : 'bottom-cta__btn--primary']"
+              @click="toggleCompare"
+            >
+              <UIcon :name="inCompare ? 'i-lucide-list-checks' : 'i-lucide-list-plus'" class="size-4" />
+              {{ inCompare ? '已加入对比' : '加入对比' }}
+            </button>
+            <NuxtLink to="/charts" class="bottom-cta__btn bottom-cta__btn--primary">
+              <UIcon name="i-lucide-git-compare" class="size-4" />
+              去图表对比
+            </NuxtLink>
+            <NuxtLink to="/universities" class="bottom-cta__btn bottom-cta__btn--ghost">
+              <UIcon name="i-lucide-library" class="size-4" />
+              浏览其他
+            </NuxtLink>
           </div>
         </div>
-      </UCard>
+      </div>
     </div>
   </div>
 </template>
@@ -397,9 +396,11 @@ onMounted(loadCompare)
 }
 
 /* Section 间距 */
-.section-band { margin-top: 24px; }
-@media (min-width: 768px) { .section-band { margin-top: 32px; } }
-.section-head { margin-bottom: 16px; }
+.section-band { margin-top: 64px; }
+@media (min-width: 768px) { .section-band { margin-top: 96px; } }
+.section-band--last { margin-bottom: 24px; }
+@media (min-width: 768px) { .section-band--last { margin-bottom: 32px; } }
+.section-head { margin-bottom: 20px; }
 
 /* Trend */
 .trend-card__chart { padding: 16px; background: var(--color-surface); border-radius: 16px; }
@@ -469,27 +470,15 @@ onMounted(loadCompare)
   padding: 4px 0;
 }
 
-/* Rank badge (其他榜单内部用) */
-:deep(.rank-badge) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  height: 24px;
-  padding: 0 6px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-canvas);
-}
-:deep(.rank-badge--sm) { font-size: 12px; height: 24px; min-width: 32px; }
-:deep(.rank-badge--gold)   { background: #f59e0b; }
-:deep(.rank-badge--silver) { background: #9ca3af; color: var(--color-ink); }
-:deep(.rank-badge--bronze) { background: #ea580c; }
-:deep(.rank-badge--normal) { background: var(--color-surface-soft); color: var(--color-ink); }
-
 /* Bottom CTA */
-.bottom-cta { background: var(--color-brand-blue) !important; border-color: transparent !important; }
+.bottom-cta {
+  padding: 40px;
+  background: var(--color-brand-blue);
+  border-radius: var(--radius-3xl);
+}
+@media (max-width: 767px) {
+  .bottom-cta { padding: 28px 24px; }
+}
 .bottom-cta__inner {
   display: flex;
   flex-wrap: wrap;
@@ -500,4 +489,34 @@ onMounted(loadCompare)
 .is-on-dark { color: var(--color-on-dark); }
 .bottom-cta__sub { color: rgba(255, 255, 255, 0.80); }
 .bottom-cta__actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.bottom-cta__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 160ms ease;
+  border: 0;
+}
+.bottom-cta__btn--primary {
+  background: var(--color-ink);
+  color: var(--color-on-dark);
+}
+.bottom-cta__btn--primary:hover { background: var(--color-charcoal); }
+.bottom-cta__btn--ghost {
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+}
+.bottom-cta__btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.70);
+}
 </style>

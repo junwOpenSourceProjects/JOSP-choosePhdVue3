@@ -4,10 +4,15 @@ import { insertChoosePhd } from '~/lib/api/choosePhd'
 import type { RankingStatusDTO } from '~/types'
 import { useWatchlist } from '~/composables/useWatchlist'
 import { computeTrend } from '~/utils/format'
+import { regionStyle, regionDot } from '~/utils/region'
 
 const { list: watchlist, remove: removeFromWatch, clear: clearWatch, count: watchCount } = useWatchlist()
 
 useHead({ title: '我的选校 · 选校系统' })
+
+definePageMeta({
+  layout: 'default',
+})
 
 // ============== 状态 ==============
 const items = ref<RankingStatusDTO[]>([])
@@ -29,12 +34,12 @@ const filterLevel = ref<'all' | 'strong' | 'medium' | 'weak'>('all')
 const search = ref<string | undefined>(undefined)
 const sortBy = ref<'total' | 'qs' | 'name'>('total')
 
-const considerItems = [
+const considerItems: { value: 'all' | 'yes' | 'no'; label: string }[] = [
   { value: 'all', label: '全部' },
   { value: 'yes', label: '考虑' },
   { value: 'no', label: '不考虑' }
 ]
-const levelItems = [
+const levelItems: { value: 'all' | 'strong' | 'medium' | 'weak'; label: string }[] = [
   { value: 'all', label: '全部强度' },
   { value: 'strong', label: '强' },
   { value: 'medium', label: '中' },
@@ -101,14 +106,14 @@ function generateMock(): RankingStatusDTO[] {
   ]
 }
 
-async function updateField(item: RankingStatusDTO, field: keyof RankingStatusDTO, value: any) {
+async function updateField(item: RankingStatusDTO, field: keyof RankingStatusDTO, value: unknown) {
   const updated = { ...item, [field]: value }
   const idx = items.value.findIndex(i => i.universityNameChinese === item.universityNameChinese)
   if (idx === -1) return
-  items.value[idx] = updated
+  items.value[idx] = updated as RankingStatusDTO
   saving.value = true
   try {
-    await insertOrUpdate(updated)
+    await insertOrUpdate(updated as RankingStatusDTO)
   } catch (e: any) {
     console.warn('[choices] update failed', e?.message)
     info.value = `已本地更新 (${item.universityNameChinese}) · 后端不可达`
@@ -187,6 +192,11 @@ const stats = computed(() => {
   return { total, considered, strong, medium }
 })
 
+const progressPercent = computed(() => {
+  const total = stats.value.total || 1
+  return Math.min(100, Math.round((stats.value.considered / total) * 100))
+})
+
 onMounted(load)
 
 // ============== 等级 chip helper ==============
@@ -197,13 +207,13 @@ function rankTierClass(rank: number): 'gold' | 'silver' | 'bronze' | 'normal' {
   return 'normal'
 }
 
-// ============== Watchlist 对比表 (C 方案核心) ==============
+// ============== Watchlist 对比表 ==============
 const compareDims = [
   { key: 'qs', label: 'QS 综合' },
   { key: 'usnews', label: 'US News' },
   { key: 'qsCs', label: 'QS 学科' },
   { key: 'usnewsCs', label: 'US News 学科' }
-]
+] as const
 const compareData = ref<Record<string, any>>({})
 const compareLoading = ref<Record<string, boolean>>({})
 
@@ -232,7 +242,13 @@ async function loadCompareForSchool(name: string) {
   }
 }
 
-const darkhorses = ref<{ name: string; trend: string }[]>([])
+interface Darkhorse {
+  name: string
+  trend: string
+  num: number
+}
+
+const darkhorses = ref<Darkhorse[]>([])
 
 watch(() => watchlist.value, async (newList) => {
   for (const name of newList) {
@@ -240,7 +256,7 @@ watch(() => watchlist.value, async (newList) => {
       await loadCompareForSchool(name)
     }
   }
-  const trends: { name: string; trend: string }[] = []
+  const trends: Darkhorse[] = []
   for (const name of newList) {
     try {
       const resp: any = await drawerData(name)
@@ -250,13 +266,13 @@ watch(() => watchlist.value, async (newList) => {
       const arr = (qs?.data ?? []).map((x: any) => (typeof x === 'number' ? x : parseFloat(x))).filter((v: number) => !Number.isNaN(v) && v > 0)
       if (arr.length < 2) continue
       const t = computeTrend(arr)
-      if (t.trend.includes('↑')) {
-        const num = parseInt(t.trend.replace(/[^0-9]/g, '')) || 0
-        trends.push({ name, trend: `${t.trend} (${t.tone})`, num })
+      if (t.tone === 'up') {
+        const num = Math.abs(t.trend)
+        trends.push({ name, trend: `↑ ${num} (${t.tone})`, num })
       }
     } catch { /* skip */ }
   }
-  darkhorses.value = trends.sort((a, b) => b.num - a.num).slice(0, 5).map(({ name, trend }) => ({ name, trend }))
+  darkhorses.value = trends.sort((a, b) => b.num - a.num).slice(0, 5)
 }, { immediate: true })
 
 const dimRanking = computed(() => {
@@ -283,20 +299,7 @@ function statusLevel(level: number | null | undefined): 'weak' | 'medium' | 'str
   return 'weak'
 }
 
-const REGION_COLORS: Record<string, { bg: string; fg: string; dot: string }> = {
-  '亚洲':   { bg: '#fce7f3', fg: '#be185d', dot: '#ea5ec1' },
-  '欧洲':   { bg: '#dbeafe', fg: '#1d4ed8', dot: '#1456f0' },
-  '北美洲': { bg: '#fef3c7', fg: '#b45309', dot: '#f59e0b' },
-  '南美洲': { bg: '#dcfce7', fg: '#15803d', dot: '#22c55e' },
-  '大洋洲': { bg: '#ede9fe', fg: '#7c3aed', dot: '#a855f7' },
-  '非洲':   { bg: '#fee2e2', fg: '#b91c1c', dot: '#ef4444' }
-}
-function regionStyle(r: string) {
-  const c = REGION_COLORS[r]
-  if (!c) return { background: 'var(--color-surface-soft)', color: 'var(--color-slate)' }
-  return { background: c.bg, color: c.fg }
-}
-function regionColor(r: string): string { return REGION_COLORS[r]?.dot ?? '#8e8e93' }
+function regionColor(r: string): string { return regionDot(r) }
 
 const fields = [
   { key: 'statusQs', label: 'QS 综合' },
@@ -304,37 +307,84 @@ const fields = [
   { key: 'statusUsnews', label: 'US News' },
   { key: 'statusUsnewsCs', label: 'US CS' },
   { key: 'statusTotal', label: '整体', primary: true }
-]
+] as const
+
+type FieldKey = typeof fields[number]['key']
+
+function getFieldValue(item: RankingStatusDTO, key: FieldKey): number | null {
+  const v = item[key]
+  return typeof v === 'number' ? v : null
+}
 </script>
 
 <template>
-  <div>
-    <!-- ============== Hero (紧凑) ============== -->
-    <section class="choice-hero">
+  <div class="choices-page">
+    <!-- ============== Hero (dark) ============== -->
+    <section class="choices-hero">
       <div class="page-container">
-        <div class="choice-hero__eyebrow">
-          <span class="choice-hero__dot" />
-          <span class="choice-hero__eyebrow-text">决策工作台 · 3 步走完选校</span>
+        <div class="choices-hero__eyebrow">
+          <span class="choices-hero__dot" />
+          <span class="choices-hero__eyebrow-text">决策工作台</span>
         </div>
-        <h1 class="choice-hero__title">
-          我的选<span class="choice-hero__title-accent">校</span>
+        <h1 class="choices-hero__title">
+          我的选校
         </h1>
-        <p class="choice-hero__sub">标记「考虑 / 不考虑」, 按 4 维强度评估, 筛选符合预期的项目</p>
-        <div class="choice-hero__cta">
-          <UButton icon="i-lucide-refresh-cw" color="neutral" variant="outline" size="md" label="刷新最新排名" :loading="saving" class="rounded-full" @click="seedRankings" />
-          <UButton icon="i-lucide-zap" color="primary" variant="solid" size="md" label="一键初始化" :loading="saving" class="rounded-full" @click="batchInit" />
+        <p class="choices-hero__sub">
+          标记「考虑 / 不考虑」，按 4 维强度评估，筛选符合预期的项目
+        </p>
+        <div class="choices-hero__cta">
+          <UButton
+            icon="i-lucide-refresh-cw"
+            color="neutral"
+            variant="outline"
+            size="md"
+            label="刷新最新排名"
+            :loading="saving"
+            class="choices-hero__btn-secondary rounded-full"
+            @click="seedRankings"
+          />
+          <UButton
+            icon="i-lucide-zap"
+            color="primary"
+            variant="solid"
+            size="md"
+            label="一键初始化"
+            :loading="saving"
+            class="choices-hero__btn-primary rounded-full"
+            @click="batchInit"
+          />
+        </div>
+
+        <!-- 4 glass stats -->
+        <div class="choices-hero__stats">
+          <div class="choices-hero__stat">
+            <div class="choices-hero__stat-value">{{ stats.total }}</div>
+            <div class="choices-hero__stat-label">清单总数</div>
+          </div>
+          <div class="choices-hero__stat">
+            <div class="choices-hero__stat-value">{{ stats.considered }}</div>
+            <div class="choices-hero__stat-label">正在考虑</div>
+          </div>
+          <div class="choices-hero__stat">
+            <div class="choices-hero__stat-value">{{ stats.strong }}</div>
+            <div class="choices-hero__stat-label">强校</div>
+          </div>
+          <div class="choices-hero__stat">
+            <div class="choices-hero__stat-value">{{ stats.medium }}</div>
+            <div class="choices-hero__stat-label">中校</div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- ============== Watchlist 对比表 (C 方案核心) ============== -->
+    <!-- ============== Watchlist 对比表 ============== -->
     <ClientOnly>
-      <div v-if="watchlist.length > 0" class="page-container section-band">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-3">
-            <UIcon name="i-lucide-git-compare-arrows" class="size-4 text-brand" />
+      <section v-if="watchlist.length > 0" class="page-container section-band">
+        <div class="section-head">
+          <div class="section-head__left">
+            <UIcon name="i-lucide-git-compare-arrows" class="size-4 text-brand-blue" />
             <h2 class="t-h3">我的对比</h2>
-            <span class="compare-count-pill">{{ watchlist.length }} 所</span>
+            <span class="watch-count-pill">{{ watchlist.length }} 所</span>
           </div>
           <UButton
             icon="i-lucide-trash-2"
@@ -346,141 +396,152 @@ const fields = [
             @click="clearWatch"
           />
         </div>
-        <UCard class="compare-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0 overflow-hidden', body: 'p-0' }">
-          <div class="compare-grid" :style="{ '--school-count': watchlist.length }">
-            <div class="compare-grid__head">
-              <div class="compare-grid__dim-label">排名体系</div>
-              <div v-for="name in watchlist" :key="name" class="compare-grid__school-head">
-                <div class="compare-grid__school-name">{{ name }}</div>
-                <UButton
-                  icon="i-lucide-x"
-                  color="neutral"
-                  variant="ghost"
-                  size="xs"
-                  class="rounded-full compare-grid__remove"
-                  @click="removeFromWatch(name)"
-                />
-              </div>
-            </div>
-            <div v-for="d in compareDims" :key="d.key" class="compare-grid__row">
-              <div class="compare-grid__dim-label">{{ d.label }}</div>
-              <div v-for="name in watchlist" :key="name + d.key" class="compare-grid__cell">
-                <div v-if="compareLoading[name]" class="compare-grid__skeleton" />
-                <div v-else-if="compareData[name]?.[d.key]" class="compare-grid__rank">
-                  <span :class="['compare-grid__rank-num', `compare-grid__rank-num--${rankTierClass(compareData[name][d.key])}`]">
-                    #{{ compareData[name][d.key] }}
-                  </span>
+
+        <UCard class="compare-card" :ui="{ root: 'rounded-3xl border border-ink bg-white ring-0 overflow-hidden', body: 'p-0' }">
+          <div class="compare-scroll">
+            <div class="compare-grid" :style="{ '--school-count': watchlist.length }">
+              <div class="compare-grid__head">
+                <div class="compare-grid__dim-label">排名体系</div>
+                <div v-for="name in watchlist" :key="name" class="compare-grid__school-head">
+                  <div class="compare-grid__school-name">{{ name }}</div>
+                  <UButton
+                    icon="i-lucide-x"
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    class="rounded-full compare-grid__remove"
+                    @click="removeFromWatch(name)"
+                  />
                 </div>
-                <div v-else class="compare-grid__rank-num compare-grid__rank-num--none">—</div>
+              </div>
+              <div v-for="d in compareDims" :key="d.key" class="compare-grid__row">
+                <div class="compare-grid__dim-label">{{ d.label }}</div>
+                <div v-for="name in watchlist" :key="name + d.key" class="compare-grid__cell">
+                  <div v-if="compareLoading[name]" class="compare-grid__skeleton" />
+                  <div v-else-if="compareData[name]?.[d.key]" class="compare-grid__rank">
+                    <span :class="['compare-grid__rank-num', `compare-grid__rank-num--${rankTierClass(compareData[name][d.key])}`]">
+                      #{{ compareData[name][d.key] }}
+                    </span>
+                  </div>
+                  <div v-else class="compare-grid__rank-num compare-grid__rank-num--none">—</div>
+                </div>
               </div>
             </div>
           </div>
         </UCard>
 
+        <!-- 决策辅助卡 -->
         <div class="decision-grid">
-          <UCard class="decision-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0 cursor-pointer decision-card--hover', body: '!p-4 sm:!p-4' }">
+          <UCard class="decision-card" :ui="{ root: 'rounded-3xl border border-ink bg-white ring-0', body: 'p-6 sm:p-8' }">
             <div class="decision-card__head">
-              <UIcon name="i-lucide-trending-up" class="size-4" style="color: #047857" />
+              <UIcon name="i-lucide-trending-up" class="size-4 text-emerald-600" />
               <span class="decision-card__eyebrow">DARKHORSE</span>
             </div>
             <h4 class="decision-card__title">黑马识别</h4>
             <div v-if="darkhorses.length" class="decision-card__list">
-              <div v-for="d in darkhorses" :key="d.name" class="darkhorse-row">
-                <span class="darkhorse-name">{{ d.name }}</span>
-                <span class="darkhorse-trend">{{ d.trend }}</span>
+              <div v-for="d in darkhorses" :key="d.name" class="decision-card__row decision-card__row--up">
+                <span class="decision-card__row-label">{{ d.name }}</span>
+                <span class="decision-card__row-value text-emerald-600">{{ d.trend }}</span>
               </div>
             </div>
-            <div v-else class="empty-state-mini">暂无上升势头大学</div>
+            <div v-else class="decision-card__empty">暂无上升势头大学</div>
           </UCard>
 
-          <UCard class="decision-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0 cursor-pointer decision-card--hover', body: '!p-4 sm:!p-4' }">
+          <UCard class="decision-card" :ui="{ root: 'rounded-3xl border border-ink bg-white ring-0', body: 'p-6 sm:p-8' }">
             <div class="decision-card__head">
-              <UIcon name="i-lucide-bar-chart-3" class="size-4" style="color: var(--color-brand-blue)" />
+              <UIcon name="i-lucide-bar-chart-3" class="size-4 text-brand-blue" />
               <span class="decision-card__eyebrow">DELTA</span>
             </div>
             <h4 class="decision-card__title">4 维差异</h4>
             <div v-if="dimRanking.length" class="decision-card__list">
-              <div v-for="r in dimRanking" :key="r.dim" class="dim-row">
-                <span class="dim-label">{{ r.dim }}</span>
-                <span class="dim-best">{{ r.best }}</span>
+              <div v-for="r in dimRanking" :key="r.dim" class="decision-card__row">
+                <span class="decision-card__row-label">{{ r.dim }}</span>
+                <span class="decision-card__row-value">{{ r.best }}</span>
               </div>
             </div>
-            <div v-else class="empty-state-mini">加载中...</div>
+            <div v-else class="decision-card__empty">加载中...</div>
           </UCard>
 
-          <UCard class="decision-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0 cursor-pointer decision-card--hover', body: '!p-4 sm:!p-4' }">
+          <UCard class="decision-card" :ui="{ root: 'rounded-3xl border border-ink bg-white ring-0', body: 'p-6 sm:p-8' }">
             <div class="decision-card__head">
-              <UIcon name="i-lucide-clipboard-check" class="size-4" style="color: var(--color-brand-blue)" />
+              <UIcon name="i-lucide-clipboard-check" class="size-4 text-brand-blue" />
               <span class="decision-card__eyebrow">ACTIONS</span>
             </div>
             <h4 class="decision-card__title">决策辅助</h4>
-            <div class="decision-card__list">
+            <div class="decision-card__actions">
               <UButton icon="i-lucide-download" color="neutral" variant="outline" size="md" label="导出 CSV" class="rounded-full w-full justify-center" />
               <UButton icon="i-lucide-share-2" color="neutral" variant="outline" size="md" label="分享" class="rounded-full w-full justify-center" />
               <UButton to="/universities" icon="i-lucide-plus" color="primary" variant="solid" size="md" label="继续添加" class="rounded-full w-full justify-center" />
             </div>
           </UCard>
         </div>
-      </div>
+      </section>
     </ClientOnly>
 
-    <!-- ============== 4 stats + stepper ============== -->
-    <div class="page-container section-band">
-      <!-- 决策流程 stepper (3 step) -->
-      <div class="stepper">
-        <div class="stepper__step is-done">
-          <div class="stepper__dot"><UIcon name="i-lucide-check" class="size-3" /></div>
-          <span class="stepper__label">1. 导入</span>
+    <!-- ============== 简洁进度状态条 ============== -->
+    <section v-if="stats.total > 0" class="page-container section-band">
+      <UCard :ui="{ root: 'rounded-2xl border border-ink bg-white ring-0', body: 'p-5 sm:p-6' }">
+        <div class="status-bar">
+          <div class="status-bar__header">
+            <span class="status-bar__title">选校进度</span>
+            <span class="status-bar__percent">{{ progressPercent }}%</span>
+          </div>
+          <div class="status-bar__track">
+            <div class="status-bar__fill" :style="{ width: `${progressPercent}%` }" />
+          </div>
+          <div class="status-bar__labels">
+            <span>已导入 {{ stats.total }} 所</span>
+            <span>考虑 {{ stats.considered }} 所</span>
+            <span>强校 {{ stats.strong }} 所</span>
+          </div>
         </div>
-        <div class="stepper__line is-done" />
-        <div class="stepper__step is-current">
-          <div class="stepper__dot">2</div>
-          <span class="stepper__label">2. 评估</span>
-        </div>
-        <div class="stepper__line" />
-        <div class="stepper__step is-todo">
-          <div class="stepper__dot">3</div>
-          <span class="stepper__label">3. 决策</span>
-        </div>
-      </div>
+      </UCard>
+    </section>
 
-      <!-- 0 数据时引导插画 -->
-      <UCard v-if="stats.total === 0" class="empty-card" :ui="{ root: 'rounded-3xl border-2 border-dashed border-default bg-muted ring-0', body: 'p-12 text-center' }">
-        <div class="mx-auto flex size-10 items-center justify-center rounded-full empty-card__icon">
-          <UIcon name="i-lucide-target" class="size-4" />
+    <!-- ============== 空状态 ============== -->
+    <section v-if="stats.total === 0" class="page-container section-band">
+      <UCard :ui="{ root: 'rounded-3xl border-2 border-dashed border-ink bg-surface ring-0', body: 'p-12 sm:p-16 text-center' }">
+        <div class="empty-illustration">
+          <UIcon name="i-lucide-target" class="size-5" />
         </div>
-        <h3 class="t-h3 mt-4">还没有选校, 开始第一步</h3>
-        <p class="t-body-sm text-muted mt-2">点上方「一键初始化」导入全部监控大学, 或先去「学校库」收藏几所</p>
-        <div class="mt-6 flex flex-wrap justify-center gap-3">
+        <h3 class="t-h2 mt-6">还没有选校，开始第一步</h3>
+        <p class="t-body text-muted mt-3 max-w-md mx-auto">
+          点上方「一键初始化」导入全部监控大学，或先去「学校库」收藏几所心仪院校
+        </p>
+        <div class="mt-8 flex flex-wrap justify-center gap-3">
           <UButton to="/universities" color="primary" variant="solid" size="md" icon="i-lucide-search" label="去学校库" class="rounded-full" />
           <UButton color="neutral" variant="outline" size="md" icon="i-lucide-zap" label="一键初始化" :loading="saving" class="rounded-full" @click="batchInit" />
         </div>
       </UCard>
-
-      <!-- 4 stats -->
-      <div v-else class="stats-grid">
-        <StatCard label="清单总数" :value="stats.total" hint="所大学" :icon="'i-lucide-database'" primary />
-        <StatCard label="正在考虑" :value="stats.considered" hint="已标记" :icon="'i-lucide-bookmark-check'" />
-        <StatCard label="强校" :value="stats.strong" hint="QS/US 双强" :icon="'i-lucide-trophy'" />
-        <StatCard label="中校" :value="stats.medium" hint="评估待定" :icon="'i-lucide-circle-help'" />
-      </div>
-    </div>
+    </section>
 
     <!-- ============== Filter toolbar ============== -->
-    <div class="page-container section-band">
-      <UCard class="toolbar-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-5' }">
-        <div class="toolbar-row">
-          <UInput v-model="search" icon="i-lucide-search" placeholder="搜索大学名称 (支持中/英)..." size="sm" class="toolbar-search" />
-          <USelectMenu v-model="sortBy" :items="sortByItems" value-key="value" size="sm" class="toolbar-sort">
+    <section v-if="stats.total > 0" class="page-container section-band">
+      <div class="filter-bar">
+        <div class="filter-bar__row">
+          <UInput
+            v-model="search"
+            icon="i-lucide-search"
+            placeholder="搜索大学名称..."
+            size="md"
+            class="filter-bar__search"
+          />
+          <USelectMenu
+            v-model="sortBy"
+            :items="sortByItems"
+            value-key="value"
+            size="md"
+            class="filter-bar__sort"
+          >
             <template #leading>
-              <UIcon name="i-lucide-arrow-up-down" class="size-3.5" />
+              <UIcon name="i-lucide-arrow-up-down" class="size-4" />
             </template>
           </USelectMenu>
         </div>
-        <div class="toolbar-row toolbar-row--second">
-          <div class="toolbar-group">
-            <span class="t-caption-bold text-muted">状态</span>
-            <UFieldGroup size="sm">
+        <div class="filter-bar__row filter-bar__row--filters">
+          <div class="filter-bar__group">
+            <span class="filter-bar__label">状态</span>
+            <div class="filter-bar__pills">
               <UButton
                 v-for="c in considerItems"
                 :key="c.value"
@@ -490,14 +551,14 @@ const fields = [
                 :label="c.label"
                 size="sm"
                 class="rounded-full"
-                @click="filterConsider = c.value as any"
+                @click="filterConsider = c.value"
               />
-            </UFieldGroup>
+            </div>
           </div>
-          <div class="toolbar-sep" />
-          <div class="toolbar-group">
-            <span class="t-caption-bold text-muted">强度</span>
-            <UFieldGroup size="sm">
+          <div class="filter-bar__sep" />
+          <div class="filter-bar__group">
+            <span class="filter-bar__label">强度</span>
+            <div class="filter-bar__pills">
               <UButton
                 v-for="c in levelItems"
                 :key="c.value"
@@ -506,59 +567,61 @@ const fields = [
                 :label="c.label"
                 size="sm"
                 class="rounded-full"
-                @click="filterLevel = c.value as any"
+                @click="filterLevel = c.value"
               />
-            </UFieldGroup>
+            </div>
           </div>
         </div>
 
-        <UAlert v-if="error" color="warning" variant="subtle" :title="error" icon="i-lucide-alert-circle" class="mt-3" />
-        <UAlert v-if="info" color="success" variant="subtle" :title="info" icon="i-lucide-check-circle" class="mt-3" />
-      </UCard>
-    </div>
+        <UAlert v-if="error" color="warning" variant="subtle" :title="error" icon="i-lucide-alert-circle" class="mt-4" />
+        <UAlert v-if="info" color="success" variant="subtle" :title="info" icon="i-lucide-check-circle" class="mt-4" />
+      </div>
+    </section>
 
     <!-- ============== Cards grid ============== -->
-    <div class="page-container section-band">
-      <UCard v-if="loading" class="loading-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-20 text-center' }">
+    <section v-if="stats.total > 0" class="page-container section-band section-band--last">
+      <UCard v-if="loading" :ui="{ root: 'rounded-3xl border border-ink bg-white ring-0', body: 'p-20 text-center' }">
         <UIcon name="i-lucide-loader" class="size-4 mx-auto animate-spin text-muted" />
         <p class="t-body-sm text-muted mt-3">加载中…</p>
       </UCard>
 
-      <UEmpty
+      <AppEmpty
         v-else-if="filteredItems.length === 0"
         icon="i-lucide-inbox"
         title="没有匹配的大学"
-        description="尝试调整过滤条件, 或点击「一键初始化」导入全部大学"
-        size="sm"
+        description="尝试调整过滤条件，或点击「一键初始化」导入全部大学"
+        size="md"
       />
 
-      <div v-else class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div v-else class="school-grid">
         <UCard
           v-for="item in filteredItems"
           :key="item.universityNameChinese"
-          class="choice-card"
+          class="school-card"
           :ui="{
-            root: 'rounded-2xl border border-default bg-default ring-0 transition-all duration-200 hover:shadow-md',
-            body: 'p-5'
+            root: 'rounded-3xl border border-ink bg-white ring-0 transition-all duration-200 hover:-translate-y-1 hover:shadow-hover',
+            body: 'p-6'
           }"
         >
           <!-- Header -->
-          <div class="choice-card__head">
+          <div class="school-card__head">
             <div>
               <h3 class="t-h4">
-                <NuxtLink :to="`/universities/${encodeURIComponent(item.universityNameChinese)}`" class="text-default hover:text-brand">{{ item.universityNameChinese }}</NuxtLink>
+                <NuxtLink :to="`/universities/${encodeURIComponent(item.universityNameChinese)}`" class="school-card__name">
+                  {{ item.universityNameChinese }}
+                </NuxtLink>
               </h3>
-              <div class="choice-card__chips">
-                <UBadge color="neutral" variant="soft" size="xs">
-                  <UIcon name="i-lucide-map-pin" class="size-3" />
-                  <span class="ml-1">{{ item.universityTags || '—' }}</span>
+              <div class="school-card__chips">
+                <UBadge color="neutral" variant="soft" size="xs" class="school-card__chip">
+                  <UIcon name="i-lucide-map-pin" class="size-4" />
+                  <span>{{ item.universityTags || '—' }}</span>
                 </UBadge>
                 <span
                   v-if="item.universityTagsState"
-                  class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 t-caption-bold"
+                  class="school-card__region-chip"
                   :style="regionStyle(item.universityTagsState)"
                 >
-                  <span class="size-1.5 rounded-full" :style="{ background: regionColor(item.universityTagsState) }" />
+                  <span class="school-card__region-dot" :style="{ background: regionColor(item.universityTagsState) }" />
                   {{ item.universityTagsState }}
                 </span>
               </div>
@@ -575,23 +638,25 @@ const fields = [
           </div>
 
           <!-- 5 status fields -->
-          <div class="choice-card__status">
-            <div v-for="f in fields" :key="f.key" class="choice-card__field">
-              <div class="choice-card__field-label">{{ f.label }}</div>
-              <USelectMenu
-                :model-value="(item as any)[f.key]"
-                :items="statusLevelItems"
-                value-key="value"
-                size="xs"
-                :ui="{ base: 'w-full' }"
-                @update:model-value="(v: any) => updateField(item, f.key as any, v)"
-              />
-              <StatusChip v-if="(item as any)[f.key] != null" :level="statusLevel((item as any)[f.key])" />
+          <div class="school-card__status">
+            <div v-for="f in fields" :key="f.key" class="school-card__field">
+              <div class="school-card__field-label">{{ f.label }}</div>
+              <div class="school-card__field-input">
+                <USelectMenu
+                  :model-value="getFieldValue(item, f.key)"
+                  :items="statusLevelItems"
+                  value-key="value"
+                  size="xs"
+                  class="w-full"
+                  @update:model-value="(v) => updateField(item, f.key, v)"
+                />
+              </div>
+              <StatusChip v-if="getFieldValue(item, f.key) != null" :level="statusLevel(getFieldValue(item, f.key))" />
             </div>
           </div>
 
           <!-- Footer actions -->
-          <div class="choice-card__foot">
+          <div class="school-card__foot">
             <UButton
               :to="`/universities/${encodeURIComponent(item.universityNameChinese)}`"
               color="neutral"
@@ -623,9 +688,9 @@ const fields = [
           </div>
         </UCard>
       </div>
-    </div>
+    </section>
 
-    <!-- ============== 抽屉 (UDrawer) ============== -->
+    <!-- ============== 抽屉 ============== -->
     <UDrawer v-model:open="drawerOpen" direction="right" :ui="{ content: 'max-w-2xl' }">
       <template #header>
         <div class="flex flex-col gap-1">
@@ -643,7 +708,7 @@ const fields = [
           <p class="t-body-sm text-muted mt-2">{{ drawerChart.error }}</p>
         </div>
         <div v-else-if="drawerChart" class="drawer-chart">
-          <ChartSvgChart :chart="drawerChart" :height="320" />
+          <VChart :chart="drawerChart" :height="320" />
         </div>
       </template>
     </UDrawer>
@@ -651,151 +716,169 @@ const fields = [
 </template>
 
 <style scoped>
-/* Hero (DESIGN.md §hero-band-marketing 紧凑版) */
-.choice-hero { padding: 64px 0 32px; background: var(--color-canvas); }
-@media (min-width: 768px) {
-  .choice-hero { padding: 96px 0 48px; }
+/* ============== Page ============== */
+.choices-page {
+  width: 100%;
+  min-height: 100vh;
+  background: var(--color-canvas);
+  color: var(--color-ink);
 }
-.choice-hero__eyebrow {
+
+/* ============== Hero (dark) ============== */
+.choices-hero {
+  width: 100%;
+  background: var(--color-ink);
+  color: var(--color-on-dark);
+  padding: 72px 0 48px;
+}
+@media (min-width: 768px) {
+  .choices-hero { padding: 96px 0 64px; }
+}
+
+.choices-hero__eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 6px 14px;
-  border-radius: 9999px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   margin-bottom: 20px;
 }
-.choice-hero__dot {
+.choices-hero__dot {
   width: 6px;
   height: 6px;
   border-radius: 9999px;
   background: var(--color-brand-coral);
 }
-.choice-hero__eyebrow-text {
+.choices-hero__eyebrow-text {
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-ink);
+  color: rgba(255, 255, 255, 0.9);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.choice-hero__title {
+
+.choices-hero__title {
   margin: 0;
   font-family: var(--font-display);
   font-size: 56px;
   font-weight: 600;
-  line-height: 1.10;
-  letter-spacing: -1.5px;
-  color: var(--color-ink);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--color-on-dark);
 }
 @media (min-width: 1024px) {
-  .choice-hero__title { font-size: 80px; letter-spacing: -2px; }
+  .choices-hero__title { font-size: 80px; }
 }
-.choice-hero__title-accent {
-  font-style: italic;
-  font-weight: 600;
-  color: var(--color-brand-coral);
-  position: relative;
-  display: inline-block;
-}
-.choice-hero__title-accent::after {
-  content: '';
-  position: absolute;
-  bottom: 4px;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: var(--color-brand-coral);
-  border-radius: 9999px;
-  opacity: 0.85;
-  z-index: -1;
-}
-.choice-hero__sub {
+
+.choices-hero__sub {
   margin: 16px 0 0;
   font-size: 18px;
-  font-weight: 500;
-  color: var(--color-slate);
-  line-height: 1.50;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.5;
+  max-width: 640px;
 }
-.choice-hero__cta {
+
+.choices-hero__cta {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 32px;
 }
+.choices-hero__btn-primary {
+  background: var(--color-on-dark) !important;
+  color: var(--color-ink) !important;
+  border-color: var(--color-on-dark) !important;
+}
+.choices-hero__btn-primary:hover {
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+.choices-hero__btn-secondary {
+  background: transparent !important;
+  color: var(--color-on-dark) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+.choices-hero__btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 4 glass stats */
+.choices-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 48px;
+}
+@media (min-width: 768px) {
+  .choices-hero__stats {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 64px;
+  }
+}
+.choices-hero__stat {
+  padding: 20px 24px;
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(4px);
+}
+.choices-hero__stat-value {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--color-on-dark);
+}
+.choices-hero__stat-label {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 
 @media (max-width: 640px) {
-  .choice-hero { padding: 48px 0 24px; }
-  .choice-hero__title { font-size: 40px; }
+  .choices-hero { padding: 56px 0 40px; }
+  .choices-hero__title { font-size: 40px; }
+  .choices-hero__stat { padding: 16px 20px; }
+  .choices-hero__stat-value { font-size: 28px; }
 }
 
-/* Section 间距 */
-.section-band { margin-top: 24px; }
+/* ============== Section spacing ============== */
+.section-band {
+  margin-top: 48px;
+}
 @media (min-width: 768px) {
-  .section-band { margin-top: 32px; }
+  .section-band { margin-top: 64px; }
+}
+@media (min-width: 1024px) {
+  .section-band { margin-top: 80px; }
+}
+.section-band--last {
+  margin-bottom: 120px;
 }
 
-/* Stepper */
-.stepper {
+/* ============== Section head ============== */
+.section-head {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  margin-bottom: 24px;
+  justify-content: space-between;
+  margin-bottom: 20px;
 }
-.stepper__step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-.stepper__dot {
-  width: 32px;
-  height: 32px;
-  border-radius: 9999px;
-  background: var(--color-surface-soft);
-  color: var(--color-stone);
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 700;
+.section-head__left {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 12px;
 }
-.stepper__step.is-done .stepper__dot {
-  background: var(--color-brand-blue);
-  color: var(--color-on-dark);
-}
-.stepper__step.is-current .stepper__dot {
-  background: var(--color-brand-blue);
-  color: var(--color-on-dark);
-  box-shadow: 0 0 0 4px rgba(20, 86, 240, 0.15);
-}
-.stepper__step.is-todo { opacity: 0.5; }
-.stepper__label { font-size: 11px; font-weight: 600; }
-.stepper__line {
-  width: 60px;
-  height: 2px;
-  background: var(--color-surface-soft);
-  margin: 0 8px;
-  margin-bottom: 16px;
-}
-.stepper__line.is-done { background: var(--color-brand-blue); }
-@media (min-width: 768px) {
-  .stepper__line { width: 120px; }
-}
-
-/* Empty card */
-.empty-card__icon {
-  background: rgba(20, 86, 240, 0.10);
-  color: var(--color-brand-blue);
-}
-
-/* Compare count pill (size-4 icon + count) */
-.compare-count-pill {
+.watch-count-pill {
   display: inline-flex;
   align-items: center;
-  height: 22px;
+  height: 24px;
   padding: 0 10px;
   border-radius: 9999px;
   background: rgba(20, 86, 240, 0.10);
@@ -806,110 +889,21 @@ const fields = [
   letter-spacing: 0.02em;
 }
 
-/* Decision card hover state */
-:deep(.decision-card--hover) {
-  transition: all 200ms ease;
+/* ============== Compare table ============== */
+.compare-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
-.decision-card--hover:hover {
-  border-color: var(--color-ink) !important;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-}
-
-/* Stats grid */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-@media (min-width: 768px) {
-  .stats-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; }
-}
-
-/* Toolbar */
-.toolbar-card { background: var(--color-canvas); }
-.toolbar-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-.toolbar-row--second {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-hairline-soft);
-}
-.toolbar-search { flex: 1; min-width: 200px; }
-.toolbar-sort { min-width: 160px; margin-left: auto; }
-.toolbar-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.toolbar-sep {
-  width: 1px;
-  height: 20px;
-  background: var(--color-hairline);
-}
-
-/* Choice card */
-.choice-card__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.choice-card__chips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-}
-.choice-card__status {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-@media (min-width: 480px) {
-  .choice-card__status { grid-template-columns: repeat(5, 1fr); }
-}
-.choice-card__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: flex-start;
-}
-.choice-card__field-label {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--color-stone);
-}
-.choice-card__foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-hairline-soft);
-}
-
-/* Drawer chart */
-.drawer-chart { padding: 16px; background: var(--color-surface); border-radius: 16px; }
-
-/* Watchlist compare grid */
 .compare-grid {
   display: grid;
-  grid-template-columns: 160px repeat(var(--school-count, 1), minmax(140px, 1fr));
+  grid-template-columns: 140px repeat(var(--school-count, 1), minmax(140px, 1fr));
+  min-width: max-content;
 }
 .compare-grid__head {
   display: contents;
 }
 .compare-grid__head > .compare-grid__dim-label {
-  padding: 16px 12px;
+  padding: 18px 16px;
   font-size: 12px;
   font-weight: 600;
   color: var(--color-stone);
@@ -922,13 +916,14 @@ const fields = [
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
+  gap: 8px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--color-hairline);
   background: var(--color-surface);
   border-left: 1px solid var(--color-hairline-soft);
 }
 .compare-grid__school-name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--color-ink);
   white-space: nowrap;
@@ -945,7 +940,7 @@ const fields = [
   display: contents;
 }
 .compare-grid__row > .compare-grid__dim-label {
-  padding: 14px 12px;
+  padding: 16px;
   font-size: 13px;
   font-weight: 500;
   color: var(--color-ink);
@@ -953,7 +948,7 @@ const fields = [
   border-bottom: 1px solid var(--color-hairline-soft);
 }
 .compare-grid__cell {
-  padding: 14px 12px;
+  padding: 16px;
   border-bottom: 1px solid var(--color-hairline-soft);
   border-left: 1px solid var(--color-hairline-soft);
   display: flex;
@@ -969,9 +964,9 @@ const fields = [
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 32px;
-  height: 24px;
-  font-family: 'Roboto', system-ui, sans-serif;
+  min-width: 36px;
+  height: 26px;
+  font-family: var(--font-data);
   font-size: 13px;
   font-weight: 600;
   padding: 0 10px;
@@ -1001,7 +996,7 @@ const fields = [
 }
 .compare-grid__skeleton {
   width: 56px;
-  height: 24px;
+  height: 26px;
   background: var(--color-hairline-soft);
   border-radius: 8px;
   animation: pulse 1.5s ease-in-out infinite;
@@ -1011,36 +1006,44 @@ const fields = [
   50% { opacity: 0.5; }
 }
 
-/* Decision grid (DESIGN.md §card-base + eyebrow pattern) */
+/* ============== Decision cards ============== */
 .decision-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr;
   gap: 16px;
-  margin-top: 16px;
+  margin-top: 20px;
 }
-@media (max-width: 1024px) {
+@media (min-width: 1024px) {
   .decision-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
   }
+}
+.decision-card {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.decision-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
 }
 .decision-card__head {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 .decision-card__eyebrow {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--color-stone);
   letter-spacing: 0.08em;
 }
 .decision-card__title {
-  margin: 0 0 10px;
+  margin: 0 0 16px;
   font-family: var(--font-display);
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 600;
-  line-height: 1.30;
+  line-height: 1.3;
   color: var(--color-ink);
   letter-spacing: -0.01em;
 }
@@ -1049,47 +1052,241 @@ const fields = [
   flex-direction: column;
   gap: 8px;
 }
-.darkhorse-row {
+.decision-card__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: rgba(16, 185, 129, 0.06);
-  border-radius: 8px;
-}
-.darkhorse-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-ink);
-}
-.darkhorse-trend {
-  font-family: 'Roboto', system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  color: #047857;
-}
-.dim-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
+  padding: 10px 12px;
   background: var(--color-surface);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
-.dim-label {
+.decision-card__row--up {
+  background: rgba(16, 185, 129, 0.06);
+}
+.decision-card__row-label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-stone);
+  color: var(--color-ink);
 }
-.dim-best {
-  font-family: 'Roboto', system-ui, sans-serif;
+.decision-card__row-value {
+  font-family: var(--font-data);
   font-size: 12px;
   font-weight: 600;
   color: var(--color-ink);
 }
-.empty-state-mini {
-  font-size: 12px;
+.decision-card__empty {
+  font-size: 13px;
   color: var(--color-stone);
   padding: 8px 0;
+}
+.decision-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ============== Status bar ============== */
+.status-bar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.status-bar__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.status-bar__percent {
+  font-family: var(--font-data);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-brand-blue);
+}
+.status-bar__track {
+  width: 100%;
+  height: 6px;
+  background: var(--color-surface-soft);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.status-bar__fill {
+  height: 100%;
+  background: var(--color-brand-blue);
+  border-radius: var(--radius-pill);
+  transition: width 300ms ease;
+}
+.status-bar__labels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--color-slate);
+}
+
+/* ============== Empty state ============== */
+.empty-illustration {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(20, 86, 240, 0.10);
+  color: var(--color-brand-blue);
+}
+
+/* ============== Filter toolbar ============== */
+.filter-bar {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-ink);
+  border-radius: var(--radius-2xl);
+  padding: 16px;
+}
+@media (min-width: 768px) {
+  .filter-bar { padding: 20px; }
+}
+.filter-bar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.filter-bar__row--filters {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-hairline-soft);
+}
+.filter-bar__search {
+  flex: 1;
+  min-width: 200px;
+}
+.filter-bar__sort {
+  min-width: 170px;
+}
+.filter-bar__group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.filter-bar__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-stone);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.filter-bar__pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.filter-bar__sep {
+  width: 1px;
+  height: 20px;
+  background: var(--color-hairline);
+}
+@media (max-width: 640px) {
+  .filter-bar__sep { display: none; }
+}
+
+/* ============== School cards ============== */
+.school-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 768px) {
+  .school-grid { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+}
+.school-card:hover {
+  border-color: var(--color-ink);
+}
+.school-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.school-card__name {
+  color: var(--color-ink);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+.school-card__name:hover {
+  color: var(--color-brand-blue);
+}
+.school-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.school-card__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.school-card__region-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.school-card__region-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+.school-card__status {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+@media (min-width: 640px) {
+  .school-card__status { grid-template-columns: repeat(5, 1fr); }
+}
+.school-card__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.school-card__field-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-stone);
+}
+.school-card__field-input {
+  width: 100%;
+}
+.school-card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-hairline-soft);
+}
+
+/* ============== Drawer chart ============== */
+.drawer-chart {
+  padding: 16px;
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+}
+
+/* ============== Utility overrides ============== */
+:deep(.u-button) {
+  transition: all 160ms ease;
 }
 </style>

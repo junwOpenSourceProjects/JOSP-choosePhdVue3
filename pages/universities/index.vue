@@ -4,6 +4,7 @@ import { queryBackup2List, fetchBackup2Tables, fetchBackup2Years } from '~/lib/a
 import type { Backup2Record, UniversityAllDTO, RankVariant } from '~/types'
 import { RANK_VARIANT_SHORT_MAP } from '~/types'
 import { useWatchlist } from '~/composables/useWatchlist'
+import { regionStyle, regionDot } from '~/utils/region'
 
 const { list: watchlist, toggle: toggleWatch, has: inWatchlist, count: watchCount, max: watchMax } = useWatchlist()
 
@@ -109,29 +110,45 @@ const sortByItems = [
   { value: 'country', label: '按国家' }
 ]
 
-// ============== 排名 tier ==============
-function rankBadgeTier(rank: number | null | undefined): string {
-  if (rank == null) return 'rank-badge--normal'
-  if (rank <= 3) return 'rank-badge--gold'
-  if (rank <= 10) return 'rank-badge--silver'
-  if (rank <= 50) return 'rank-badge--bronze'
-  return 'rank-badge--normal'
+// ============== 排名 helper ==============
+function getRankValue(row: UniversityAllDTO): number {
+  if (rankVariant.value === 'qs') return row.currentQsAllRank ?? 9999
+  if (rankVariant.value === 'usnews') return row.currentUsnewsAllRank ?? 9999
+  return Math.min(row.currentQsAllRank ?? 9999, row.currentUsnewsAllRank ?? 9999)
+}
+function getRankField(row: UniversityAllDTO, which: 'all' | 'cs'): number | null {
+  if (rankVariant.value === 'qs') return which === 'all' ? row.currentQsAllRank : row.currentQsComputerRank
+  if (rankVariant.value === 'usnews') return which === 'all' ? row.currentUsnewsAllRank : row.currentUsnewsComputerRank
+  if (which === 'all') {
+    const a = row.currentQsAllRank, b = row.currentUsnewsAllRank
+    if (a == null && b == null) return null
+    if (a == null) return b
+    if (b == null) return a
+    return Math.min(a, b)
+  }
+  const a = row.currentQsComputerRank, b = row.currentUsnewsComputerRank
+  if (a == null && b == null) return null
+  if (a == null) return b
+  if (b == null) return a
+  return Math.min(a, b)
+}
+function getRankIntegerForNewTable(row: any): number {
+  return row?.currentRankInteger ?? 9999
 }
 
-const REGION_COLORS: Record<string, { bg: string; fg: string; dot: string }> = {
-  '亚洲':   { bg: '#fce7f3', fg: '#be185d', dot: '#ea5ec1' },
-  '欧洲':   { bg: '#dbeafe', fg: '#1d4ed8', dot: '#1456f0' },
-  '北美洲': { bg: '#fef3c7', fg: '#b45309', dot: '#f59e0b' },
-  '南美洲': { bg: '#dcfce7', fg: '#15803d', dot: '#22c55e' },
-  '大洋洲': { bg: '#ede9fe', fg: '#7c3aed', dot: '#a855f7' },
-  '非洲':   { bg: '#fee2e2', fg: '#b91c1c', dot: '#ef4444' }
-}
-function regionColor(region: string): string { return REGION_COLORS[region]?.dot ?? '#8e8e93' }
-function regionStyle(region: string) {
-  const c = REGION_COLORS[region]
-  if (!c) return { background: 'var(--color-surface-soft)', color: 'var(--color-slate)' }
-  return { background: c.bg, color: c.fg }
-}
+const sortedData = computed(() => {
+  const arr = [...tableData.value]
+  if (!isOldTable.value) {
+    arr.sort((a: any, b: any) => getRankIntegerForNewTable(a) - getRankIntegerForNewTable(b))
+  } else if (sortBy.value === 'rank') {
+    arr.sort((a, b) => getRankValue(a) - getRankValue(b))
+  } else if (sortBy.value === 'name') {
+    arr.sort((a, b) => (a.universityNameChinese || '').localeCompare(b.universityNameChinese || '', 'zh'))
+  } else if (sortBy.value === 'country') {
+    arr.sort((a, b) => (a.universityTags || '').localeCompare(b.universityTags || '', 'zh'))
+  }
+  return arr
+})
 
 // ============== 加载 ==============
 async function load() {
@@ -183,46 +200,6 @@ async function load() {
 watch([rankTable, tagState, tag, maxRank, sortBy, yearFilter], () => { load() })
 watch(debouncedSearch, () => { load() })
 
-// ============== 排名 helper ==============
-function getRankValue(row: UniversityAllDTO): number {
-  if (rankVariant.value === 'qs') return row.currentQsAllRank ?? 9999
-  if (rankVariant.value === 'usnews') return row.currentUsnewsAllRank ?? 9999
-  return Math.min(row.currentQsAllRank ?? 9999, row.currentUsnewsAllRank ?? 9999)
-}
-function getRankField(row: UniversityAllDTO, which: 'all' | 'cs'): number | null {
-  if (rankVariant.value === 'qs') return which === 'all' ? row.currentQsAllRank : row.currentQsComputerRank
-  if (rankVariant.value === 'usnews') return which === 'all' ? row.currentUsnewsAllRank : row.currentUsnewsComputerRank
-  if (which === 'all') {
-    const a = row.currentQsAllRank, b = row.currentUsnewsAllRank
-    if (a == null && b == null) return null
-    if (a == null) return b
-    if (b == null) return a
-    return Math.min(a, b)
-  }
-  const a = row.currentQsComputerRank, b = row.currentUsnewsComputerRank
-  if (a == null && b == null) return null
-  if (a == null) return b
-  if (b == null) return a
-  return Math.min(a, b)
-}
-function getRankIntegerForNewTable(row: any): number {
-  return row?.currentRankInteger ?? 9999
-}
-
-const sortedData = computed(() => {
-  const arr = [...tableData.value]
-  if (!isOldTable.value) {
-    arr.sort((a: any, b: any) => getRankIntegerForNewTable(a) - getRankIntegerForNewTable(b))
-  } else if (sortBy.value === 'rank') {
-    arr.sort((a, b) => getRankValue(a) - getRankValue(b))
-  } else if (sortBy.value === 'name') {
-    arr.sort((a, b) => (a.universityNameChinese || '').localeCompare(b.universityNameChinese || '', 'zh'))
-  } else if (sortBy.value === 'country') {
-    arr.sort((a, b) => (a.universityTags || '').localeCompare(b.universityTags || '', 'zh'))
-  }
-  return arr
-})
-
 // ============== 地区分布 ==============
 const regionDist = computed(() => {
   if (isOldTable.value) {
@@ -232,7 +209,7 @@ const regionDist = computed(() => {
       map.set(k, (map.get(k) || 0) + 1)
     }
     return Array.from(map.entries())
-      .map(([k, v]) => ({ key: k, count: v, color: regionColor(k) }))
+      .map(([k, v]) => ({ key: k, count: v, color: regionDot(k) }))
       .sort((a, b) => b.count - a.count)
   }
   return []
@@ -290,7 +267,22 @@ function reset() {
   yearFilter.value = undefined
 }
 
-// ============== 4 维排名摘要 (for card chip) ==============
+// ============== 卡片显示 helper ==============
+function cardRank(row: UniversityAllDTO | any): number | null {
+  if (isOldTable.value) {
+    return getRankField(row as UniversityAllDTO, 'all')
+  }
+  const r = getRankIntegerForNewTable(row)
+  return r === 9999 ? null : r
+}
+
+function isTied(row: any, idx: number): boolean {
+  if (!sortedData.value[idx + 1]) return false
+  const cur = cardRank(row)
+  const next = cardRank(sortedData.value[idx + 1])
+  return cur != null && next != null && cur === next
+}
+
 function get4Dims(row: UniversityAllDTO | any): { qs: number | null; usnews: number | null; qsCs: number | null; usnewsCs: number | null } {
   if (isOldTable.value) {
     return {
@@ -300,16 +292,10 @@ function get4Dims(row: UniversityAllDTO | any): { qs: number | null; usnews: num
       usnewsCs: row.currentUsnewsComputerRank ?? null
     }
   }
-  const r = getRankIntegerForNewTable(row)
-  return { qs: r === 9999 ? null : r, usnews: null, qsCs: null, usnewsCs: null }
+  return { qs: null, usnews: null, qsCs: null, usnewsCs: null }
 }
 
-function isTied(row: any, idx: number): boolean {
-  if (!sortedData.value[idx + 1]) return false
-  const cur = getRankIntegerForNewTable(row)
-  const next = getRankIntegerForNewTable(sortedData.value[idx + 1])
-  return cur === next && cur < 9999
-}
+const currentRankLabel = computed(() => rankTableItems.value.find(t => t.value === rankTable.value)?.label ?? '')
 </script>
 
 <template>
@@ -319,7 +305,7 @@ function isTied(row: any, idx: number): boolean {
       <div class="page-container watchlist-bar__inner">
         <div class="watchlist-bar__left">
           <UIcon name="i-lucide-bookmark-check" class="size-4" style="color: var(--color-brand-blue)" />
-          <span class="t-body-sm">已选 <strong style="color: var(--color-brand-blue)">{{ watchCount() }}</strong> / {{ watchMax }} 所</span>
+          <span class="text-sm">已选 <strong style="color: var(--color-brand-blue)">{{ watchCount() }}</strong> / {{ watchMax }} 所</span>
           <span class="watchlist-bar__names">
             <span v-for="n in watchlist.slice(0, 5)" :key="n" class="watchlist-bar__chip">{{ n }}</span>
           </span>
@@ -331,71 +317,123 @@ function isTied(row: any, idx: number): boolean {
       </div>
     </div>
 
-    <!-- HERO BAND (DESIGN.md §hero-band-marketing) -->
+    <!-- HERO -->
     <section class="uni-hero">
       <div class="page-container">
         <div class="uni-hero__eyebrow">
           <span class="uni-hero__dot" />
-          <span class="uni-hero__eyebrow-text">{{ rankTableItems.find(t => t.value === rankTable)?.label }} · 9 大排名体系</span>
+          <span>多源排名 · 多维过滤 · 一目了然</span>
         </div>
         <h1 class="uni-hero__title">
-          学校<span class="uni-hero__title-accent">库</span>
+          学校库
         </h1>
-        <p class="uni-hero__sub">多源排名 · 多维过滤 · 一目了然</p>
+        <p class="uni-hero__sub">
+          浏览 QS / US News / ARWU 等 9 大排名体系，按地区、年份、Top N 快速筛选目标院校。
+        </p>
+      </div>
+    </section>
 
-        <!-- Toolbar (DESIGN.md §text-input + pill) -->
+    <!-- TOOLBAR -->
+    <section class="uni-toolbar-section">
+      <div class="page-container">
         <div class="uni-toolbar">
           <div class="uni-toolbar__row">
-            <UInput v-model="search" icon="i-lucide-search" placeholder="搜索大学名称 (清华 / MIT / 麻省)..." size="sm" class="uni-toolbar__search" />
-            <USelectMenu v-model="rankTable" :items="rankTableItems" value-key="value" size="sm" class="uni-toolbar__rank">
+            <UInput
+              v-model="search"
+              icon="i-lucide-search"
+              placeholder="搜索大学名称 (清华 / MIT / 麻省)..."
+              size="sm"
+              class="uni-toolbar__search"
+            />
+            <USelectMenu
+              v-model="rankTable"
+              :items="rankTableItems"
+              value-key="value"
+              size="sm"
+              class="uni-toolbar__select"
+            >
               <template #leading>
-                <UIcon name="i-lucide-layers" class="size-3.5" />
+                <UIcon name="i-lucide-layers" class="size-4" />
               </template>
             </USelectMenu>
-            <UButton icon="i-lucide-rotate-ccw" color="neutral" variant="ghost" size="sm" label="重置" class="rounded-full" @click="reset" />
+            <USelectMenu
+              v-model="tagState"
+              :items="tagStateOptions"
+              value-key="value"
+              placeholder="洲"
+              size="sm"
+              class="uni-toolbar__select"
+            >
+              <template #leading>
+                <UIcon name="i-lucide-globe-2" class="size-4" />
+              </template>
+            </USelectMenu>
+            <USelectMenu
+              v-model="maxRank"
+              :items="maxRankItems"
+              value-key="value"
+              size="sm"
+              class="uni-toolbar__select"
+            >
+              <template #leading>
+                <UIcon name="i-lucide-trophy" class="size-4" />
+              </template>
+            </USelectMenu>
+            <USelectMenu
+              v-if="!isOldTable"
+              v-model="yearFilter"
+              :items="yearFilterItems"
+              value-key="value"
+              placeholder="年份"
+              size="sm"
+              class="uni-toolbar__select"
+            >
+              <template #leading>
+                <UIcon name="i-lucide-calendar" class="size-4" />
+              </template>
+            </USelectMenu>
+            <USelectMenu
+              v-model="sortBy"
+              :items="sortByItems"
+              value-key="value"
+              size="sm"
+              class="uni-toolbar__select"
+            >
+              <template #leading>
+                <UIcon name="i-lucide-arrow-up-down" class="size-4" />
+              </template>
+            </USelectMenu>
+            <UButton
+              icon="i-lucide-rotate-ccw"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              label="重置"
+              class="rounded-full"
+              @click="reset"
+            />
           </div>
-          <div class="uni-toolbar__row uni-toolbar__row--second">
-            <USelectMenu v-model="tagState" :items="tagStateOptions" value-key="value" placeholder="洲 (全部)" size="sm" class="uni-toolbar__select">
-              <template #leading>
-                <UIcon name="i-lucide-globe-2" class="size-3.5" />
-              </template>
-            </USelectMenu>
-            <USelectMenu v-model="maxRank" :items="maxRankItems" value-key="value" size="sm" class="uni-toolbar__select">
-              <template #leading>
-                <UIcon name="i-lucide-trophy" class="size-3.5" />
-              </template>
-            </USelectMenu>
-            <USelectMenu v-if="!isOldTable" v-model="yearFilter" :items="yearFilterItems" value-key="value" placeholder="全部年份" size="sm" class="uni-toolbar__select">
-              <template #leading>
-                <UIcon name="i-lucide-calendar" class="size-3.5" />
-              </template>
-            </USelectMenu>
-            <USelectMenu v-model="sortBy" :items="sortByItems" value-key="value" size="sm" class="uni-toolbar__select">
-              <template #leading>
-                <UIcon name="i-lucide-arrow-up-down" class="size-3.5" />
-              </template>
-            </USelectMenu>
-            <div class="uni-toolbar__total">
-              <UIcon name="i-lucide-database" class="size-3.5" style="color: var(--color-brand-blue)" />
-              <span>共 <strong style="color: var(--color-brand-blue)">{{ total.toLocaleString() }}</strong> 所大学</span>
-            </div>
+          <div class="uni-toolbar__meta">
+            <span class="uni-toolbar__total">
+              <UIcon name="i-lucide-database" class="size-4" style="color: var(--color-brand-blue)" />
+              共 <strong style="color: var(--color-brand-blue)">{{ total.toLocaleString() }}</strong> 所大学
+            </span>
+            <span v-if="loading" class="uni-toolbar__loading">
+              <UIcon name="i-lucide-loader" class="size-4 animate-spin" />
+              加载中
+            </span>
           </div>
-          <UAlert v-if="error" color="warning" variant="subtle" :title="error + '，请检查后端 8081 是否运行'" icon="i-lucide-alert-circle" />
         </div>
       </div>
     </section>
 
     <ClientOnly>
-      <!-- Top N CARDS GRID (signature 元素) -->
+      <!-- SCHOOL CARDS GRID -->
       <section class="page-container section-band">
         <div class="grid-head">
           <div class="grid-head__left">
-            <span class="grid-head__eyebrow">{{ rankTableItems.find(t => t.value === rankTable)?.label }}</span>
-            <h2 class="grid-head__title">{{ rankTableItems.find(t => t.value === rankTable)?.label }} Top {{ maxRank }} 院校</h2>
-          </div>
-          <div v-if="loading" class="grid-head__loading">
-            <UIcon name="i-lucide-loader" class="size-3.5 animate-spin" />
-            加载中
+            <span class="grid-head__eyebrow">{{ currentRankLabel }}</span>
+            <h2 class="grid-head__title">{{ currentRankLabel }} Top {{ maxRank }} 院校</h2>
           </div>
         </div>
 
@@ -406,11 +444,10 @@ function isTied(row: any, idx: number): boolean {
             class="school-card"
           >
             <div class="school-card__head">
-              <span
-                :class="['school-card__rank', isOldTable ? rankBadgeTier(getRankField(row, 'all')) : (getRankIntegerForNewTable(row) <= 10 ? 'school-card__rank--silver' : 'school-card__rank--normal')]"
-              >
-                <span class="school-card__rank-hash">#</span>{{ isOldTable ? (getRankField(row, 'all') ?? '—') : (getRankIntegerForNewTable(row) === 9999 ? '—' : getRankIntegerForNewTable(row)) }}<sup v-if="isTied(row, idx)" class="school-card__rank-tie">T</sup>
-              </span>
+              <div class="school-card__rank-wrap">
+                <RankBadge :rank="cardRank(row)" size="md" />
+                <sup v-if="isTied(row, idx)" class="school-card__rank-tie">T</sup>
+              </div>
               <span v-if="isOldTable && (get4Dims(row).qs || get4Dims(row).usnews)" class="school-card__chips">
                 <span v-if="get4Dims(row).qs" class="school-card__chip">QS #{{ get4Dims(row).qs }}</span>
                 <span v-if="get4Dims(row).usnews" class="school-card__chip">US #{{ get4Dims(row).usnews }}</span>
@@ -435,22 +472,31 @@ function isTied(row: any, idx: number): boolean {
                 class="school-card__region"
                 :style="regionStyle(row.universityTagsState)"
               >
-                <span class="school-card__region-dot" :style="{ background: regionColor(row.universityTagsState) }" />
+                <span class="school-card__region-dot" :style="{ background: regionDot(row.universityTagsState) }" />
                 {{ row.universityTagsState }}
               </span>
             </div>
           </article>
         </div>
-        <div v-else class="empty-state">
-          <UIcon name="i-lucide-search-x" class="size-6 text-muted" />
-          <p class="t-h4">{{ error ? '后端不可达' : '暂无数据' }}</p>
-          <p class="t-body-sm" style="color: var(--color-slate)">{{ error ? '请检查后端服务后刷新' : '试试调整筛选条件' }}</p>
-          <UButton v-if="error" icon="i-lucide-rotate-ccw" label="重试" color="primary" variant="solid" size="md" class="rounded-full" @click="load" />
-        </div>
+        <AppError
+          v-else-if="error"
+          title="后端不可达"
+          description="请检查后端服务 8081 是否运行，然后重试"
+          retry-label="重试"
+          size="md"
+          @retry="load"
+        />
+        <AppEmpty
+          v-else
+          icon="i-lucide-search-x"
+          title="暂无数据"
+          description="试试调整筛选条件，或切换排名体系"
+          size="md"
+        />
       </section>
 
       <!-- 2 维分布 -->
-      <section class="page-container section-band">
+      <section class="page-container section-band section-band--last">
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div class="dist-card">
             <div class="dist-card__head">
@@ -476,7 +522,7 @@ function isTied(row: any, idx: number): boolean {
               </button>
             </div>
             <div v-else class="empty-state empty-state--mini">
-              <UIcon name="i-lucide-globe-2" class="size-3.5" />
+              <UIcon name="i-lucide-globe-2" class="size-4" />
               <span class="t-body-sm">该榜单暂无地区数据</span>
             </div>
           </div>
@@ -501,7 +547,7 @@ function isTied(row: any, idx: number): boolean {
               </div>
             </div>
             <div v-else class="empty-state empty-state--mini">
-              <UIcon name="i-lucide-book-marked" class="size-3.5" />
+              <UIcon name="i-lucide-book-marked" class="size-4" />
               <span class="t-body-sm">{{ isOldTable ? '切换到新榜单看专业分布' : '暂无专业数据' }}</span>
             </div>
           </div>
@@ -512,14 +558,14 @@ function isTied(row: any, idx: number): boolean {
 </template>
 
 <style scoped>
-/* ===== Watchlist sticky bar (DESIGN.md promo-banner 黑底) ===== */
+/* ===== Watchlist sticky bar ===== */
 .watchlist-bar {
   position: sticky;
   top: 0;
   z-index: 30;
   background: var(--color-ink);
   color: var(--color-canvas);
-  padding: 12px 0;
+  padding: 8px 0;
 }
 .watchlist-bar__inner {
   display: flex;
@@ -532,7 +578,7 @@ function isTied(row: any, idx: number): boolean {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  color: var(--color-canvas);
+  color: rgba(255, 255, 255, 0.85);
 }
 .watchlist-bar__names {
   display: flex;
@@ -542,7 +588,7 @@ function isTied(row: any, idx: number): boolean {
 .watchlist-bar__chip {
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
+  padding: 3px 10px;
   border-radius: 9999px;
   background: rgba(255, 255, 255, 0.12);
   font-size: 12px;
@@ -553,7 +599,7 @@ function isTied(row: any, idx: number): boolean {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
+  padding: 7px 14px;
   background: var(--color-canvas);
   color: var(--color-ink);
   border-radius: 9999px;
@@ -561,19 +607,24 @@ function isTied(row: any, idx: number): boolean {
   font-weight: 600;
   text-decoration: none;
   transition: background 0.15s ease;
+  flex-shrink: 0;
 }
 .watchlist-bar__cta:hover { background: var(--color-hairline-soft); }
 @media (max-width: 768px) {
   .watchlist-bar__names { display: none; }
 }
 
-/* ===== HERO BAND (DESIGN.md §hero-band-marketing) ===== */
+/* ===== HERO ===== */
 .uni-hero {
-  padding: 64px 0 32px;
-  background: var(--color-canvas);
+  padding: 64px 0 40px;
+  background: var(--color-ink);
+  color: var(--color-canvas);
 }
 @media (min-width: 768px) {
-  .uni-hero { padding: 96px 0 48px; }
+  .uni-hero { padding: 80px 0 48px; }
+}
+@media (min-width: 1024px) {
+  .uni-hero { padding: 96px 0 56px; }
 }
 .uni-hero__eyebrow {
   display: inline-flex;
@@ -581,8 +632,8 @@ function isTied(row: any, idx: number): boolean {
   gap: 8px;
   padding: 6px 14px;
   border-radius: 9999px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-hairline);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   margin-bottom: 20px;
 }
 .uni-hero__dot {
@@ -591,10 +642,10 @@ function isTied(row: any, idx: number): boolean {
   border-radius: 9999px;
   background: var(--color-brand-coral);
 }
-.uni-hero__eyebrow-text {
+.uni-hero__eyebrow span:last-child {
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-ink);
+  color: rgba(255, 255, 255, 0.85);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -603,83 +654,87 @@ function isTied(row: any, idx: number): boolean {
   font-family: var(--font-display);
   font-size: 56px;
   font-weight: 600;
-  line-height: 1.10;
-  letter-spacing: -1.5px;
-  color: var(--color-ink);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--color-canvas);
 }
 @media (min-width: 1024px) {
-  .uni-hero__title { font-size: 80px; letter-spacing: -2px; }
-}
-.uni-hero__title-accent {
-  font-style: italic;
-  font-weight: 600;
-  color: var(--color-brand-coral);
-  /* 0 渐变铁律: 纯色 + 底部小色块代替 bg-clip text */
-  position: relative;
-  display: inline-block;
-}
-.uni-hero__title-accent::after {
-  content: '';
-  position: absolute;
-  bottom: 4px;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: var(--color-brand-coral);
-  border-radius: 9999px;
-  opacity: 0.85;
-  z-index: -1;
+  .uni-hero__title { font-size: 80px; }
 }
 .uni-hero__sub {
   margin: 16px 0 0;
   font-size: 18px;
-  font-weight: 500;
-  color: var(--color-slate);
-  line-height: 1.50;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.5;
+  max-width: 640px;
 }
 
-/* ===== Toolbar (DESIGN.md §text-input) ===== */
+/* ===== TOOLBAR ===== */
+.uni-toolbar-section {
+  padding: 20px 0 0;
+}
 .uni-toolbar {
-  margin-top: 40px;
-  background: var(--color-canvas);
-  border: 1px solid var(--color-hairline);
-  border-radius: 20px;
-  padding: 16px;
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  padding: 12px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  border-radius: 9999px;
+}
+@media (max-width: 768px) {
+  .uni-toolbar {
+    border-radius: 24px;
+    padding: 12px;
+  }
 }
 .uni-toolbar__row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-}
-.uni-toolbar__row--second {
-  padding-top: 12px;
-  border-top: 1px solid var(--color-hairline-soft);
-}
-.uni-toolbar__search { flex: 1; min-width: 280px; }
-.uni-toolbar__rank { min-width: 200px; }
-.uni-toolbar__select { min-width: 140px; }
-.uni-toolbar__total {
-  margin-left: auto;
-  display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+  flex: 1;
+}
+.uni-toolbar__search { flex: 1; min-width: 240px; }
+.uni-toolbar__select { min-width: 120px; }
+.uni-toolbar__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.uni-toolbar__total {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
   border-radius: 9999px;
-  background: var(--color-surface);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   font-size: 13px;
   font-weight: 500;
   color: var(--color-ink);
 }
+.uni-toolbar__loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-stone);
+}
 
 /* ===== Section bands ===== */
-.section-band { margin-top: 32px; }
+.section-band { margin-top: 80px; }
+.section-band--last { margin-bottom: 120px; }
+@media (max-width: 768px) {
+  .section-band { margin-top: 56px; }
+  .section-band--last { margin-bottom: 80px; }
+}
 
-/* ===== Grid head (DESIGN.md §heading-sm + eyebrow) ===== */
+/* ===== Grid head ===== */
 .grid-head {
   display: flex;
   align-items: flex-end;
@@ -707,15 +762,8 @@ function isTied(row: any, idx: number): boolean {
 @media (min-width: 768px) {
   .grid-head__title { font-size: 40px; letter-spacing: -1px; }
 }
-.grid-head__loading {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--color-stone);
-}
 
-/* ===== School grid (signature element) ===== */
+/* ===== School grid ===== */
 .school-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -731,76 +779,56 @@ function isTied(row: any, idx: number): boolean {
   .school-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
-/* ===== School card v3 (DESIGN.md §card-base + 信息层级反转) ===== */
+/* ===== School card ===== */
 .school-card {
   background: var(--color-canvas);
   border: 1px solid var(--color-hairline);
   border-radius: 16px;
-  padding: 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   transition: all 200ms ease;
   position: relative;
-  min-height: 132px;
+  min-height: 152px;
 }
 .school-card:hover {
   border-color: var(--color-ink);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
 }
-/* 头部: 排名小徽章 + QS/US chip + bookmark (右上) */
 .school-card__head {
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-height: 22px;
+  gap: 8px;
 }
-.school-card__rank {
+.school-card__rank-wrap {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 1px;
-  height: 24px;
-  min-width: 24px;
-  padding: 0 8px;
-  border-radius: 6px;
-  font-family: var(--font-data);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--color-canvas);
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
+  gap: 2px;
 }
-.school-card__rank-hash { font-size: 10px; opacity: 0.6; margin-right: 1px; }
 .school-card__rank-tie {
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
-  margin-left: 1px;
-  top: -4px;
-  color: inherit;
-  opacity: 0.7;
+  color: var(--color-stone);
+  margin-left: 2px;
 }
-.school-card__rank--gold { background: #f59e0b; }
-.school-card__rank--silver { background: var(--color-ink); }
-.school-card__rank--bronze { background: #ea580c; }
-.school-card__rank--normal { background: var(--color-surface-soft); color: var(--color-ink); }
 .school-card__chips {
   display: inline-flex;
   gap: 4px;
   flex-wrap: wrap;
+  flex: 1;
 }
 .school-card__chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 18px;
-  padding: 0 7px;
-  border-radius: 5px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 6px;
   background: var(--color-surface);
   border: 1px solid var(--color-hairline);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-slate);
   letter-spacing: 0.02em;
@@ -808,12 +836,11 @@ function isTied(row: any, idx: number): boolean {
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
-/* bookmark 按钮 (右上角) */
 .school-card__bookmark {
   margin-left: auto;
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -822,6 +849,7 @@ function isTied(row: any, idx: number): boolean {
   color: var(--color-slate);
   cursor: pointer;
   transition: all 150ms ease;
+  flex-shrink: 0;
 }
 .school-card__bookmark:hover {
   background: var(--color-surface);
@@ -833,23 +861,20 @@ function isTied(row: any, idx: number): boolean {
   border-color: var(--color-brand-blue);
   color: var(--color-canvas);
 }
-/* 主标题: 学校名 18px weight 600 — 信息层级反转 */
 .school-card__name {
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   line-height: 1.30;
   letter-spacing: -0.01em;
   color: var(--color-ink);
   text-decoration: none;
-  margin-top: 2px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 .school-card__name:hover { color: var(--color-brand-blue); }
-/* meta: 国家 + 洲 chip */
 .school-card__meta {
   display: flex;
   align-items: center;
@@ -858,7 +883,7 @@ function isTied(row: any, idx: number): boolean {
   margin-top: auto;
 }
 .school-card__country {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--color-slate);
 }
@@ -866,9 +891,9 @@ function isTied(row: any, idx: number): boolean {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 2px 8px;
+  padding: 3px 9px;
   border-radius: 9999px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   line-height: 1.5;
 }
@@ -884,21 +909,13 @@ function isTied(row: any, idx: number): boolean {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 80px 32px;
-  background: var(--color-surface);
-  border: 1px dashed var(--color-hairline);
-  border-radius: 20px;
-  color: var(--color-stone);
   text-align: center;
+  color: var(--color-stone);
+  gap: 8px;
 }
-.empty-state--mini {
-  padding: 24px 16px;
-  background: transparent;
-  border: none;
-}
+.empty-state--mini { padding: 32px 16px; }
 
-/* ===== Dist cards (DESIGN.md §card-base) ===== */
+/* ===== Dist cards ===== */
 .dist-card {
   background: var(--color-canvas);
   border: 1px solid var(--color-hairline);
@@ -962,9 +979,10 @@ button.dist-row { width: 100%; }
 }
 
 @media (max-width: 640px) {
-  .uni-hero { padding: 48px 0 24px; }
-  .uni-hero__title { font-size: 40px; }
-  .uni-toolbar { padding: 16px; }
+  .uni-hero { padding: 48px 0 32px; }
+  .uni-hero__title { font-size: 48px; }
+  .uni-toolbar { border-radius: 24px; }
   .uni-toolbar__total { width: 100%; justify-content: center; }
+  .dist-row { grid-template-columns: 10px 90px 1fr 28px; gap: 8px; }
 }
 </style>

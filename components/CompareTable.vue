@@ -1,24 +1,20 @@
 <script setup lang="ts">
 /**
- * CompareTable · 4 维对比表 (signature element of /choices)
+ * CompareTable · 首页 4 维对比预览
  *
- * 默认展示 5 所名校的 4 维当前排名对比
- *
- * 行: 排名体系 (QS / QS CS / US News / US News CS)
- * 列: 大学
- * 单元: 当前排名 (#14, #17, #25...)
- * 表头: 平均排名 + 强度徽章
- *
- * 数据来源:
- *   - /status/trendAllVariants?universityNameChinese=X
- *   - 取每维数组最后一个有效排名 = 当前排名
+ * 左右分栏：左文案 + 黑 pill CTA，右表格预览（清华/北大/复旦的 QS/US 排名）。
  */
-
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { drawerData } from '~/lib/api/ranking'
+import type { EchartsDTO, ChartSeries } from '~/types'
+
+interface DrawerResponse extends EchartsDTO {
+  universityNameEnglish?: string | null
+}
 
 interface SchoolRow {
   name: string
+  shortName: string
   enName: string
   qs: number | null
   qsCs: number | null
@@ -26,16 +22,26 @@ interface SchoolRow {
   usnewsCs: number | null
 }
 
-const DEFAULT_SCHOOLS = ['清华大学', '北京大学', '复旦大学', '上海交通大学', '浙江大学']
+interface Dimension {
+  key: keyof Omit<SchoolRow, 'name' | 'shortName' | 'enName'>
+  label: string
+  badgeTone: 'coral' | 'blue' | 'magenta' | 'purple'
+}
+
+const DEFAULT_SCHOOLS: { name: string; shortName: string }[] = [
+  { name: '清华大学', shortName: '清华' },
+  { name: '北京大学', shortName: '北大' },
+  { name: '复旦大学', shortName: '复旦' },
+]
 
 const rows = ref<SchoolRow[]>([])
 const loading = ref(true)
 
-function parseSeries(raw: any): number | null {
+function parseSeries(raw: unknown[]): number | null {
   if (!Array.isArray(raw) || raw.length === 0) return null
   for (let i = raw.length - 1; i >= 0; i--) {
     const v = raw[i]
-    const num = typeof v === 'number' ? v : parseFloat(v)
+    const num = typeof v === 'number' ? v : parseFloat(String(v))
     if (!Number.isNaN(num) && num > 0) return num
   }
   return null
@@ -43,131 +49,161 @@ function parseSeries(raw: any): number | null {
 
 onMounted(async () => {
   const results = await Promise.allSettled(
-    DEFAULT_SCHOOLS.map(async (name): Promise<SchoolRow> => {
+    DEFAULT_SCHOOLS.map(async ({ name, shortName }): Promise<SchoolRow> => {
       try {
-        const data: any = await drawerData(name)
-        if (!data?.chatData?.series) {
-          return { name, enName: '', qs: null, qsCs: null, usnews: null, usnewsCs: null }
+        const data = await drawerData(name) as unknown as DrawerResponse | null | undefined
+        const seriesList: ChartSeries[] = data?.chatData?.series ?? []
+        if (!seriesList.length) {
+          return { name, shortName, enName: '', qs: null, qsCs: null, usnews: null, usnewsCs: null }
         }
-        const seriesList: any[] = data.chatData.series ?? []
-        // 后端 series.name = "${name1}qs" / "${name1}qs_cs" / "${name1}usnews" / "${name1}usnews_cs"
-        const suffixMap: Record<string, string> = {
+        const suffixMap: Record<'qs' | 'qsCs' | 'usnews' | 'usnewsCs', string> = {
           qs: 'qs',
           qsCs: 'qs_cs',
           usnews: 'usnews',
-          usnewsCs: 'usnews_cs'
+          usnewsCs: 'usnews_cs',
         }
-        // 按 key 长度倒序排避免 'usnews' 误匹 'usnews_cs'
-        const sorted = [...seriesList].sort((a, b) => (b?.name?.length ?? 0) - (a?.name?.length ?? 0))
-        function findSeries(key: string): number[] | null {
+        const sorted = [...seriesList].sort((a, b) => (b.name.length) - (a.name.length))
+        function findSeries(key: keyof typeof suffixMap): number[] | null {
           const sfx = suffixMap[key]
-          const s = sorted.find((x) => (x?.name ?? '').endsWith(sfx))
+          const s = sorted.find((x) => x.name.endsWith(sfx))
           if (!s?.data) return null
-          return s.data.map((x: any) => (typeof x === 'number' ? x : parseFloat(x))).filter((v: number) => !Number.isNaN(v) && v > 0)
+          return s.data
+            .map((x: number | null) => (typeof x === 'number' ? x : parseFloat(String(x))))
+            .filter((v: number) => !Number.isNaN(v) && v > 0)
         }
         return {
           name,
-          enName: data.universityNameEnglish ?? '',
-          qs: parseSeries(findSeries('qs')),
-          qsCs: parseSeries(findSeries('qsCs')),
-          usnews: parseSeries(findSeries('usnews')),
-          usnewsCs: parseSeries(findSeries('usnewsCs'))
+          shortName,
+          enName: data?.universityNameEnglish ?? '',
+          qs: parseSeries(findSeries('qs') ?? []),
+          qsCs: parseSeries(findSeries('qsCs') ?? []),
+          usnews: parseSeries(findSeries('usnews') ?? []),
+          usnewsCs: parseSeries(findSeries('usnewsCs') ?? []),
         }
       } catch {
-        return { name, enName: '', qs: null, qsCs: null, usnews: null, usnewsCs: null }
+        return { name, shortName, enName: '', qs: null, qsCs: null, usnews: null, usnewsCs: null }
       }
     })
   )
-  rows.value = results.map((r) => (r.status === 'fulfilled' ? r.value : null)).filter((v): v is SchoolRow => v !== null)
+  rows.value = results
+    .map((r) => (r.status === 'fulfilled' ? r.value : null))
+    .filter((v): v is SchoolRow => v !== null)
   loading.value = false
 })
 
-const dimensions = [
-  { key: 'qs' as const, label: 'QS 综合', shortLabel: 'QS' },
-  { key: 'qsCs' as const, label: 'QS 学科', shortLabel: 'QS-CS' },
-  { key: 'usnews' as const, label: 'US News 综合', shortLabel: 'USNews' },
-  { key: 'usnewsCs' as const, label: 'US News 学科', shortLabel: 'USNews-CS' }
+const dimensions: Dimension[] = [
+  { key: 'qs', label: 'QS 综合', badgeTone: 'coral' },
+  { key: 'qsCs', label: 'QS 学科', badgeTone: 'blue' },
+  { key: 'usnews', label: 'US News 综合', badgeTone: 'magenta' },
 ]
 
-function rankCell(row: SchoolRow, key: keyof Omit<SchoolRow, 'name' | 'enName'>): string {
-  const v = row[key]
-  if (v == null) return '—'
-  return `#${v}`
+const toneMap: Record<Dimension['badgeTone'], { bg: string; text: string }> = {
+  coral: { bg: 'rgba(255, 85, 48, 0.10)', text: '#ff5530' },
+  blue: { bg: 'rgba(20, 86, 240, 0.10)', text: '#1456f0' },
+  magenta: { bg: 'rgba(234, 94, 193, 0.10)', text: '#ea5ec1' },
+  purple: { bg: 'rgba(168, 85, 247, 0.10)', text: '#a855f7' },
 }
 
-function rankColor(rank: number | null): 'gold' | 'silver' | 'bronze' | 'normal' {
-  if (rank == null) return 'normal'
-  if (rank <= 3) return 'gold'
-  if (rank <= 10) return 'silver'
-  if (rank <= 50) return 'bronze'
-  return 'normal'
-}
+const tableData = computed(() => {
+  return dimensions.map((d) => {
+    const record: Record<string, string | number | null> = { dim: d.label, tone: d.badgeTone }
+    for (const r of rows.value) {
+      record[r.shortName] = r[d.key]
+    }
+    return record
+  })
+})
 
-function avgRank(row: SchoolRow): string {
-  const vals = [row.qs, row.qsCs, row.usnews, row.usnewsCs].filter((v): v is number => v != null && v > 0)
-  if (vals.length === 0) return '—'
-  const avg = vals.reduce((s, v) => s + v, 0) / vals.length
-  return `#${avg.toFixed(1)}`
+const columns = computed(() => {
+  return [
+    { id: 'dim', header: '排名体系' },
+    ...rows.value.map((r) => ({ id: r.shortName, header: r.shortName })),
+  ]
+})
+
+function cellStyle(tone: Dimension['badgeTone']): Record<string, string> {
+  const t = toneMap[tone]
+  return {
+    background: t.bg,
+    color: t.text,
+  }
 }
 </script>
 
 <template>
   <section class="compare-table">
     <div class="compare-table__inner">
-      <header class="compare-table__head">
-        <div class="compare-table__eyebrow">
-          <UIcon name="i-lucide-git-compare-arrows" class="size-3.5" />
-          4 维对比
+      <div class="compare-table__grid">
+        <div class="compare-table__copy">
+          <div class="compare-table__eyebrow">4 维对比</div>
+          <h2 class="compare-table__title">
+            同时比较 QS / US News<br class="hidden md:block" />
+            综合与计算机排名
+          </h2>
+          <p class="compare-table__desc">
+            不再需要在不同榜单之间来回切换。一键对比多所大学的综合排名与计算机学科排名，快速锁定目标院校。
+          </p>
+          <NuxtLink to="/choices" class="compare-table__cta">
+            打开完整对比表
+            <UIcon name="i-lucide-arrow-right" class="size-4" />
+          </NuxtLink>
         </div>
-        <h2 class="compare-table__title">名校当前排名一览</h2>
-        <p class="compare-table__sub">默认 5 所 · 数据说话 · 你做决策</p>
-      </header>
 
-      <div v-if="loading" class="compare-table__loading">
-        <UIcon name="i-lucide-loader-circle" class="size-5 animate-spin text-muted" />
-        <span>加载排名数据 ...</span>
-      </div>
+        <UCard
+          v-if="loading"
+          class="compare-table__card"
+          :ui="{ root: 'rounded-2xl border border-default bg-default ring-0 overflow-hidden', body: 'p-6' }"
+        >
+          <div class="compare-table__loading">
+            <UIcon name="i-lucide-loader-circle" class="size-4 animate-spin text-muted" />
+            <p class="compare-table__loading-text">加载排名数据…</p>
+          </div>
+        </UCard>
 
-      <div v-else class="compare-table__wrap">
-        <table class="compare-table__tbl">
-          <thead>
-            <tr>
-              <th class="compare-table__th compare-table__th--dim">排名体系</th>
-              <th v-for="r in rows" :key="r.name" class="compare-table__th compare-table__th--school">
-                <div class="compare-table__school-name">{{ r.name }}</div>
-                <div class="compare-table__school-en">{{ r.enName || '\u00a0' }}</div>
-              </th>
-              <th class="compare-table__th compare-table__th--avg">综合</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="d in dimensions" :key="d.key">
-              <th class="compare-table__dim">{{ d.label }}</th>
-              <td v-for="r in rows" :key="r.name + d.key" class="compare-table__cell">
-                <span :class="['compare-table__rank', `compare-table__rank--${rankColor(r[d.key])}`]">
-                  {{ rankCell(r, d.key) }}
+        <UCard
+          v-else-if="rows.length"
+          class="compare-table__card"
+          :ui="{ root: 'rounded-2xl border border-default bg-default ring-0 overflow-hidden', body: 'p-0' }"
+        >
+          <div class="overflow-x-auto">
+            <UTable
+              :data="tableData"
+              :columns="columns"
+              :ui="{
+                root: 'compare-table__table',
+                th: 'compare-table__th',
+                td: 'compare-table__td',
+              }"
+            >
+              <template #dim-cell="{ row }">
+                <span class="compare-table__dim">{{ row.original.dim }}</span>
+              </template>
+              <template v-for="r in rows" :key="r.shortName" v-slot:[`${r.shortName}-cell`]="{ row }">
+                <span
+                  v-if="row.original[r.shortName] != null"
+                  class="compare-table__badge"
+                  :style="cellStyle(row.original.tone as Dimension['badgeTone'])"
+                >
+                  #{{ row.original[r.shortName] }}
                 </span>
-              </td>
-              <td class="compare-table__cell compare-table__cell--avg">
-                <UIcon name="i-lucide-minus" class="size-3 text-muted" />
-              </td>
-            </tr>
-            <tr class="compare-table__avg-row">
-              <th class="compare-table__dim compare-table__dim--avg">综合平均</th>
-              <td v-for="r in rows" :key="r.name + '-avg'" class="compare-table__cell">
-                <span class="compare-table__rank compare-table__rank--avg">{{ avgRank(r) }}</span>
-              </td>
-              <td class="compare-table__cell"></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                <span v-else class="compare-table__badge compare-table__badge--none">#—</span>
+              </template>
+            </UTable>
+          </div>
+        </UCard>
 
-      <div class="compare-table__cta">
-        <NuxtLink to="/choices" class="compare-table__cta-btn">
-          打开完整对比表
-          <UIcon name="i-lucide-arrow-right" class="size-4" />
-        </NuxtLink>
+        <UCard
+          v-else
+          class="compare-table__card"
+          :ui="{ root: 'rounded-2xl border border-default bg-default ring-0 overflow-hidden', body: 'p-6' }"
+        >
+          <AppEmpty
+            icon="i-lucide-database"
+            title="暂无对比数据"
+            description="登录后加载排名，即可查看 4 维对比"
+            size="md"
+          />
+        </UCard>
       </div>
     </div>
   </section>
@@ -176,225 +212,141 @@ function avgRank(row: SchoolRow): string {
 <style scoped>
 .compare-table {
   width: 100%;
-  background: var(--ui-bg);
-  border-bottom: 1px solid var(--ui-border);
+  background: var(--color-canvas);
+  border-bottom: 1px solid var(--color-hairline-soft);
 }
-
 .compare-table__inner {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 80px 32px;
+  padding: 64px 32px;
 }
-
-.compare-table__head {
+@media (min-width: 768px) {
+  .compare-table__inner { padding: 96px 32px; }
+}
+.compare-table__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 40px;
+  align-items: center;
+}
+@media (min-width: 1024px) {
+  .compare-table__grid { grid-template-columns: 1fr 1.15fr; gap: 64px; }
+}
+.compare-table__copy {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 32px;
-  max-width: 640px;
+  gap: 16px;
 }
-
 .compare-table__eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  font-family: var(--font-ui);
   font-size: 12px;
-  font-weight: 500;
-  color: var(--ui-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.compare-table__title {
-  font-family: 'DM Sans', 'Noto Sans SC', system-ui, sans-serif;
-  font-size: 40px;
   font-weight: 600;
-  line-height: 1.15;
+  color: var(--color-brand-magenta);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.compare-table__title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--color-ink);
+  line-height: 1.25;
   letter-spacing: -0.02em;
-  color: var(--ui-text);
   margin: 0;
 }
-
-.compare-table__sub {
+@media (min-width: 768px) {
+  .compare-table__title { font-size: 36px; }
+}
+.compare-table__desc {
+  font-family: var(--font-ui);
   font-size: 16px;
   font-weight: 400;
-  color: var(--ui-text-muted);
+  line-height: 1.6;
+  color: var(--color-slate);
   margin: 0;
+  max-width: 480px;
 }
-
-.compare-table__loading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ui-text-muted);
-  padding: 40px 0;
-  font-size: 14px;
-}
-
-.compare-table__wrap {
-  overflow-x: auto;
-  border: 1px solid var(--ui-border);
-  border-radius: 16px;
-  background: var(--ui-bg);
-}
-
-.compare-table__tbl {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 640px;
-}
-
-.compare-table__th {
-  text-align: left;
-  padding: 16px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ui-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-bottom: 1px solid var(--ui-border);
-  background: var(--ui-bg-elevated, #f7f8fa);
-  white-space: nowrap;
-}
-
-.compare-table__th--dim {
-  width: 160px;
-}
-
-.compare-table__th--school {
-  text-align: center;
-  min-width: 140px;
-}
-
-.compare-table__school-name {
-  font-family: 'DM Sans', 'Noto Sans SC', system-ui, sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-text);
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-.compare-table__school-en {
-  font-size: 10px;
-  font-weight: 400;
-  color: var(--ui-text-muted);
-  text-transform: none;
-  letter-spacing: 0;
-  margin-top: 2px;
-}
-
-.compare-table__th--avg {
-  width: 80px;
-  text-align: center;
-}
-
-.compare-table__dim {
-  text-align: left;
-  padding: 16px 12px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--ui-text);
-  border-bottom: 1px solid var(--ui-border);
-  background: var(--ui-bg-elevated, #f7f8fa);
-  white-space: nowrap;
-}
-
-.compare-table__dim--avg {
-  font-weight: 600;
-  color: var(--ui-text);
-}
-
-.compare-table__cell {
-  padding: 14px 12px;
-  text-align: center;
-  border-bottom: 1px solid var(--ui-border);
-  font-family: 'Roboto', system-ui, sans-serif;
-}
-
-.compare-table__rank {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  height: 24px;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 0 10px;
-  border-radius: 6px;
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.compare-table__rank--gold {
-  background: rgba(245, 158, 11, 0.12);
-  color: #b45309;
-}
-
-.compare-table__rank--silver {
-  background: rgba(59, 130, 246, 0.12);
-  color: #1d4ed8;
-}
-
-.compare-table__rank--bronze {
-  background: rgba(20, 184, 166, 0.12);
-  color: #0f766e;
-}
-
-.compare-table__rank--normal {
-  color: var(--ui-text);
-}
-
-.compare-table__rank--avg {
-  background: var(--ui-text, #0a0a0a);
-  color: var(--ui-bg, #ffffff);
-  font-size: 13px;
-  height: 24px;
-}
-
-.compare-table__avg-row {
-  background: var(--ui-bg-elevated, #f7f8fa);
-}
-
-.compare-table__avg-row .compare-table__cell {
-  background: var(--ui-bg-elevated, #f7f8fa);
-}
-
 .compare-table__cta {
-  margin-top: 24px;
-  display: flex;
-  justify-content: center;
-}
-
-.compare-table__cta-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 12px 24px;
-  background: var(--ui-text, #0a0a0a);
-  color: var(--ui-bg, #ffffff);
+  align-self: flex-start;
+  padding: 13px 24px;
+  background: var(--color-ink);
+  color: var(--color-canvas);
+  font-family: var(--font-ui);
   font-size: 15px;
   font-weight: 600;
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   text-decoration: none;
-  transition: background 0.15s ease;
+  transition: background 160ms ease;
+  margin-top: 8px;
 }
-
-.compare-table__cta-btn:hover {
-  background: #181e25;
+.compare-table__cta:hover { background: var(--color-charcoal); }
+.compare-table__card { width: 100%; }
+.compare-table__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 64px 24px;
 }
-
+.compare-table__loading-text {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--color-slate);
+}
+.compare-table__table { min-width: 360px; width: 100%; }
+.compare-table__th {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-stone);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--color-surface);
+  white-space: nowrap;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-hairline);
+}
+:deep(.compare-table__th:first-child) { border-top-left-radius: var(--radius-2xl); }
+:deep(.compare-table__th:last-child) { border-top-right-radius: var(--radius-2xl); }
+.compare-table__td {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--color-ink);
+  white-space: nowrap;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-hairline-soft);
+}
+:deep(.compare-table__table tbody tr:last-child .compare-table__td) { border-bottom: none; }
+.compare-table__dim {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-slate);
+}
+.compare-table__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.compare-table__badge--none {
+  background: var(--color-surface-soft);
+  color: var(--color-stone);
+}
 @media (max-width: 768px) {
-  .compare-table__inner {
-    padding: 56px 20px;
-  }
-  .compare-table__title {
-    font-size: 32px;
-  }
-  .compare-table__th--dim,
-  .compare-table__dim {
-    width: 100px;
-  }
+  .compare-table__inner { padding: 56px 20px; }
+  .compare-table__title { font-size: 24px; }
+  .compare-table__cta { width: 100%; }
 }
 </style>

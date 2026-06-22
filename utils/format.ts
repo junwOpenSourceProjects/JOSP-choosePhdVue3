@@ -114,13 +114,3 @@ export function computeTrend(data: ReadonlyArray<number | null | undefined>): {
   return { tone, trend, last, max, min }
 }
 
-/**
- * 排名 tier (Top 3 / Top 10 / Top 50 / 其余) → 用于徽章颜色
- */
-export function rankTier(rank: number | null | undefined): 'gold' | 'silver' | 'bronze' | 'normal' {
-  if (rank == null) return 'normal'
-  if (rank <= 3) return 'gold'
-  if (rank <= 10) return 'silver'
-  if (rank <= 50) return 'bronze'
-  return 'normal'
-}

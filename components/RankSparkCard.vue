@@ -93,7 +93,7 @@ const tierClass = computed(() => {
         class="rank-card__trend"
         :class="`rank-card__trend--${trend.type}`"
       >
-        <UIcon :name="trend.icon" class="size-3" />
+        <UIcon :name="trend.icon" class="size-4" />
         {{ trend.label }}
       </span>
     </div>
