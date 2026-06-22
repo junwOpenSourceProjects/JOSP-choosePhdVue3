@@ -98,9 +98,9 @@ const tierClass = computed(() => {
       </span>
     </div>
     <div class="rank-card__body">
-      <div class="rank-card__rank" :style="{ color }">
+      <div class="rank-card__rank" :style="{ color: rank != null ? color : 'var(--color-stone)' }">
         <span v-if="rank != null">{{ rank }}</span>
-        <span v-else class="rank-card__rank--none">—</span>
+        <span v-else class="rank-card__rank--none">未上榜</span>
         <span v-if="rank != null" class="rank-card__rank-suffix">位</span>
       </div>
       <svg
@@ -207,17 +207,19 @@ const tierClass = computed(() => {
 }
 .rank-card__rank {
   font-family: var(--font-display);
-  font-size: 48px;
+  font-size: 40px;
   font-weight: 600;
   line-height: 1;
-  letter-spacing: -1px;
+  letter-spacing: -1.5px;
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
 }
 .rank-card__rank--none {
+  font-size: 16px;
+  font-weight: 500;
   color: var(--color-stone);
-  font-weight: 400;
+  letter-spacing: 0;
 }
 .rank-card__rank-suffix {
   font-family: var(--font-ui);

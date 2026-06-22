@@ -125,7 +125,7 @@ function rankCount(d: UniversityAllDTO | null | undefined): number {
           <UButton
             color="primary"
             variant="solid"
-            size="lg"
+            size="md"
             icon="i-lucide-list-plus"
             label="加入对比"
             class="rounded-full"
@@ -135,7 +135,7 @@ function rankCount(d: UniversityAllDTO | null | undefined): number {
             to="/charts"
             color="primary"
             variant="outline"
-            size="lg"
+            size="md"
             icon="i-lucide-line-chart"
             label="看趋势"
             class="rounded-full"
