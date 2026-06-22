@@ -25,8 +25,8 @@ const sections = [
   {
     title: '关于',
     links: [
-      { label: '项目文档', to: '/SPEC.md' },
-      { label: '设计规范', to: '/DESIGN.md' },
+      { label: '项目文档', href: '/SPEC.md', external: true },
+      { label: '设计规范', href: '/DESIGN.md', external: true },
       { label: '数据来源', to: '/universities' }
     ]
   }
@@ -49,7 +49,17 @@ const sections = [
         <div class="footer__grid">
           <div v-for="s in sections" :key="s.title" class="footer__col">
             <div class="footer__heading">{{ s.title }}</div>
+            <a
+              v-if="l.external"
+              v-for="l in s.links"
+              :key="l.label"
+              :href="l.href"
+              target="_blank"
+              rel="noopener"
+              class="footer__link"
+            >{{ l.label }}</a>
             <NuxtLink
+              v-else
               v-for="l in s.links"
               :key="l.label"
               :to="l.to"
