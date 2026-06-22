@@ -470,10 +470,10 @@ const fields = [
     <div class="page-container section-band">
       <UCard class="toolbar-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-5' }">
         <div class="toolbar-row">
-          <UInput v-model="search" icon="i-lucide-search" placeholder="搜索大学名称 (支持中/英)..." size="md" class="toolbar-search" />
-          <USelectMenu v-model="sortBy" :items="sortByItems" value-key="value" size="md" class="toolbar-sort">
+          <UInput v-model="search" icon="i-lucide-search" placeholder="搜索大学名称 (支持中/英)..." size="sm" class="toolbar-search" />
+          <USelectMenu v-model="sortBy" :items="sortByItems" value-key="value" size="sm" class="toolbar-sort">
             <template #leading>
-              <UIcon name="i-lucide-arrow-up-down" class="size-4" />
+              <UIcon name="i-lucide-arrow-up-down" class="size-3.5" />
             </template>
           </USelectMenu>
         </div>
