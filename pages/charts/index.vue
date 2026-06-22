@@ -89,10 +89,10 @@ const kpis = computed(() => {
   const down = rankingBoard.value.filter((r: any) => r.tone === 'down').length
   const stable = n - up - down
   return [
-    { label: '入选大学', value: n, sub: `Top ${currentRank.value}`, color: 'var(--color-brand-blue)' },
-    { label: '黑马 (上升)', value: up, sub: '同比首年 -3 以上', color: '#10b981' },
-    { label: '下行', value: down, sub: '同比首年 +3 以上', color: '#ef4444' },
-    { label: '稳定', value: stable, sub: '±3 内波动', color: 'var(--color-stone)' }
+    { label: '入选大学', value: n, sub: `Top ${currentRank.value}` },
+    { label: '黑马 (上升)', value: up, sub: '同比首年 -3 以上' },
+    { label: '下行', value: down, sub: '同比首年 +3 以上' },
+    { label: '稳定', value: stable, sub: '±3 内波动' }
   ]
 })
 
@@ -328,12 +328,11 @@ function sparklinePath(data: number[], width = 100, height = 28): string {
       </div>
       <div class="kpi-grid mt-3">
         <StatCard
-          v-for="(k, i) in kpis"
+          v-for="k in kpis"
           :key="k.label"
           :label="k.label"
           :value="k.value"
           :hint="k.sub"
-          :primary="i === 0"
         />
       </div>
     </div>
@@ -353,7 +352,7 @@ function sparklinePath(data: number[], width = 100, height = 28): string {
         </div>
         <ClientOnly>
           <div v-if="watchlist.length === 0" class="watch-empty">
-            <UIcon name="i-lucide-eye-off" class="size-7" />
+            <UIcon name="i-lucide-eye-off" class="size-5" />
             <span class="t-body-sm">还没有添加大学</span>
             <span class="t-caption text-muted">下方排名榜点 + 加入对比</span>
           </div>
@@ -470,11 +469,11 @@ function sparklinePath(data: number[], width = 100, height = 28): string {
         </div>
         <ClientOnly>
           <div v-if="selectedForVariants.length === 0" class="watch-empty">
-            <UIcon name="i-lucide-git-compare" class="size-7" />
+            <UIcon name="i-lucide-git-compare" class="size-5" />
             <span class="t-body-sm">从上方勾几所大学, 这里画 N × 4 条对比线</span>
           </div>
           <div v-else-if="variantLoading" class="watch-loading">
-            <UIcon name="i-lucide-loader" class="size-5 animate-spin" />
+            <UIcon name="i-lucide-loader" class="size-4 animate-spin" />
             <span class="ml-2 t-body-sm text-muted">加载 4 维数据...</span>
           </div>
           <div v-else class="watch-chart-box">
@@ -615,7 +614,7 @@ function sparklinePath(data: number[], width = 100, height = 28): string {
           />
         </div>
         <div class="rounded-2xl border border-dashed border-default p-12 text-center">
-          <UIcon name="i-lucide-globe-2" class="size-7 mx-auto text-muted" />
+          <UIcon name="i-lucide-globe-2" class="size-5 mx-auto text-muted" />
           <h3 class="t-h4 mt-3">地区分布视图</h3>
           <p class="t-body-sm text-muted mt-2">点击上方洲 tab 后, 展示对应国家的院校列表与排名分布</p>
           <UButton to="/universities" color="primary" variant="outline" size="md" icon="i-lucide-library" label="去学校库" class="rounded-full mt-4" />
