@@ -54,10 +54,13 @@ export default defineNuxtConfig({
             if (id.includes('node_modules/echarts') || id.includes('node_modules/vue-echarts')) {
               return 'echarts'
             }
-            // 把 @nuxt/ui 的图标集合拆到独立 chunk
-            if (id.includes('node_modules/@iconify')) {
-              return 'icons'
-            }
+            // ⚠️ 不要把 @iconify 拆到独立 chunk!
+            // Nuxt Icon 的 SSR 渲染依赖 @iconify/utils / @iconify/vue 在首屏可用,
+            // 拆成 async chunk 会导致:SSR 阶段 SVG 渲染成空骨架(占位框),
+            // client hydrate 时 chunk 还没下载完 → 显示成几何方块,
+            // hydration mismatch 后部分 icon 永久缺字。
+            // 详见 T-01 hotfix (commit 见后续)。图标集合走 @iconify-json/lucide
+            // 单独打包(约 1-2MB),会被 tree-shake 到具体使用的 icon 名。
           }
         }
       }

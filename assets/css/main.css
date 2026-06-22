@@ -563,4 +563,16 @@ body {
   --ui-color-primary-800: #000000;
   --ui-color-primary-900: #000000;
   --ui-color-primary-950: #000000;
+  /* Contrast colors:确保 solid variant 文字在黑底上是白字 (登录按钮 fix) */
+  --ui-color-primary-50-contrast: #0a0a0a;
+  --ui-color-primary-100-contrast: #0a0a0a;
+  --ui-color-primary-200-contrast: #0a0a0a;
+  --ui-color-primary-300-contrast: #0a0a0a;
+  --ui-color-primary-400-contrast: #ffffff;
+  --ui-color-primary-500-contrast: #ffffff;
+  --ui-color-primary-600-contrast: #ffffff;
+  --ui-color-primary-700-contrast: #ffffff;
+  --ui-color-primary-800-contrast: #ffffff;
+  --ui-color-primary-900-contrast: #ffffff;
+  --ui-color-primary-950-contrast: #ffffff;
 }

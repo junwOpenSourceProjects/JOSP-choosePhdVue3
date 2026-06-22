@@ -16,6 +16,7 @@
     "check:all": "pnpm run check:icons && pnpm run check:tokens && pnpm run check:budget"
   },
   "dependencies": {
+    "@iconify-json/lucide": "^1.2.69",
     "@nuxt/ui": "^4.9.0",
     "@pinia/nuxt": "^0.11.3",
     "echarts": "^6.1.0",
