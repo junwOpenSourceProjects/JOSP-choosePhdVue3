@@ -3,6 +3,9 @@ import { queryAllQs } from '~/lib/api/university'
 import { queryBackup2List, fetchBackup2Tables, fetchBackup2Years } from '~/lib/api/ranking'
 import type { Backup2Record, UniversityAllDTO, RankVariant } from '~/types'
 import { RANK_VARIANT_SHORT_MAP } from '~/types'
+import { useWatchlist } from '~/composables/useWatchlist'
+
+const { list: watchlist, toggle: toggleWatch, has: inWatchlist, count: watchCount, max: watchMax } = useWatchlist()
 
 useHead({ title: '学校库 · 多源排名数据 · 选校系统' })
 
@@ -298,6 +301,23 @@ const tableColumns = [
 
 <template>
   <div>
+    <!-- ============== Watchlist Sticky Bar ============== -->
+    <div v-if="watchCount() > 0" class="watchlist-bar">
+      <div class="page-container watchlist-bar__inner">
+        <div class="watchlist-bar__left">
+          <UIcon name="i-lucide-bookmark-check" class="size-4 text-brand" />
+          <span class="t-body-sm">已选 <strong class="text-brand">{{ watchCount() }}</strong> / {{ watchMax }} 所</span>
+          <span class="watchlist-bar__names">
+            <span v-for="n in watchlist.slice(0, 5)" :key="n" class="watchlist-bar__chip">{{ n }}</span>
+          </span>
+        </div>
+        <NuxtLink to="/choices" class="watchlist-bar__cta">
+          打开对比
+          <UIcon name="i-lucide-arrow-right" class="size-4" />
+        </NuxtLink>
+      </div>
+    </div>
+
     <!-- ============== Hero (紧凑) ============== -->
     <section class="uni-hero">
       <div class="page-container">
@@ -366,9 +386,11 @@ const tableColumns = [
                 {{ rankTableItems.find(t => t.value === rankTable)?.label }}
               </UBadge>
             </div>
-            <div v-if="loading" class="flex items-center gap-1.5 t-micro text-muted">
-              <UIcon name="i-lucide-loader" class="size-3 animate-spin" />
-              加载中
+            <div class="flex items-center gap-3">
+              <div v-if="loading" class="flex items-center gap-1.5 t-micro text-muted">
+                <UIcon name="i-lucide-loader" class="size-3 animate-spin" />
+                加载中
+              </div>
             </div>
           </div>
           <UTable
@@ -417,15 +439,27 @@ const tableColumns = [
               </div>
             </template>
             <template #action-cell="{ row }">
-              <UButton
-                :to="`/universities/${encodeURIComponent(row.original.universityNameChinese)}`"
-                color="primary"
-                variant="subtle"
-                size="xs"
-                trailing-icon="i-lucide-chevron-right"
-                label="详情"
-                class="rounded-full"
-              />
+              <div class="flex items-center justify-end gap-2">
+                <UButton
+                  :icon="inWatchlist(row.original.universityNameChinese) ? 'i-lucide-check' : 'i-lucide-plus'"
+                  :color="inWatchlist(row.original.universityNameChinese) ? 'primary' : 'neutral'"
+                  :variant="inWatchlist(row.original.universityNameChinese) ? 'solid' : 'outline'"
+                  size="xs"
+                  :disabled="!inWatchlist(row.original.universityNameChinese) && watchCount() >= watchMax"
+                  :title="inWatchlist(row.original.universityNameChinese) ? '已加入对比, 点击移除' : '加入对比 (最多 5 所)'"
+                  class="rounded-full"
+                  @click.stop="toggleWatch(row.original.universityNameChinese)"
+                />
+                <UButton
+                  :to="`/universities/${encodeURIComponent(row.original.universityNameChinese)}`"
+                  color="primary"
+                  variant="subtle"
+                  size="xs"
+                  trailing-icon="i-lucide-chevron-right"
+                  label="详情"
+                  class="rounded-full"
+                />
+              </div>
             </template>
             <template #empty>
               <div class="empty-state">
@@ -506,6 +540,64 @@ const tableColumns = [
 </template>
 
 <style scoped>
+/* Watchlist sticky bar */
+.watchlist-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-hairline);
+  padding: 12px 0;
+  box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 2px 0px;
+}
+.watchlist-bar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.watchlist-bar__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.watchlist-bar__names {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.watchlist-bar__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+.watchlist-bar__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--color-ink);
+  color: var(--color-canvas);
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+.watchlist-bar__cta:hover {
+  background: #181e25;
+}
+@media (max-width: 768px) {
+  .watchlist-bar__names { display: none; }
+}
+
 /* §hero-band-marketing 紧凑版 */
 .uni-hero {
   padding: 64px 0 32px;
