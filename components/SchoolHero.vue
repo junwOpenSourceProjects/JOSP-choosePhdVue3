@@ -43,6 +43,16 @@ function regionDot(r?: string) {
   if (!r) return '#8e8e93'
   return REGION_COLORS[r]?.dot ?? '#8e8e93'
 }
+
+function rankCount(d: UniversityAllDTO | null | undefined): number {
+  if (!d) return 0
+  let n = 0
+  if (d.currentQsAllRank != null) n++
+  if (d.currentUsnewsAllRank != null) n++
+  if (d.currentQsComputerRank != null) n++
+  if (d.currentUsnewsComputerRank != null) n++
+  return n
+}
 </script>
 
 <template>
@@ -97,7 +107,13 @@ function regionDot(r?: string) {
                 {{ detail.rankingYear }} 年最新
               </span>
             </div>
-            <h1 class="school-hero__title">{{ name }}</h1>
+            <div class="school-hero__eyebrow">
+              <span class="school-hero__dot" />
+              <span class="school-hero__eyebrow-text">学术档案 · {{ rankCount(detail) }} 维最新</span>
+            </div>
+            <h1 class="school-hero__title">
+              {{ name.slice(0, name.length - 2) }}<span class="school-hero__title-accent">{{ name.slice(-2) }}</span>
+            </h1>
             <p v-if="detail" class="school-hero__sub">
               综合 + 计算机 双维度对比 · 4 大榜单历年趋势 · 多源覆盖
             </p>
@@ -247,15 +263,57 @@ function regionDot(r?: string) {
 }
 .school-hero__title {
   font-family: var(--font-display);
-  font-size: 40px;
+  font-size: 56px;
   font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: -0.5px;
+  line-height: 1.10;
+  letter-spacing: -1.5px;
   margin: 0;
   color: var(--color-ink);
 }
-@media (min-width: 768px) {
-  .school-hero__title { font-size: 48px; }
+@media (min-width: 1024px) {
+  .school-hero__title { font-size: 80px; letter-spacing: -2px; }
+}
+.school-hero__title-accent {
+  font-style: italic;
+  font-weight: 600;
+  color: var(--color-brand-coral);
+  position: relative;
+  display: inline-block;
+}
+.school-hero__title-accent::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--color-brand-coral);
+  border-radius: 9999px;
+  opacity: 0.85;
+  z-index: -1;
+}
+.school-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  margin-bottom: 16px;
+}
+.school-hero__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-brand-coral);
+}
+.school-hero__eyebrow-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 .school-hero__sub {
   font-family: var(--font-ui);
@@ -275,29 +333,26 @@ function regionDot(r?: string) {
 .school-hero__ranks {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 0;
+  gap: 16px;
   margin-top: 32px;
-  border-top: 1px solid var(--color-hairline);
-  border-bottom: 1px solid var(--color-hairline);
 }
 @media (min-width: 768px) {
   .school-hero__ranks { grid-template-columns: repeat(4, 1fr); }
 }
 .school-hero__rank {
-  padding: 18px 20px;
-  border-right: 1px solid var(--color-hairline);
-  border-bottom: 1px solid var(--color-hairline);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: 16px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
+  transition: all 200ms ease;
 }
-@media (min-width: 768px) {
-  .school-hero__rank { border-bottom: 0; }
-  .school-hero__rank:nth-child(4n) { border-right: 0; }
-}
-@media (max-width: 767px) {
-  .school-hero__rank:nth-child(2n) { border-right: 0; }
-  .school-hero__rank:nth-last-child(-n+2) { border-bottom: 0; }
+.school-hero__rank:hover {
+  border-color: var(--color-ink);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 .school-hero__rank-label {
   font-family: var(--font-ui);
@@ -309,10 +364,13 @@ function regionDot(r?: string) {
 }
 .school-hero__rank-value {
   font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 600;
-  line-height: 1.1;
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1.0;
   color: var(--color-brand-blue);
-  letter-spacing: -0.5px;
+  letter-spacing: -1px;
+}
+@media (min-width: 1024px) {
+  .school-hero__rank-value { font-size: 64px; }
 }
 </style>
