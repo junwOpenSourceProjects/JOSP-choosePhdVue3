@@ -321,8 +321,8 @@ const fields = [
         </h1>
         <p class="choice-hero__sub">标记「考虑 / 不考虑」, 按 4 维强度评估, 筛选符合预期的项目</p>
         <div class="choice-hero__cta">
-          <UButton icon="i-lucide-refresh-cw" color="neutral" variant="outline" size="lg" label="刷新最新排名" :loading="saving" class="rounded-full" @click="seedRankings" />
-          <UButton icon="i-lucide-zap" color="primary" variant="solid" size="lg" label="一键初始化" :loading="saving" class="rounded-full" @click="batchInit" />
+          <UButton icon="i-lucide-refresh-cw" color="neutral" variant="outline" size="md" label="刷新最新排名" :loading="saving" class="rounded-full" @click="seedRankings" />
+          <UButton icon="i-lucide-zap" color="primary" variant="solid" size="md" label="一键初始化" :loading="saving" class="rounded-full" @click="batchInit" />
         </div>
       </div>
     </section>
@@ -332,8 +332,9 @@ const fields = [
       <div v-if="watchlist.length > 0" class="page-container section-band">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
-            <UIcon name="i-lucide-git-compare-arrows" class="size-5 text-brand" />
-            <h2 class="t-h3">我的对比 · {{ watchlist.length }} 所</h2>
+            <UIcon name="i-lucide-git-compare-arrows" class="size-4 text-brand" />
+            <h2 class="t-h3">我的对比</h2>
+            <span class="compare-count-pill">{{ watchlist.length }} 所</span>
           </div>
           <UButton
             icon="i-lucide-trash-2"
@@ -377,7 +378,7 @@ const fields = [
         </UCard>
 
         <div class="decision-grid">
-          <UCard class="decision-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-6' }">
+          <UCard class="decision-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0 cursor-pointer decision-card--hover', body: '!p-4 sm:!p-4' }">
             <div class="decision-card__head">
               <UIcon name="i-lucide-trending-up" class="size-4" style="color: #047857" />
               <span class="decision-card__eyebrow">DARKHORSE</span>
@@ -392,7 +393,7 @@ const fields = [
             <div v-else class="empty-state-mini">暂无上升势头大学</div>
           </UCard>
 
-          <UCard class="decision-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-6' }">
+          <UCard class="decision-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0 cursor-pointer decision-card--hover', body: '!p-4 sm:!p-4' }">
             <div class="decision-card__head">
               <UIcon name="i-lucide-bar-chart-3" class="size-4" style="color: var(--color-brand-blue)" />
               <span class="decision-card__eyebrow">DELTA</span>
@@ -407,7 +408,7 @@ const fields = [
             <div v-else class="empty-state-mini">加载中...</div>
           </UCard>
 
-          <UCard class="decision-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-6' }">
+          <UCard class="decision-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0 cursor-pointer decision-card--hover', body: '!p-4 sm:!p-4' }">
             <div class="decision-card__head">
               <UIcon name="i-lucide-clipboard-check" class="size-4" style="color: var(--color-brand-blue)" />
               <span class="decision-card__eyebrow">ACTIONS</span>
@@ -445,8 +446,8 @@ const fields = [
 
       <!-- 0 数据时引导插画 -->
       <UCard v-if="stats.total === 0" class="empty-card" :ui="{ root: 'rounded-3xl border-2 border-dashed border-default bg-muted ring-0', body: 'p-12 text-center' }">
-        <div class="mx-auto flex size-16 items-center justify-center rounded-full empty-card__icon">
-          <UIcon name="i-lucide-target" class="size-7" />
+        <div class="mx-auto flex size-12 items-center justify-center rounded-full empty-card__icon">
+          <UIcon name="i-lucide-target" class="size-5" />
         </div>
         <h3 class="t-h3 mt-4">还没有选校, 开始第一步</h3>
         <p class="t-body-sm text-muted mt-2">点上方「一键初始化」导入全部监控大学, 或先去「学校库」收藏几所</p>
@@ -519,7 +520,7 @@ const fields = [
     <!-- ============== Cards grid ============== -->
     <div class="page-container section-band">
       <UCard v-if="loading" class="loading-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-20 text-center' }">
-        <UIcon name="i-lucide-loader" class="size-5 mx-auto animate-spin text-muted" />
+        <UIcon name="i-lucide-loader" class="size-4 mx-auto animate-spin text-muted" />
         <p class="t-body-sm text-muted mt-3">加载中…</p>
       </UCard>
 
@@ -634,11 +635,11 @@ const fields = [
       </template>
       <template #body>
         <div v-if="drawerLoading" class="flex items-center justify-center py-16">
-          <UIcon name="i-lucide-loader" class="size-5 animate-spin text-muted" />
+          <UIcon name="i-lucide-loader" class="size-4 animate-spin text-muted" />
           <span class="ml-2 t-body-sm text-muted">加载中…</span>
         </div>
         <div v-else-if="drawerChart?.error" class="text-center py-16">
-          <UIcon name="i-lucide-alert-triangle" class="size-7 mx-auto text-muted" />
+          <UIcon name="i-lucide-alert-triangle" class="size-5 mx-auto text-muted" />
           <p class="t-body-sm text-muted mt-2">{{ drawerChart.error }}</p>
         </div>
         <div v-else-if="drawerChart" class="drawer-chart">
@@ -790,6 +791,31 @@ const fields = [
   color: var(--color-brand-blue);
 }
 
+/* Compare count pill (size-4 icon + count) */
+.compare-count-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 9999px;
+  background: rgba(20, 86, 240, 0.10);
+  color: var(--color-brand-blue);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-data);
+  letter-spacing: 0.02em;
+}
+
+/* Decision card hover state */
+:deep(.decision-card--hover) {
+  transition: all 200ms ease;
+}
+.decision-card--hover:hover {
+  border-color: var(--color-ink) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
 /* Stats grid */
 .stats-grid {
   display: grid;
@@ -912,6 +938,8 @@ const fields = [
 }
 .compare-grid__remove {
   flex-shrink: 0;
+  min-width: 28px;
+  min-height: 28px;
 }
 .compare-grid__row {
   display: contents;
@@ -993,21 +1021,22 @@ const fields = [
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .decision-card__eyebrow {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--color-stone);
   letter-spacing: 0.08em;
 }
 .decision-card__title {
-  margin: 0 0 16px;
+  margin: 0 0 10px;
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: 17px;
   font-weight: 600;
   line-height: 1.30;
   color: var(--color-ink);
+  letter-spacing: -0.01em;
 }
 .decision-card__list {
   display: flex;
