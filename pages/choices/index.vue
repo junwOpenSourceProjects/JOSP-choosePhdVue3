@@ -2,6 +2,10 @@
 import { queryRankingStatus, insertOrUpdate, drawerData, initFromQs } from '~/lib/api/ranking'
 import { insertChoosePhd } from '~/lib/api/choosePhd'
 import type { RankingStatusDTO } from '~/types'
+import { useWatchlist } from '~/composables/useWatchlist'
+import { computeTrend } from '~/utils/format'
+
+const { list: watchlist, remove: removeFromWatch, clear: clearWatch, count: watchCount } = useWatchlist()
 
 useHead({ title: '我的选校 · 选校系统' })
 
@@ -186,6 +190,92 @@ const stats = computed(() => {
 onMounted(load)
 
 // ============== 等级 chip helper ==============
+function rankTierClass(rank: number): 'gold' | 'silver' | 'bronze' | 'normal' {
+  if (rank <= 3) return 'gold'
+  if (rank <= 10) return 'silver'
+  if (rank <= 50) return 'bronze'
+  return 'normal'
+}
+
+// ============== Watchlist 对比表 (C 方案核心) ==============
+const compareDims = [
+  { key: 'qs', label: 'QS 综合' },
+  { key: 'usnews', label: 'US News' },
+  { key: 'qsCs', label: 'QS 学科' },
+  { key: 'usnewsCs', label: 'US News 学科' }
+]
+const compareData = ref<Record<string, any>>({})
+const compareLoading = ref<Record<string, boolean>>({})
+
+async function loadCompareForSchool(name: string) {
+  compareLoading.value[name] = true
+  try {
+    const resp: any = await drawerData(name)
+    const seriesList: any[] = resp?.chatData?.series ?? []
+    const sorted = [...seriesList].sort((a, b) => (b?.name?.length ?? 0) - (a?.name?.length ?? 0))
+    const find = (suffix: string) => {
+      const s = sorted.find((x) => (x?.name ?? '').endsWith(suffix))
+      if (!s?.data) return null
+      const valid = (s.data as any[]).map((x) => (typeof x === 'number' ? x : parseFloat(x))).filter((v: number) => !Number.isNaN(v) && v > 0)
+      return valid.length ? valid[valid.length - 1] : null
+    }
+    compareData.value[name] = {
+      qs: find('qs'),
+      usnews: find('usnews'),
+      qsCs: find('qs_cs'),
+      usnewsCs: find('usnews_cs')
+    }
+  } catch {
+    compareData.value[name] = { qs: null, usnews: null, qsCs: null, usnewsCs: null }
+  } finally {
+    compareLoading.value[name] = false
+  }
+}
+
+const darkhorses = ref<{ name: string; trend: string }[]>([])
+
+watch(() => watchlist.value, async (newList) => {
+  for (const name of newList) {
+    if (!compareData.value[name]) {
+      await loadCompareForSchool(name)
+    }
+  }
+  const trends: { name: string; trend: string }[] = []
+  for (const name of newList) {
+    try {
+      const resp: any = await drawerData(name)
+      const seriesList: any[] = resp?.chatData?.series ?? []
+      const sorted = [...seriesList].sort((a, b) => (b?.name?.length ?? 0) - (a?.name?.length ?? 0))
+      const qs = sorted.find((x) => (x?.name ?? '').endsWith('qs'))
+      const arr = (qs?.data ?? []).map((x: any) => (typeof x === 'number' ? x : parseFloat(x))).filter((v: number) => !Number.isNaN(v) && v > 0)
+      if (arr.length < 2) continue
+      const t = computeTrend(arr)
+      if (t.trend.includes('↑')) {
+        const num = parseInt(t.trend.replace(/[^0-9]/g, '')) || 0
+        trends.push({ name, trend: `${t.trend} (${t.tone})`, num })
+      }
+    } catch { /* skip */ }
+  }
+  darkhorses.value = trends.sort((a, b) => b.num - a.num).slice(0, 5).map(({ name, trend }) => ({ name, trend }))
+}, { immediate: true })
+
+const dimRanking = computed(() => {
+  const out: { dim: string; best: string }[] = []
+  for (const d of compareDims) {
+    let bestRank = Infinity
+    let bestName = '—'
+    for (const name of watchlist.value) {
+      const r = compareData.value[name]?.[d.key]
+      if (r != null && r < bestRank) {
+        bestRank = r
+        bestName = `${name} #${r}`
+      }
+    }
+    if (bestName !== '—') out.push({ dim: d.label, best: bestName })
+  }
+  return out
+})
+
 function statusLevel(level: number | null | undefined): 'weak' | 'medium' | 'strong' | null {
   if (level == null) return null
   if (level === 2) return 'strong'
@@ -238,6 +328,99 @@ const fields = [
         </div>
       </div>
     </section>
+
+    <!-- ============== Watchlist 对比表 (C 方案核心) ============== -->
+    <ClientOnly>
+      <div v-if="watchlist.length > 0" class="page-container section-band">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <UIcon name="i-lucide-git-compare-arrows" class="size-5 text-brand" />
+            <h2 class="t-h3">我的对比 · {{ watchlist.length }} 所</h2>
+          </div>
+          <UButton
+            icon="i-lucide-trash-2"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            label="清空"
+            class="rounded-full"
+            @click="clearWatch"
+          />
+        </div>
+        <UCard class="compare-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0 overflow-hidden', body: 'p-0' }">
+          <div class="compare-grid" :style="{ '--school-count': watchlist.length }">
+            <div class="compare-grid__head">
+              <div class="compare-grid__dim-label">排名体系</div>
+              <div v-for="name in watchlist" :key="name" class="compare-grid__school-head">
+                <div class="compare-grid__school-name">{{ name }}</div>
+                <UButton
+                  icon="i-lucide-x"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  class="rounded-full compare-grid__remove"
+                  @click="removeFromWatch(name)"
+                />
+              </div>
+            </div>
+            <div v-for="d in compareDims" :key="d.key" class="compare-grid__row">
+              <div class="compare-grid__dim-label">{{ d.label }}</div>
+              <div v-for="name in watchlist" :key="name + d.key" class="compare-grid__cell">
+                <div v-if="compareLoading[name]" class="compare-grid__skeleton" />
+                <div v-else-if="compareData[name]?.[d.key]" class="compare-grid__rank">
+                  <span :class="['compare-grid__rank-num', `compare-grid__rank-num--${rankTierClass(compareData[name][d.key])}`]">
+                    #{{ compareData[name][d.key] }}
+                  </span>
+                </div>
+                <div v-else class="compare-grid__rank-num compare-grid__rank-num--none">—</div>
+              </div>
+            </div>
+          </div>
+        </UCard>
+
+        <div class="decision-grid">
+          <UCard class="decision-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-6' }">
+            <div class="flex items-center gap-2 mb-3">
+              <UIcon name="i-lucide-trending-up" class="size-4 text-emerald-600" />
+              <span class="t-h4">黑马识别</span>
+            </div>
+            <div v-if="darkhorses.length" class="space-y-2">
+              <div v-for="d in darkhorses" :key="d.name" class="darkhorse-row">
+                <span class="darkhorse-name">{{ d.name }}</span>
+                <span class="darkhorse-trend">{{ d.trend }}</span>
+              </div>
+            </div>
+            <div v-else class="empty-state-mini">暂无上升势头大学</div>
+          </UCard>
+
+          <UCard class="decision-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-6' }">
+            <div class="flex items-center gap-2 mb-3">
+              <UIcon name="i-lucide-bar-chart-3" class="size-4 text-brand" />
+              <span class="t-h4">4 维差异</span>
+            </div>
+            <div v-if="dimRanking.length" class="space-y-2">
+              <div v-for="r in dimRanking" :key="r.dim" class="dim-row">
+                <span class="dim-label">{{ r.dim }}</span>
+                <span class="dim-best">{{ r.best }}</span>
+              </div>
+            </div>
+            <div v-else class="empty-state-mini">加载中...</div>
+          </UCard>
+
+          <UCard class="decision-card" :ui="{ root: 'rounded-2xl border border-default bg-default ring-0', body: 'p-6' }">
+            <div class="flex items-center gap-2 mb-3">
+              <UIcon name="i-lucide-clipboard-check" class="size-4 text-brand" />
+              <span class="t-h4">决策辅助</span>
+            </div>
+            <div class="space-y-2">
+              <UButton icon="i-lucide-download" color="neutral" variant="outline" size="sm" label="导出 CSV" class="rounded-full w-full justify-center" />
+              <UButton icon="i-lucide-share-2" color="neutral" variant="outline" size="sm" label="分享" class="rounded-full w-full justify-center" />
+              <UButton to="/universities" icon="i-lucide-plus" color="primary" variant="solid" size="sm" label="继续添加" class="rounded-full w-full justify-center" />
+            </div>
+          </UCard>
+        </div>
+      </div>
+    </ClientOnly>
 
     <!-- ============== 4 stats + stepper ============== -->
     <div class="page-container section-band">
@@ -625,4 +808,163 @@ const fields = [
 
 /* Drawer chart */
 .drawer-chart { padding: 16px; background: var(--color-surface); border-radius: 16px; }
+
+/* Watchlist compare grid */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 160px repeat(var(--school-count, 1), minmax(140px, 1fr));
+}
+.compare-grid__head {
+  display: contents;
+}
+.compare-grid__head > .compare-grid__dim-label {
+  padding: 16px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-stone);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-hairline);
+}
+.compare-grid__school-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-bottom: 1px solid var(--color-hairline);
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-hairline-soft);
+}
+.compare-grid__school-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+.compare-grid__remove {
+  flex-shrink: 0;
+}
+.compare-grid__row {
+  display: contents;
+}
+.compare-grid__row > .compare-grid__dim-label {
+  padding: 14px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-hairline-soft);
+}
+.compare-grid__cell {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--color-hairline-soft);
+  border-left: 1px solid var(--color-hairline-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.compare-grid__rank {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.compare-grid__rank-num {
+  display: inline-block;
+  font-family: 'Roboto', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+  letter-spacing: -0.01em;
+}
+.compare-grid__rank-num--gold {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+.compare-grid__rank-num--silver {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+}
+.compare-grid__rank-num--bronze {
+  background: rgba(20, 184, 166, 0.12);
+  color: #0f766e;
+}
+.compare-grid__rank-num--normal {
+  color: var(--color-ink);
+}
+.compare-grid__rank-num--none {
+  color: var(--color-stone);
+  font-weight: 400;
+}
+.compare-grid__skeleton {
+  width: 56px;
+  height: 24px;
+  background: var(--color-hairline-soft);
+  border-radius: 8px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Decision grid */
+.decision-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+@media (max-width: 1024px) {
+  .decision-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.darkhorse-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(16, 185, 129, 0.06);
+  border-radius: 8px;
+}
+.darkhorse-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+.darkhorse-trend {
+  font-family: 'Roboto', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #047857;
+}
+.dim-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--color-surface);
+  border-radius: 8px;
+}
+.dim-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-stone);
+}
+.dim-best {
+  font-family: 'Roboto', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.empty-state-mini {
+  font-size: 12px;
+  color: var(--color-stone);
+  padding: 8px 0;
+}
 </style>
