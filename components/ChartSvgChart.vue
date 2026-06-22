@@ -37,17 +37,17 @@ const geometry = computed(() => {
   }))
   if (allValues.length === 0) return null
   const maxV = Math.max(...allValues) * 1.1
-  // ★ 过滤掉所有点都是 null 的年份, X 轴只显示有数据的年份
-  // ★ 同时裁掉首尾连续 null (避免 2000-2010 大段空白)
+  // ★ 后端 trendAllVariants 已经在 series.data 里把 null 过滤掉 (返真实有数位置),
+  //   但 legendData 是全 2000-2027 数组. 这里同步裁剪: 只保留有数据的位置
+  const seriesLen = (seriesRaw[0]?.data || []).length
+  const trimmedLegend = allYears.length > seriesLen ? allYears.slice(allYears.length - seriesLen) : allYears
   const validYearIdx: number[] = []
-  for (let i = 0; i < allYears.length; i++) {
+  for (let i = 0; i < trimmedLegend.length; i++) {
     const hasValue = seriesRaw.some((s: any) => typeof s.data?.[i] === 'number' && s.data[i] > 0)
     if (hasValue) validYearIdx.push(i)
   }
   if (validYearIdx.length === 0) return null
-  // 裁掉首尾连续 null 索引 (保留最前最后有数据点)
-  // 例如 [2011, 2013, ..., 2025] -> 整段都保留 (内部 null 不砍, X 轴保持完整年份)
-  const years = validYearIdx.map(i => allYears[i])
+  const years = validYearIdx.map(i => trimmedLegend[i])
   const xStep = years.length > 1 ? (W - P * 2) / (years.length - 1) : 0
   const yScale = (v: number) => H - P - ((v - 0) / (maxV - 0)) * (H - P * 2)
   const series = seriesRaw.map((s: any, idx: number) => ({
