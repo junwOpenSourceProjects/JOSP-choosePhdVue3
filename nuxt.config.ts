@@ -7,7 +7,19 @@ export default defineNuxtConfig({
 
   // 项目结构是 root 布局,不用 Nuxt 4 默认的 srcDir='app/'
   // 显式设 srcDir='.' 后, ~ / @ alias 必须显式配 (memory 06-18 billDesktop 立)
+  // + pages/components/composables 等目录也需显式配 (Nuxt 4 srcDir 默认从 app/ 推, 不跟 srcDir 走)
   srcDir: '.',
+  dir: {
+    pages: 'pages',
+    layouts: 'layouts',
+    components: 'components',
+    composables: 'composables',
+    middleware: 'middleware',
+    plugins: 'plugins',
+    assets: 'assets',
+    public: 'public',
+    stores: 'stores'
+  },
 
   modules: ['@nuxt/ui', '@pinia/nuxt'],
 
