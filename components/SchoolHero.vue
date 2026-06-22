@@ -80,7 +80,7 @@ function rankCount(d: UniversityAllDTO | null | undefined): number {
         <!-- 左: 校徽 + 校名 -->
         <div class="school-hero__main">
           <div class="school-hero__logo">
-            <UIcon name="i-lucide-graduation-cap" class="size-7" />
+            <UIcon name="i-lucide-graduation-cap" class="size-6" />
           </div>
           <div class="school-hero__title-wrap">
             <div class="school-hero__meta-row">
