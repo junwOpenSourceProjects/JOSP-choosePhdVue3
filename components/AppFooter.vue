@@ -49,22 +49,20 @@ const sections = [
         <div class="footer__grid">
           <div v-for="s in sections" :key="s.title" class="footer__col">
             <div class="footer__heading">{{ s.title }}</div>
-            <a
-              v-if="l.external"
-              v-for="l in s.links"
-              :key="l.label"
-              :href="l.href"
-              target="_blank"
-              rel="noopener"
-              class="footer__link"
-            >{{ l.label }}</a>
-            <NuxtLink
-              v-else
-              v-for="l in s.links"
-              :key="l.label"
-              :to="l.to"
-              class="footer__link"
-            >{{ l.label }}</NuxtLink>
+            <template v-for="l in s.links" :key="l.label">
+              <a
+                v-if="l.external"
+                :href="l.href"
+                target="_blank"
+                rel="noopener"
+                class="footer__link"
+              >{{ l.label }}</a>
+              <NuxtLink
+                v-else
+                :to="l.to"
+                class="footer__link"
+              >{{ l.label }}</NuxtLink>
+            </template>
           </div>
         </div>
       </div>
