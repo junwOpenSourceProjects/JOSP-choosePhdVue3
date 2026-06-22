@@ -28,14 +28,22 @@ const PALETTE = [
 const geometry = computed(() => {
   if (!props.chart?.chatData?.series?.length) return null
   const seriesRaw = props.chart.chatData.series as any[]
-  const years = (props.chart.legendData || []) as string[]
+  const allYears = (props.chart.legendData || []) as string[]
   const H = props.height
   const P = 50
   const allValues: number[] = []
   seriesRaw.forEach((s: any) => (s.data || []).forEach((v: any) => {
     if (typeof v === 'number' && v > 0) allValues.push(v)
   }))
-  const maxV = Math.max(...allValues, 10) * 1.1
+  if (allValues.length === 0) return null
+  const maxV = Math.max(...allValues) * 1.1
+  // ★ 过滤掉所有点都是 null 的年份, X 轴只显示有数据的年份
+  const validYearIdx: number[] = []
+  for (let i = 0; i < allYears.length; i++) {
+    const hasValue = seriesRaw.some((s: any) => typeof s.data?.[i] === 'number' && s.data[i] > 0)
+    if (hasValue) validYearIdx.push(i)
+  }
+  const years = validYearIdx.map(i => allYears[i])
   const xStep = years.length > 1 ? (W - P * 2) / (years.length - 1) : 0
   const yScale = (v: number) => H - P - ((v - 0) / (maxV - 0)) * (H - P * 2)
   const series = seriesRaw.map((s: any, idx: number) => ({
@@ -45,9 +53,10 @@ const geometry = computed(() => {
   }))
   const paths = series.map((s: any) => {
     const points: any[] = []
-    ;(s.data || []).forEach((v: any, i: number) => {
+    validYearIdx.forEach((origIdx, xIdx) => {
+      const v = s.data[origIdx]
       if (typeof v !== 'number') return
-      const x = P + i * xStep
+      const x = P + xIdx * xStep
       const y = yScale(v)
       points.push([x, y, v])
     })
