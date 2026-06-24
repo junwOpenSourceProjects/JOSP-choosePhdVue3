@@ -47,7 +47,7 @@ const classes = computed(() => {
 <template>
   <component
     :is="component"
-    :to="component === 'NuxtLink' ? to : undefined"
+    :to="props.to ? to : undefined"
     :href="href"
     :target="isExternal ? '_blank' : undefined"
     :rel="isExternal ? 'noopener noreferrer' : undefined"
