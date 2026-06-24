@@ -1,0 +1,114 @@
+:root {
+  /* Brand & Accent */
+  --color-primary: #0a0a0a;
+  --color-on-primary: #ffffff;
+  --color-primary-soft: #181e25;
+  --color-brand-coral: #ff5530;
+  --color-brand-magenta: #ea5ec1;
+  --color-brand-blue: #1456f0;
+  --color-brand-blue-mid: #3b82f6;
+  --color-brand-blue-deep: #1d4ed8;
+  --color-brand-blue-700: #17437d;
+  --color-brand-cyan: #3daeff;
+  --color-brand-blue-200: #bfdbfe;
+  --color-brand-purple: #a855f7;
+
+  /* Surface */
+  --color-canvas: #ffffff;
+  --color-surface: #f7f8fa;
+  --color-surface-soft: #f2f3f5;
+  --color-hairline: #e5e7eb;
+  --color-hairline-soft: #eaecf0;
+
+  /* Text */
+  --color-ink: #0a0a0a;
+  --color-ink-strong: #000000;
+  --color-charcoal: #222222;
+  --color-slate: #45515e;
+  --color-steel: #5f5f5f;
+  --color-stone: #8e8e93;
+  --color-muted: #a8aab2;
+
+  /* Semantic */
+  --color-success-bg: #e8ffea;
+  --color-success-text: #1ba673;
+  --color-on-dark: #ffffff;
+  --color-footer-bg: #0a0a0a;
+  --color-error: #d45656;
+
+  /* Typography sizes */
+  --text-hero-display: 80px;
+  --text-display-lg: 56px;
+  --text-heading-lg: 40px;
+  --text-heading-md: 32px;
+  --text-heading-sm: 24px;
+  --text-card-title: 20px;
+  --text-subtitle: 18px;
+  --text-body-md: 16px;
+  --text-body-sm: 14px;
+  --text-caption: 13px;
+  --text-micro: 12px;
+  --text-button-md: 14px;
+
+  /* Spacing */
+  --spacing-xxs: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 20px;
+  --spacing-xl: 24px;
+  --spacing-xxl: 32px;
+  --spacing-xxxl: 40px;
+  --spacing-section-sm: 48px;
+  --spacing-section: 64px;
+  --spacing-section-lg: 80px;
+  --spacing-hero: 96px;
+
+  /* Border radius */
+  --rounded-xs: 4px;
+  --rounded-sm: 6px;
+  --rounded-md: 8px;
+  --rounded-lg: 12px;
+  --rounded-xl: 16px;
+  --rounded-xxl: 20px;
+  --rounded-xxxl: 24px;
+  --rounded-hero: 32px;
+  --rounded-full: 9999px;
+
+  /* Shadows */
+  --shadow-level-1: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-level-2: 0 4px 6px rgba(0, 0, 0, 0.08);
+  --shadow-level-3: 0 0 22px rgba(0, 0, 0, 0.08);
+  --shadow-level-4: 0 12px 16px -4px rgba(36, 36, 36, 0.08);
+
+  /* Component tokens */
+  --button-primary-bg: var(--color-primary);
+  --button-primary-color: var(--color-on-primary);
+  --button-primary-pressed-bg: var(--color-charcoal);
+  --button-primary-disabled-bg: var(--color-hairline);
+  --button-primary-disabled-color: var(--color-muted);
+  --button-secondary-bg: transparent;
+  --button-secondary-color: var(--color-ink);
+  --button-secondary-border: var(--color-ink);
+  --button-tertiary-bg: var(--color-canvas);
+  --button-tertiary-color: var(--color-ink);
+  --button-tertiary-border: var(--color-hairline);
+  --button-link-color: var(--color-ink);
+
+  --card-base-bg: var(--color-canvas);
+  --card-base-border: var(--color-hairline);
+  --card-feature-bg: var(--color-surface);
+  --card-recommendation-border: var(--color-hairline);
+
+  --search-pill-bg: var(--color-surface);
+  --search-pill-color: var(--color-steel);
+
+  --data-table-border: var(--color-hairline);
+  --data-table-header-bg: var(--color-surface);
+  --data-table-header-color: var(--color-steel);
+  --data-table-row-border: var(--color-hairline-soft);
+
+  /* Layout */
+  --container-max-width: 1280px;
+  --font-family: 'DM Sans', 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
