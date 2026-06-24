@@ -49,7 +49,8 @@ export default defineNuxtConfig({
 
   // @nuxt/ui v4 配置
   ui: {
-    colorMode: false // MVP 暂不启用暗色模式
+    colorMode: false, // MVP 暂不启用暗色模式
+    fonts: false      // 禁用 @nuxt/ui 自动字体下载，避免国内/无网络环境请求 fontsource/fontshare/googleicons 失败；页面字体通过 app.head 手动引入 DM Sans
   },
 
   // Vite: ECharts / vue-echarts 拆 chunk
