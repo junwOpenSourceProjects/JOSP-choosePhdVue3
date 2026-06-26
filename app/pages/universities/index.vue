@@ -253,7 +253,6 @@ const addToShortlist = async (uni: University) => {
             <AppBadge variant="code" :label="uni.country || '—'" />
             <AppBadge variant="beta" :label="uni.region || '—'" />
             <template v-if="uni.tags && uni.tags.length">
-              <span class="w-px h-3 bg-[var(--color-hairline)] mx-1" />
               <UniversityTagBadge
                 v-for="tag in uni.tags.slice(0, 2)"
                 :key="tag.id"
