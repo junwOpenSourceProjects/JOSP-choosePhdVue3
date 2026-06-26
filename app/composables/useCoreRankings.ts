@@ -14,9 +14,14 @@ import type { RankingEntryVo } from '~/types'
  *   <li>19 — THE World Universities Rankings</li>
  *   <li>46 — ARWU World Universities Rankings</li>
  *   <li>54 — CWUR World Universities Rankings</li>
+ *   <li>268 — CSRankings 综合 (计算机科学全球排名)</li>
+ *   <li>269 — CSRankings AI</li>
+ *   <li>270 — CSRankings Systems</li>
+ *   <li>271 — CSRankings Theory</li>
+ *   <li>272 — CSRankings Interdisciplinary</li>
  * </ul>
  */
-export const CORE_RANKING_SOURCE_IDS = new Set([4, 11, 16, 19, 46, 54])
+export const CORE_RANKING_SOURCE_IDS = new Set([4, 11, 16, 19, 46, 54, 268, 269, 270, 271, 272])
 
 /**
  * 判断一条 ranking 记录是否属于核心榜单。
