@@ -67,7 +67,8 @@ const latestRankBySource = (urlId: string, sourceName: string) => {
   if (!entries.length) return '—'
   const [latest] = entries.sort((a, b) => b.year - a.year)
   if (!latest) return '—'
-  return `${latest.rankDisplay} (${latest.year})`
+  const scoreText = latest.score != null ? ` · ${latest.score}` : ''
+  return `${latest.rankDisplay} (${latest.year})${scoreText}`
 }
 
 const allSourceNames = computed(() => {
