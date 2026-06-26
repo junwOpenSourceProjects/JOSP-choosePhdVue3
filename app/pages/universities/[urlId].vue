@@ -55,13 +55,21 @@ watch(urlId, fetchRankings, { immediate: true })
 
 useHead({ title: () => university.value ? `${university.value.nameZh} · 院校详情` : '院校详情' })
 
-const columns = [
-  { key: 'sourceName', label: '榜单', align: 'left' as const },
-  { key: 'subjectName', label: '学科', align: 'left' as const },
-  { key: 'year', label: '年份', align: 'left' as const },
-  { key: 'rankDisplay', label: '排名', align: 'left' as const },
-  { key: 'rankDelta', label: '变化', align: 'left' as const }
-]
+const hasScoreData = computed(() => rankings.value.some((r) => r.score != null))
+
+const columns = computed(() => {
+  const base = [
+    { key: 'sourceName', label: '榜单', align: 'left' as const },
+    { key: 'subjectName', label: '学科', align: 'left' as const },
+    { key: 'year', label: '年份', align: 'left' as const },
+    { key: 'rankDisplay', label: '排名', align: 'left' as const }
+  ]
+  if (hasScoreData.value) {
+    base.push({ key: 'score', label: '分数', align: 'left' as const })
+  }
+  base.push({ key: 'rankDelta', label: '变化', align: 'left' as const })
+  return base
+})
 
 const filteredRankings = computed(() => {
   let list = rankings.value
@@ -253,6 +261,9 @@ const submitShortlist = async () => {
           <LazyChartVChart :option="trendChartOption" height="360px" />
         </div>
         <AppDataTable :columns="columns" :rows="filteredRankings" :loading="rankingsLoading">
+          <template #score="{ row }">
+            <span class="body-sm text-[var(--color-ink)]">{{ row.score != null ? Number(row.score).toFixed(3) : '—' }}</span>
+          </template>
           <template #rankDelta="{ row }">
             <span
               class="caption-bold"

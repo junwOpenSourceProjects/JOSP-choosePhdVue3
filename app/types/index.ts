@@ -60,6 +60,7 @@ export interface RankingEntry {
   year: number
   rankDisplay: string
   rankValue?: number
+  score?: number | string
   rankDelta?: number
   direction?: 'up' | 'down' | 'flat' | string
 }

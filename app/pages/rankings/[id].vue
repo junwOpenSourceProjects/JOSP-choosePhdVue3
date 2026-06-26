@@ -145,12 +145,18 @@ watch([() => entries.value?.list, () => sourceYears.value.length], fetchTrendDat
 
 useHead({ title: () => source.value ? `${source.value.nameZh} · 榜单详情` : '榜单详情' })
 
-const columns = [
-  { key: 'rankDisplay', label: '排名', align: 'left' as const },
-  { key: 'universityNameZh', label: '大学', align: 'left' as const },
-  { key: 'country', label: '国家', align: 'left' as const },
-  { key: 'rankDelta', label: '排名变化', align: 'left' as const }
-]
+const columns = computed(() => {
+  const base = [
+    { key: 'rankDisplay', label: '排名', align: 'left' as const },
+    { key: 'universityNameZh', label: '大学', align: 'left' as const },
+    { key: 'country', label: '国家', align: 'left' as const }
+  ]
+  if (source.value?.ownerOrg === 'CSR') {
+    base.push({ key: 'score', label: '分数', align: 'left' as const })
+  }
+  base.push({ key: 'rankDelta', label: '排名变化', align: 'left' as const })
+  return base
+})
 
 const deltaText = (row: RankingEntryVo | Record<string, any>) => {
   const delta = (row as RankingEntryVo).rankDelta
@@ -272,6 +278,9 @@ const trendOption = computed(() => {
           <NuxtLink :to="`/universities/${row.universityId}`" class="body-sm-medium text-[var(--color-ink)] hover:underline">
             {{ row.universityNameZh || row.universityNameEn || '—' }}
           </NuxtLink>
+        </template>
+        <template #score="{ row }">
+          <span class="body-sm text-[var(--color-ink)]">{{ row.score != null ? Number(row.score).toFixed(3) : '—' }}</span>
         </template>
         <template #rankDelta="{ row }">
           <span
