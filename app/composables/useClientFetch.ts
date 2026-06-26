@@ -1,19 +1,30 @@
-// composables/useClientFetch.ts
-// 客户端 fetch · 鉴权接口专用(避免 SSR 拿不到 token)
-// 用法:
-//   const { data, pending, error, refresh } = useClientFetch<MyType>(
-//     () => '/api/v1/xxx',
-//     () => ({ q: filter.value }),
-//     { default: [] }
-//   )
-//   watch(filter, refresh)  // 手动 watch 触发刷新
-
 import type { ApiResult } from '~/types'
 
 interface Options<T> {
   default?: T
 }
 
+/**
+ * 客户端 fetch composable — 鉴权接口专用，绕过 SSR。
+ *
+ * <p>为什么不能用 `useFetch`：`useFetch` 在 SSR 阶段会执行（拿不到 cookie/token），
+ * 鉴权接口返回 401 时整个页面会渲染失败。这里用 onMounted 触发，
+ * SSR 阶段返回 `options.default` 让页面骨架先渲染，客户端再异步拉真实数据。
+ *
+ * <p>典型用法：
+ * <pre>{@code
+ *   const { data, pending, error, refresh } = useClientFetch<MyType>(
+ *     () => '/api/v1/admin/xxx',
+ *     () => ({ q: filter.value }),
+ *     { default: () => [] }
+ *   )
+ *   watch(filter, refresh)
+ * }</pre>
+ *
+ * @param pathGetter  返回 path 字符串的函数 (避免每次重新计算)
+ * @param queryGetter 返回 query 对象的函数 (支持 watch 触发 refresh)
+ * @param options.default 初始 data 值 (避免 .list.map 报 undefined)
+ */
 export function useClientFetch<T = unknown>(
   pathGetter: () => string,
   queryGetter: () => Record<string, unknown> = () => ({}),
