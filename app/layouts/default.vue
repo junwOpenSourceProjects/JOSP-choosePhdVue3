@@ -31,12 +31,17 @@ const goSearch = () => {
         </div>
 
         <div class="flex items-center gap-3">
-          <button aria-label="搜索" class="btn-icon-circular" @click="goSearch">
+          <AppButton
+            variant="link"
+            aria-label="搜索"
+            :ui="{ base: 'btn-icon-circular text-[var(--color-ink)]' }"
+            @click="goSearch"
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8" />
               <path d="m21 21-4.35-4.35" />
             </svg>
-          </button>
+          </AppButton>
 
           <template v-if="auth.isLoggedIn">
             <NuxtLink to="/shortlist" class="body-sm-medium text-[var(--color-charcoal)] hover:text-[var(--color-ink)] hidden sm:inline-flex">
@@ -46,9 +51,9 @@ const goSearch = () => {
               <div class="w-8 h-8 rounded-full bg-[var(--color-surface)] flex items-center justify-center text-xs font-semibold border border-[var(--color-hairline)]">
                 {{ auth.user?.username?.slice(0, 2).toUpperCase() || 'ME' }}
               </div>
-              <button class="body-sm text-[var(--color-steel)] hover:text-[var(--color-ink)]" @click="onLogout">
+              <AppButton variant="link" size="sm" :ui="{ base: 'text-[var(--color-steel)] hover:text-[var(--color-ink)]' }" @click="onLogout">
                 退出
-              </button>
+              </AppButton>
             </div>
           </template>
 

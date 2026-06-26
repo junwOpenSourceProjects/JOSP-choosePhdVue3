@@ -179,7 +179,13 @@ const compareChartOption = computed(() => {
         class="flex items-center gap-[var(--spacing-xs)] px-[var(--spacing-md)] py-[var(--spacing-xs)] rounded-[var(--rounded-full)] bg-[var(--color-primary)] text-[var(--color-on-primary)] body-sm-medium"
       >
         {{ uni.nameZh }}
-        <button type="button" class="hover:opacity-70" @click="removeUniversity(uni.urlId)">×</button>
+        <AppButton
+          variant="link"
+          :ui="{ base: 'text-[var(--color-on-primary)] hover:opacity-70 px-0 py-0 body-sm' }"
+          @click="removeUniversity(uni.urlId)"
+        >
+          ×
+        </AppButton>
       </div>
     </div>
 
