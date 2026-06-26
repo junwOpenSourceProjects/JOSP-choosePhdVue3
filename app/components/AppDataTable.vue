@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends Record<string, any>">
 interface Column {
   key: string
   label: string
@@ -7,7 +7,7 @@ interface Column {
 
 interface Props {
   columns: Column[]
-  rows: Record<string, any>[]
+  rows: T[]
   loading?: boolean
 }
 

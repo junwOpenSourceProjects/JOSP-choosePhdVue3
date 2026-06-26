@@ -33,6 +33,7 @@ export interface UniversityTag {
   color?: string
   description?: string
   sortOrder?: number
+  active?: number
 }
 
 export interface University {

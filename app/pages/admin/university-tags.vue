@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { UniversityTag } from '~/types'
+import type { UniversityDetail, UniversityTag } from '~/types'
 
 useHead({ title: '标签管理' })
 
@@ -38,6 +38,12 @@ const assignUrlId = ref('')
 const assignTagIds = ref<number[]>([])
 const assigning = ref(false)
 const assignMessage = ref('')
+
+// 删除二次确认弹窗状态 — UModal 替代浏览器原生 confirm()
+// 不暴露的 info 解耦删除流程 (跟 JOSP-* 通用二次确认弹窗模式对齐)
+const deleteConfirmOpen = ref(false)
+const deleteTarget = ref<UniversityTag | null>(null)
+const deleting = ref(false)
 
 const fetchTags = async () => {
   loading.value = true
@@ -107,12 +113,23 @@ const saveTag = async () => {
 }
 
 const deleteTag = async (tag: UniversityTag) => {
-  if (!confirm(`确定删除标签「${tag.nameZh}」？关联关系也会被清除。`)) return
+  deleteTarget.value = tag
+  deleteConfirmOpen.value = true
+}
+
+const confirmDelete = async () => {
+  const tag = deleteTarget.value
+  if (!tag) return
+  deleting.value = true
   try {
     await $api(`/api/v1/admin/university-tags/${tag.id}`, { method: 'DELETE' })
+    deleteConfirmOpen.value = false
+    deleteTarget.value = null
     await fetchTags()
   } catch (e: any) {
     error.value = e?.message || '删除失败'
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -120,9 +137,8 @@ const loadUniversityTags = async () => {
   if (!assignUrlId.value.trim()) return
   assignMessage.value = ''
   try {
-    const ids = await $api<number[]>(`/api/v1/universities/${encodeURIComponent(assignUrlId.value.trim())}`)
-      .then(res => res.tags?.map(t => t.id) || [])
-    assignTagIds.value = ids
+    const res = await $api<UniversityDetail>(`/api/v1/universities/${encodeURIComponent(assignUrlId.value.trim())}`)
+    assignTagIds.value = res.tags?.map(t => t.id) || []
   } catch (e: any) {
     assignMessage.value = e?.message || '加载院校标签失败'
   }
@@ -299,17 +315,30 @@ const categoryLabel = (category?: string) => {
           />
         </template>
         <template #actions="{ row }">
-          <div class="flex gap-[var(--spacing-xs)]">
-            <button type="button" class="body-sm text-[var(--color-primary)] hover:underline" @click="startEdit(row)">
-              编辑
-            </button>
-            <button type="button" class="body-sm text-[var(--color-error)] hover:underline" @click="deleteTag(row)">
-              删除
-            </button>
+          <div class="flex gap-[var(--spacing-md)]">
+            <AppButton variant="link" @click="startEdit(row)">编辑</AppButton>
+            <AppButton variant="link" @click="deleteTag(row)">删除</AppButton>
           </div>
         </template>
       </AppDataTable>
     </AppCard>
+
+    <!-- 删除二次确认 — UModal 替代 confirm() -->
+    <UModal v-model:open="deleteConfirmOpen" :title="`删除标签「${deleteTarget?.nameZh ?? ''}」`">
+      <template #body>
+        <p class="body-md text-[var(--color-charcoal)]">
+          关联关系（院校-标签映射）也会被清除，且不可恢复。确认删除吗？
+        </p>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-[var(--spacing-md)]">
+          <AppButton variant="tertiary" :disabled="deleting" @click="deleteConfirmOpen = false">取消</AppButton>
+          <AppButton variant="primary" :disabled="deleting" @click="confirmDelete">
+            {{ deleting ? '删除中…' : '确认删除' }}
+          </AppButton>
+        </div>
+      </template>
+    </UModal>
     </ClientOnly>
   </div>
 </template>

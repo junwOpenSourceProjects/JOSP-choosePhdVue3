@@ -34,10 +34,19 @@ const remove = async (universityId: string) => {
   }
 }
 
+// 清空二次确认 — UModal 替代浏览器原生 confirm()
+const clearConfirmOpen = ref(false)
+const clearing = ref(false)
+
 const clearAll = async () => {
-  if (!confirm('确定要清空选校清单吗？')) return
-  for (const item of shortlistStore.items) {
-    await shortlistStore.removeFromShortlist(item.universityId)
+  clearing.value = true
+  try {
+    for (const item of shortlistStore.items) {
+      await shortlistStore.removeFromShortlist(item.universityId)
+    }
+  } finally {
+    clearing.value = false
+    clearConfirmOpen.value = false
   }
 }
 
@@ -95,14 +104,9 @@ const compare = () => {
           </div>
           <div class="flex items-center gap-[var(--spacing-md)]">
             <AppBadge :variant="priorityVariant(item.priority)" :label="priorityLabel(item.priority)" />
-            <button
-              type="button"
-              class="btn-sm btn-tertiary"
-              :disabled="removing[item.universityId]"
-              @click="remove(item.universityId)"
-            >
+            <AppButton variant="tertiary" size="sm" :disabled="removing[item.universityId]" @click="remove(item.universityId)">
               {{ removing[item.universityId] ? '移除中…' : '移除' }}
-            </button>
+            </AppButton>
           </div>
         </div>
       </AppCard>
@@ -112,10 +116,27 @@ const compare = () => {
         <AppButton variant="primary" :disabled="shortlistStore.items.length < 2" @click="compare">
           跳转对比
         </AppButton>
-        <AppButton variant="secondary" @click="clearAll">
+        <AppButton variant="secondary" @click="clearConfirmOpen = true">
           清空清单
         </AppButton>
       </div>
     </div>
+
+    <!-- 清空二次确认 — UModal 替代 confirm() -->
+    <UModal v-model:open="clearConfirmOpen" title="清空选校清单">
+      <template #body>
+        <p class="body-md text-[var(--color-charcoal)]">
+          清单中所有 {{ shortlistStore.items.length }} 所院校将被移除，此操作不可恢复。
+        </p>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-[var(--spacing-md)]">
+          <AppButton variant="tertiary" :disabled="clearing" @click="clearConfirmOpen = false">取消</AppButton>
+          <AppButton variant="primary" :disabled="clearing" @click="clearAll">
+            {{ clearing ? '清空中…' : '确认清空' }}
+          </AppButton>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>

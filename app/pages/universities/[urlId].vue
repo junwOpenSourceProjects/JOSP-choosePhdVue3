@@ -290,11 +290,12 @@ const submitShortlist = async () => {
         <form class="space-y-[var(--spacing-md)] max-w-xl" @submit.prevent="submitShortlist">
           <div>
             <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">意向优先级</label>
-            <select v-model="priority" class="text-input">
-              <option v-for="opt in priorityOptions" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-              </option>
-            </select>
+            <USelectMenu
+              v-model="priority"
+              :items="priorityOptions"
+              value-key="value"
+              class="w-full"
+            />
           </div>
           <div>
             <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">备注</label>
