@@ -250,17 +250,16 @@ const addToShortlist = async (uni: University) => {
         </NuxtLink>
         <div class="flex items-center justify-between">
           <div class="flex gap-[var(--spacing-xs)] flex-wrap items-center">
+            <AppBadge variant="code" :label="uni.country || '—'" />
+            <AppBadge variant="beta" :label="uni.region || '—'" />
             <template v-if="uni.tags && uni.tags.length">
+              <span class="w-px h-3 bg-[var(--color-hairline)] mx-1" />
               <UniversityTagBadge
                 v-for="tag in uni.tags.slice(0, 2)"
                 :key="tag.id"
                 :tag="tag"
               />
               <span v-if="uni.tags.length > 2" class="text-[var(--color-muted)] text-xs">+{{ uni.tags.length - 2 }}</span>
-            </template>
-            <template v-else>
-              <AppBadge variant="code" :label="uni.country || '—'" />
-              <AppBadge variant="beta" :label="uni.region || '—'" />
             </template>
           </div>
           <button
