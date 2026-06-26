@@ -163,9 +163,14 @@ const submitShortlist = async () => {
         </NuxtLink>
         <h1 class="heading-lg text-[var(--color-ink)] mt-[var(--spacing-sm)]">{{ university.nameZh }}</h1>
         <p class="subtitle text-[var(--color-steel)]">{{ university.nameEn }}</p>
-        <div class="flex gap-[var(--spacing-xs)] mt-[var(--spacing-md)]">
+        <div class="flex flex-wrap gap-[var(--spacing-xs)] mt-[var(--spacing-md)]">
           <AppBadge variant="code" :label="university.country || '—'" />
           <AppBadge variant="beta" :label="university.region || '—'" />
+          <UniversityTagBadge
+            v-for="tag in detail?.tags || []"
+            :key="tag.id"
+            :tag="tag"
+          />
         </div>
 
         <!-- Basic info -->

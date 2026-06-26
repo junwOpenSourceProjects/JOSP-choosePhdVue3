@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PageResult, University } from '~/types'
+import type { PageResult, University, UniversityTag } from '~/types'
 
 useHead({ title: '院校库' })
 
@@ -13,8 +13,15 @@ const keyword = ref((route.query.keyword as string) || '')
 const continent = ref((route.query.continent as string) || '')
 const country = ref((route.query.country as string) || '')
 const sortBy = ref((route.query.sortBy as string) || 'bestRank')
+const selectedTagIds = ref<number[]>(parseTagIds(route.query.tagIds))
 const page = ref(Number(route.query.page) || 1)
 const pageSize = 20
+
+function parseTagIds(value: unknown): number[] {
+  if (!value) return []
+  if (Array.isArray(value)) return value.map(Number).filter(Boolean)
+  return String(value).split(',').map(Number).filter(Boolean)
+}
 
 const continentOptions = [
   { label: '北美', value: '北美洲' },
@@ -37,8 +44,10 @@ const syncQuery = () => {
     ...(continent.value ? { continent: continent.value } : {}),
     ...(country.value ? { country: country.value } : {}),
     ...(sortBy.value && sortBy.value !== 'bestRank' ? { sortBy: sortBy.value } : {}),
+    ...(selectedTagIds.value.length ? { tagIds: selectedTagIds.value.join(',') } : {}),
     page: page.value > 1 ? String(page.value) : undefined
   }
+  if (!selectedTagIds.value.length) delete query.tagIds
   Object.keys(query).forEach((k) => {
     if (query[k] === undefined) delete query[k]
   })
@@ -46,18 +55,25 @@ const syncQuery = () => {
 }
 
 const { data: result, pending, refresh } = await useAsyncData<PageResult<University>>(
-  () => `universities-${keyword.value}-${continent.value}-${country.value}-${sortBy.value}-${page.value}`,
+  () => `universities-${keyword.value}-${continent.value}-${country.value}-${sortBy.value}-${selectedTagIds.value.join('-')}-${page.value}`,
   () => $api<PageResult<University>>('/api/v1/universities', {
     query: {
       ...(keyword.value ? { keyword: keyword.value } : {}),
       ...(continent.value ? { continent: continent.value } : {}),
       ...(country.value ? { country: country.value } : {}),
+      ...(selectedTagIds.value.length ? { tagIds: selectedTagIds.value.join(',') } : {}),
       sortBy: sortBy.value,
       page: page.value,
       size: pageSize
     }
   }),
-  { server: true, watch: [keyword, continent, country, sortBy, page] }
+  { server: true, watch: [keyword, continent, country, sortBy, page, selectedTagIds] }
+)
+
+const { data: tagOptions } = await useAsyncData<UniversityTag[]>(
+  () => 'university-tags',
+  () => $api<UniversityTag[]>('/api/v1/university-tags'),
+  { server: false, default: () => [] }
 )
 
 const { data: countryOptions } = await useAsyncData<string[]>(
@@ -91,6 +107,17 @@ const onCountryFilter = (value: string) => {
 
 const onSortChange = (value: string) => {
   sortBy.value = value
+  page.value = 1
+  syncQuery()
+}
+
+const onTagToggle = (tagId: number) => {
+  const idx = selectedTagIds.value.indexOf(tagId)
+  if (idx >= 0) {
+    selectedTagIds.value.splice(idx, 1)
+  } else {
+    selectedTagIds.value.push(tagId)
+  }
   page.value = 1
   syncQuery()
 }
@@ -187,6 +214,22 @@ const addToShortlist = async (uni: University) => {
           {{ s.label }}
         </button>
       </div>
+
+      <div v-if="tagOptions && tagOptions.length" class="flex flex-wrap items-center gap-[var(--spacing-xs)]">
+        <span class="body-sm text-[var(--color-steel)] mr-1">标签</span>
+        <button
+          v-for="tag in tagOptions"
+          :key="tag.id"
+          type="button"
+          class="px-[var(--spacing-md)] py-[var(--spacing-xs)] rounded-[var(--rounded-full)] border body-sm-medium transition-colors"
+          :class="selectedTagIds.includes(tag.id)
+            ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)] border-[var(--color-primary)]'
+            : 'bg-[var(--color-canvas)] text-[var(--color-steel)] border-[var(--color-hairline)] hover:text-[var(--color-ink)]'"
+          @click="onTagToggle(tag.id)"
+        >
+          {{ tag.nameZh }}
+        </button>
+      </div>
     </div>
 
     <!-- Grid -->
@@ -206,9 +249,19 @@ const addToShortlist = async (uni: University) => {
           <p class="body-sm text-[var(--color-steel)] mb-[var(--spacing-md)]">{{ uni.nameEn }}</p>
         </NuxtLink>
         <div class="flex items-center justify-between">
-          <div class="flex gap-[var(--spacing-xs)] flex-wrap">
-            <AppBadge variant="code" :label="uni.country || '—'" />
-            <AppBadge variant="beta" :label="uni.region || '—'" />
+          <div class="flex gap-[var(--spacing-xs)] flex-wrap items-center">
+            <template v-if="uni.tags && uni.tags.length">
+              <UniversityTagBadge
+                v-for="tag in uni.tags.slice(0, 2)"
+                :key="tag.id"
+                :tag="tag"
+              />
+              <span v-if="uni.tags.length > 2" class="text-[var(--color-muted)] text-xs">+{{ uni.tags.length - 2 }}</span>
+            </template>
+            <template v-else>
+              <AppBadge variant="code" :label="uni.country || '—'" />
+              <AppBadge variant="beta" :label="uni.region || '—'" />
+            </template>
           </div>
           <button
             type="button"

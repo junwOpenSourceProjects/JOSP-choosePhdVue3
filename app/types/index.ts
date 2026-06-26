@@ -24,6 +24,16 @@ export interface Subject {
   active: boolean
 }
 
+export interface UniversityTag {
+  id: number
+  slug: string
+  nameZh: string
+  nameEn?: string
+  category?: string
+  color?: string
+  sortOrder?: number
+}
+
 export interface University {
   urlId: string
   nameZh: string
@@ -36,6 +46,7 @@ export interface University {
   motto?: string
   foundedDate?: string
   address?: string
+  tags?: UniversityTag[]
 }
 
 export interface UniversitySourceSummary {
@@ -50,6 +61,7 @@ export interface UniversitySourceSummary {
 export interface UniversityDetail {
   university: University
   sources: UniversitySourceSummary[]
+  tags?: UniversityTag[]
 }
 
 export interface RankingEntry {
