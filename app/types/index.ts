@@ -31,6 +31,7 @@ export interface UniversityTag {
   nameEn?: string
   category?: string
   color?: string
+  description?: string
   sortOrder?: number
 }
 

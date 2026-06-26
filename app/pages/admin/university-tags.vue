@@ -11,6 +11,7 @@ interface TagForm {
   nameEn: string
   category: string
   color: string
+  description: string
   sortOrder: number
   active: number
 }
@@ -21,6 +22,7 @@ const emptyForm = (): TagForm => ({
   nameEn: '',
   category: 'other',
   color: '',
+  description: '',
   sortOrder: 0,
   active: 1
 })
@@ -62,6 +64,7 @@ const startEdit = (tag: UniversityTag) => {
     nameEn: tag.nameEn || '',
     category: tag.category || 'other',
     color: tag.color || '',
+    description: tag.description || '',
     sortOrder: tag.sortOrder || 0,
     active: 1
   }
@@ -195,6 +198,10 @@ const categoryLabel = (category?: string) => {
             <input v-model="form.color" class="text-input flex-1" placeholder="#C8102E">
             <input v-model="form.color" type="color" class="h-10 w-10 p-0 border-0 rounded-[var(--rounded-md)] cursor-pointer">
           </div>
+        </div>
+        <div class="sm:col-span-2 lg:col-span-4">
+          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">简介</label>
+          <textarea v-model="form.description" rows="3" class="text-input h-auto py-[var(--spacing-md)]" placeholder="标签的简短介绍，用于前端展示"></textarea>
         </div>
         <div>
           <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">排序</label>
