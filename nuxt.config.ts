@@ -43,7 +43,7 @@ export default defineNuxtConfig({
   // 运行时配置 (后端 API 基地址)
   runtimeConfig: {
     public: {
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:56586'
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8081/api/v1',
     }
   },
 
