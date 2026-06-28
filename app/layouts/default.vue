@@ -34,6 +34,21 @@ const goSearch = () => {
             >
               管理
             </NuxtLink>
+            <template v-if="auth.isAdmin">
+              <span class="text-[var(--color-hairline)]">/</span>
+              <NuxtLink
+                to="/admin/university-tags"
+                class="text-[var(--color-charcoal)] hover:text-[var(--color-ink)]"
+              >
+                标签
+              </NuxtLink>
+              <NuxtLink
+                to="/admin/import"
+                class="text-[var(--color-charcoal)] hover:text-[var(--color-ink)]"
+              >
+                导入
+              </NuxtLink>
+            </template>
           </nav>
         </div>
 
