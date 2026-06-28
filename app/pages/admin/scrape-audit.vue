@@ -2,11 +2,12 @@
 /**
  * 反爬虫审计页面 — admin only
  *
- * <p>对接后端 3 个 scrape_audit 端点：
+ * <p>对接后端 4 个 scrape_audit 端点：
  * <ul>
  *   <li>GET /api/v1/admin/scrape-audit/recent — 最近 N 条拦截记录</li>
  *   <li>GET /api/v1/admin/scrape-audit/ip-count?ip=...&hours=24 — 单 IP 计数</li>
  *   <li>GET /api/v1/admin/scrape-audit/risky-ips?hours=24&threshold=50 — 高危 IP</li>
+ *   <li>GET /api/v1/admin/scrape-audit/export?hours=24 — CSV 流式下载（admin 归档 / 离线分析）</li>
  * </ul>
  *
  * <p>AdminInterceptor 兜底（项目 commit 54ffcfd），无 admin 权限返 403。
@@ -15,6 +16,8 @@ useHead({ title: '反爬虫审计' })
 
 const $api = useApi()
 const auth = useAuthStore()
+const config = useRuntimeConfig()
+const token = useCookie<string | null>('choosephd_token', { default: () => null })
 
 interface AuditRecord {
   id: number
@@ -44,6 +47,10 @@ const riskyThreshold = ref(50)
 const ipQuery = ref('')
 const ipQueryHours = ref(24)
 const ipQueryResult = ref<{ ip: string; count: number } | null>(null)
+
+// CSV 导出参数 + 状态
+const exportHours = ref(24)
+const exportLoading = ref(false)
 
 // ISO 字符串 → YYYY-MM-DD HH:MM:SS — 去掉时区秒精度
 const formatDateTime = (val: string | null | undefined): string => {
@@ -101,6 +108,55 @@ const queryIp = async () => {
   } catch (e: any) {
     error.value = e?.message || '查询失败'
     ipQueryResult.value = null
+  }
+}
+
+/**
+ * CSV 导出 — admin 下载审计记录。
+ *
+ * <p>走原生 {@code $fetch} 而非 {@code useApi()}:CSV 流非 ApiResult 包装,
+ * {@code useApi()} 会在 code !== 0 时 throw, 而 CSV Response 是空 JSON parse 失败误触发.
+ * 直接构造 URL + Authorization header + 解析 blob + 触发 download.
+ */
+const downloadExport = async () => {
+  exportLoading.value = true
+  error.value = ''
+  try {
+    const hoursParam = String(exportHours.value)
+    const url = `${config.public.apiBase}/admin/scrape-audit/export?hours=${hoursParam}`
+    const res = await fetch(url, {
+      headers: token.value ? { Authorization: `Bearer ${token.value}` } : {},
+    })
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`)
+    }
+    const blob = await res.blob()
+    // 从 Content-Disposition header 解析服务端文件名 (优先 filename* UTF-8)
+    const dispo = res.headers.get('Content-Disposition') || ''
+    const utf8Match = dispo.match(/filename\*=UTF-8''([^;]+)/)
+    const asciiMatch = dispo.match(/filename="([^"]+)"/)
+    let filename = ''
+    if (utf8Match && utf8Match[1]) {
+      try { filename = decodeURIComponent(utf8Match[1]) } catch { filename = utf8Match[1] }
+    } else if (asciiMatch && asciiMatch[1]) {
+      filename = asciiMatch[1]
+    } else {
+      filename = `scrape-audit_${hoursParam}h_${Date.now()}.csv`
+    }
+
+    // 触发浏览器 download
+    const objectUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = objectUrl
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(objectUrl)
+  } catch (e: any) {
+    error.value = e?.message || '导出失败'
+  } finally {
+    exportLoading.value = false
   }
 }
 
@@ -176,6 +232,29 @@ onBeforeUnmount(() => stopAutoRefresh())
         <span class="text-[var(--color-steel)]">条</span>
       </label>
       <AppButton size="sm" variant="secondary" @click="fetchRecent">手动刷新</AppButton>
+
+      <span class="text-[var(--color-hairline)]">|</span>
+
+      <!-- CSV 导出 -->
+      <label class="flex items-center gap-2 text-sm">
+        <span class="text-[var(--color-steel)]">导出</span>
+        <select v-model.number="exportHours" class="px-2 py-1 rounded border border-[var(--color-hairline)] bg-[var(--color-canvas)] text-sm">
+          <option :value="1">最近 1h</option>
+          <option :value="6">最近 6h</option>
+          <option :value="24">最近 24h</option>
+          <option :value="72">最近 72h</option>
+          <option :value="168">最近 7d</option>
+          <option :value="0">全部</option>
+        </select>
+      </label>
+      <AppButton
+        size="sm"
+        variant="primary"
+        :disabled="exportLoading"
+        @click="downloadExport"
+      >
+        {{ exportLoading ? '导出中...' : '下载 CSV' }}
+      </AppButton>
     </div>
 
     <!-- 高危 IP 区 -->
