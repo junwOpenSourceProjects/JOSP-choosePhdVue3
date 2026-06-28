@@ -27,6 +27,13 @@ const goSearch = () => {
             <NuxtLink to="/universities" class="hover:text-[var(--color-ink)]">大学</NuxtLink>
             <NuxtLink to="/subjects" class="hover:text-[var(--color-ink)]">学科</NuxtLink>
             <NuxtLink to="/compare" class="hover:text-[var(--color-ink)]">对比</NuxtLink>
+            <NuxtLink
+              v-if="auth.isAdmin"
+              to="/admin/scrape-audit"
+              class="text-[var(--color-ink-strong)] font-medium hover:text-[var(--color-ink)]"
+            >
+              管理
+            </NuxtLink>
           </nav>
         </div>
 

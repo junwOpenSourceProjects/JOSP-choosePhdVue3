@@ -35,6 +35,7 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     user,
     isLoggedIn,
+    isAdmin: computed(() => user.value?.role === 'ROLE_ADMIN'),
     login,
     register,
     logout,
