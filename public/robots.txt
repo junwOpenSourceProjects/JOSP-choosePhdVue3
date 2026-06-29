@@ -3,22 +3,46 @@ Allow: /
 Disallow: /api/v1/admin/
 Disallow: /api/v1/user/private
 
+# OpenAI
 User-agent: GPTBot
 Allow: /
 
 User-agent: ChatGPT-User
 Allow: /
 
+# Anthropic
 User-agent: anthropic-ai
-Allow: /
-
-User-agent: PerplexityBot
 Allow: /
 
 User-agent: Claude-Web
 Allow: /
 
+# Google (Gemini)
 User-agent: Google-Extended
+Allow: /
+
+# Microsoft
+User-agent: Bingbot
+Allow: /
+
+# 百度
+User-agent: Baiduspider
+Allow: /
+
+# DeepSeek
+User-agent: DeepSeekBot
+Allow: /
+
+# 字节跳动 (豆包)
+User-agent: Bytespider
+Allow: /
+
+# 阿里 (通义千问)
+User-agent: YisouSpider
+Allow: /
+
+# Perplexity
+User-agent: PerplexityBot
 Allow: /
 
 Sitemap: https://choosephd.com/sitemap.xml
