@@ -197,6 +197,7 @@ const closeMobileMenu = () => {
           <ul class="space-y-2 text-[var(--color-muted)] body-sm">
             <li><NuxtLink :to="localePath('/login')" class="hover:text-[var(--color-on-dark)]">{{ $t('nav.login') }}</NuxtLink></li>
             <li><NuxtLink :to="localePath('/register')" class="hover:text-[var(--color-on-dark)]">{{ $t('nav.register') }}</NuxtLink></li>
+            <li><NuxtLink :to="localePath('/pricing')" class="hover:text-[var(--color-on-dark)]">升级方案</NuxtLink></li>
           </ul>
         </div>
       </div>

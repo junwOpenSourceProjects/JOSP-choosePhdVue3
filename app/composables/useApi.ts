@@ -13,6 +13,30 @@ function xorDecode(base64: string): string {
   return new TextDecoder().decode(decoded)
 }
 
+function handleResponseError(ctx: { response?: { status: number } }) {
+  const status = ctx.response?.status
+  if (status === 401) {
+    const token = useCookie<string | null>('choosephd_token', { default: () => null })
+    token.value = null
+    if (process.client) {
+      navigateTo('/login')
+    }
+  }
+  if (status === 429 && process.client) {
+    const toast = useToast()
+    toast.add({
+      title: '今日使用额度已用完',
+      description: '升级专业版解锁更高额度、每页100条、无日限额。',
+      color: 'warning',
+      timeout: 8000,
+      actions: [{
+        label: '查看升级方案',
+        click: () => navigateTo('/pricing')
+      }]
+    })
+  }
+}
+
 export function useApi() {
   const config = useRuntimeConfig()
   const token = useCookie<string | null>('choosephd_token', { default: () => null })
@@ -35,20 +59,13 @@ export function useApi() {
       }
     }
 
-    // 先尝试走正常 JSON 路径
+    // 正常 JSON 路径
     try {
       const res = await $fetch<ApiResult<T>>(cleanUrl, {
         baseURL: config.public.apiBase,
         ...options,
         headers,
-        onResponseError(ctx: { response?: { status: number } }) {
-          if (ctx.response?.status === 401) {
-            token.value = null
-            if (process.client) {
-              navigateTo('/login')
-            }
-          }
-        },
+        onResponseError: handleResponseError,
       })
 
       if (res.code !== 0) {
@@ -56,36 +73,25 @@ export function useApi() {
       }
       return res.data as T
     } catch (err: any) {
-      // 如果后端返回了混淆响应（base64 文本），$fetch 尝试 JSON.parse 会失败
-      // 此时用 responseType: 'text' 重试，手动 XOR 解码
-      if (err?.message?.includes('JSON') || err?.cause || true) {
-        try {
-          const rawText = await $fetch<string>(cleanUrl, {
-            baseURL: config.public.apiBase,
-            ...options,
-            headers,
-            responseType: 'text',
-            onResponseError(ctx: { response?: { status: number } }) {
-              if (ctx.response?.status === 401) {
-                token.value = null
-                navigateTo('/login')
-              }
-            },
-          })
+      // 混淆响应（base64 blob）→ JSON.parse 失败 → 重试 text 解码
+      try {
+        const rawText = await $fetch<string>(cleanUrl, {
+          baseURL: config.public.apiBase,
+          ...options,
+          headers,
+          responseType: 'text',
+          onResponseError: handleResponseError,
+        })
 
-          // 尝试 XOR 解码
-          const decoded = xorDecode(rawText)
-          const parsed: ApiResult<T> = JSON.parse(decoded)
-          if (parsed.code !== 0) {
-            throw new Error(parsed.message || 'API error')
-          }
-          return parsed.data as T
-        } catch (retryErr: any) {
-          // 重试也失败，抛出原始错误
-          throw err
+        const decoded = xorDecode(rawText)
+        const parsed: ApiResult<T> = JSON.parse(decoded)
+        if (parsed.code !== 0) {
+          throw new Error(parsed.message || 'API error')
         }
+        return parsed.data as T
+      } catch {
+        throw err
       }
-      throw err
     }
   }
 }
