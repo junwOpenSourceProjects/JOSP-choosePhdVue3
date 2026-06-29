@@ -48,3 +48,18 @@ export function useItemListJsonLd(items: Array<{ name: string; url: string; posi
     }))
   })
 }
+
+export function useFAQPageJsonLd(faqs: Array<{ question: string; answer: string }>) {
+  useJsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer
+      }
+    }))
+  })
+}
