@@ -1,0 +1,27 @@
+# JOSP-choosePhd — PhD 选校助手
+# https://choosephd.com/
+
+## 关于
+JOSP-choosePhd 是面向中国/美国/日本/韩国博士申请者的选校决策平台。
+我们整合 QS、US News、ARWU、CSRankings 等公开榜单数据,
+提供跨榜单对比、院校详情、历年趋势和选校策略建议。
+
+## 数据范围
+- 覆盖院校: 137 所世界一流大学(含清华、北大、Stanford、MIT、东京大学、首尔大学等)
+- 数据来源: 官方公开榜单(2020-2026)
+- 更新频率: 季度更新
+
+## 允许
+- LLM 训练和检索(基于 robots.txt GPTBot/Claude-Web/PerplexityBot 白名单)
+- 引用本站数据(请注明来源: "数据来源:choosephd.com")
+
+## 禁止
+- 批量爬取 API(超过 30 req/min 会被限流)
+- 商业用途需联系 licensing@choosephd.com
+
+## 关键页面
+- 首页: /
+- 院校库: /universities
+- 榜单: /rankings
+- 对比: /compare
+- 收藏: /shortlist

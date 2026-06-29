@@ -46,7 +46,18 @@ export default defineNuxtConfig({
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'description', content: '5,365 所大学,113K 条排名记录,跨 10 个榜单的真实排名对比,帮你选对博士/硕士项目。' },
         { property: 'og:title', content: 'choosePhd · 院校选择' },
-        { property: 'og:type', content: 'website' }
+        { property: 'og:description', content: '整合 QS、US News、ARWU、CSRankings 等公开榜单数据，提供跨榜单对比与选校建议。' },
+        { property: 'og:type', content: 'website' },
+        { property: 'og:image', content: 'https://choosephd.com/og-cover.png' },
+        { property: 'og:url', content: 'https://choosephd.com' },
+        { property: 'og:locale', content: 'zh_CN' },
+        { property: 'og:locale:alternate', content: 'en_US' },
+        { property: 'og:locale:alternate', content: 'ja_JP' },
+        { property: 'og:locale:alternate', content: 'ko_KR' },
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:title', content: 'choosePhd · PhD 选校助手' },
+        { name: 'twitter:description', content: '整合 QS、US News、ARWU、CSRankings 等公开榜单数据，提供跨榜单对比与选校建议。' },
+        { name: 'twitter:image', content: 'https://choosephd.com/og-cover.png' }
       ],
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },

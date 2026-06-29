@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://choosephd.com/zh-CN/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://choosephd.com/zh-CN/"/>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://choosephd.com/en-US/"/>
+    <xhtml:link rel="alternate" hreflang="ja-JP" href="https://choosephd.com/ja-JP/"/>
+    <xhtml:link rel="alternate" hreflang="ko-KR" href="https://choosephd.com/ko-KR/"/>
+  </url>
+  <url>
+    <loc>https://choosephd.com/zh-CN/universities</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://choosephd.com/zh-CN/universities"/>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://choosephd.com/en-US/universities"/>
+    <xhtml:link rel="alternate" hreflang="ja-JP" href="https://choosephd.com/ja-JP/universities"/>
+    <xhtml:link rel="alternate" hreflang="ko-KR" href="https://choosephd.com/ko-KR/universities"/>
+  </url>
+  <url>
+    <loc>https://choosephd.com/zh-CN/rankings</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://choosephd.com/zh-CN/rankings"/>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://choosephd.com/en-US/rankings"/>
+    <xhtml:link rel="alternate" hreflang="ja-JP" href="https://choosephd.com/ja-JP/rankings"/>
+    <xhtml:link rel="alternate" hreflang="ko-KR" href="https://choosephd.com/ko-KR/rankings"/>
+  </url>
+  <url>
+    <loc>https://choosephd.com/zh-CN/subjects</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://choosephd.com/zh-CN/subjects"/>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://choosephd.com/en-US/subjects"/>
+    <xhtml:link rel="alternate" hreflang="ja-JP" href="https://choosephd.com/ja-JP/subjects"/>
+    <xhtml:link rel="alternate" hreflang="ko-KR" href="https://choosephd.com/ko-KR/subjects"/>
+  </url>
+  <url>
+    <loc>https://choosephd.com/zh-CN/compare</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://choosephd.com/zh-CN/compare"/>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://choosephd.com/en-US/compare"/>
+    <xhtml:link rel="alternate" hreflang="ja-JP" href="https://choosephd.com/ja-JP/compare"/>
+    <xhtml:link rel="alternate" hreflang="ko-KR" href="https://choosephd.com/ko-KR/compare"/>
+  </url>
+  <url>
+    <loc>https://choosephd.com/zh-CN/shortlist</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://choosephd.com/zh-CN/shortlist"/>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://choosephd.com/en-US/shortlist"/>
+    <xhtml:link rel="alternate" hreflang="ja-JP" href="https://choosephd.com/ja-JP/shortlist"/>
+    <xhtml:link rel="alternate" hreflang="ko-KR" href="https://choosephd.com/ko-KR/shortlist"/>
+  </url>
+</urlset>

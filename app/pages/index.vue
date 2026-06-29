@@ -5,6 +5,8 @@ const { t } = useI18n()
 const localePath = useLocalePath()
 
 useHead({ title: t('home.title') })
+useOrganizationJsonLd()
+useWebSiteJsonLd()
 
 const $api = useApi()
 const rankingsStore = useRankingsStore()
