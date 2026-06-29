@@ -27,6 +27,12 @@ const { data: detail, pending: uniPending } = await useAsyncData<UniversityDetai
 const university = computed(() => detail.value?.university || null)
 const sources = computed(() => detail.value?.sources || [])
 
+const hasLockedData = computed(() =>
+  sources.value.some((s) => s.latestRankValue === -1)
+)
+
+const isLoggedIn = computed(() => authStore.isLoggedIn)
+
 const rankings = ref<RankingEntryVo[]>([])
 const rankingsLoading = ref(false)
 const showSubjects = ref(false)
@@ -210,6 +216,19 @@ const submitShortlist = async () => {
             <span class="text-[var(--color-steel)]">地址：</span>
             <span class="font-medium">{{ university.address }}</span>
           </div>
+        </div>
+      </div>
+
+      <!-- Login unlock prompt -->
+      <div v-if="hasLockedData && !isLoggedIn" class="card-base bg-[var(--color-brand-blue-200)] border-[var(--color-brand-blue-deep)] mb-[var(--spacing-lg)]">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-[var(--spacing-md)]">
+          <div>
+            <p class="body-md-bold text-[var(--color-brand-blue-deep)]">🔒 排名数据已锁定</p>
+            <p class="body-sm text-[var(--color-brand-blue-deep)] mt-[var(--spacing-xs)]">登录后解锁完整排名详情、历年趋势与对比功能</p>
+          </div>
+          <NuxtLink to="/login" class="btn-primary btn-md shrink-0">
+            登录解锁
+          </NuxtLink>
         </div>
       </div>
 
