@@ -1,26 +1,29 @@
 <script setup lang="ts">
 import type { PageResult, RankingSource } from '~/types'
 
-useHead({ title: '榜单总览' })
+const { t } = useI18n()
+const localePath = useLocalePath()
+
+useHead({ title: () => t('rankings.title') })
 
 const $api = useApi()
 const route = useRoute()
 const router = useRouter()
 
-const tabs = [
-  { label: '全部', value: '' },
-  { label: '综合', value: '1' },
-  { label: '区域', value: '2' },
-  { label: '学科', value: '3' },
-  { label: '趋势', value: '4' }
-]
+const tabs = computed(() => [
+  { label: t('rankings.all'), value: '' },
+  { label: t('rankings.comprehensive'), value: '1' },
+  { label: t('rankings.regional'), value: '2' },
+  { label: t('rankings.subject'), value: '3' },
+  { label: t('rankings.trend'), value: '4' }
+])
 
 const kindLabel = (kind: number) => {
-  if (kind === 1) return '综合'
-  if (kind === 2) return '区域'
-  if (kind === 3) return '学科'
-  if (kind === 4) return '趋势'
-  return '其他'
+  if (kind === 1) return t('rankings.comprehensive')
+  if (kind === 2) return t('rankings.regional')
+  if (kind === 3) return t('rankings.subject')
+  if (kind === 4) return t('rankings.trend')
+  return t('rankings.other')
 }
 
 const layout = ref<'table' | 'card'>('table')
@@ -61,11 +64,11 @@ const colorForSource = (source: RankingSource, idx: number): 'coral' | 'magenta'
   return colors[idx % colors.length] || 'purple'
 }
 
-const columns = [
-  { key: 'nameZh', label: '榜单名称', align: 'left' as const },
-  { key: 'ownerOrg', label: '发布机构', align: 'left' as const },
-  { key: 'kind', label: '类型', align: 'left' as const }
-]
+const columns = computed(() => [
+  { key: 'nameZh', label: t('rankings.sourceName'), align: 'left' as const },
+  { key: 'ownerOrg', label: t('rankings.ownerOrg'), align: 'left' as const },
+  { key: 'kind', label: t('rankings.kind'), align: 'left' as const }
+])
 
 const sourceDisplay = (source: RankingSource) => {
   if (source.nameZh && source.nameEn) {
@@ -77,9 +80,9 @@ const sourceDisplay = (source: RankingSource) => {
 
 <template>
   <div class="container-page py-[var(--spacing-section)]">
-    <h1 class="heading-lg text-[var(--color-ink)] mb-[var(--spacing-md)]">榜单总览</h1>
+    <h1 class="heading-lg text-[var(--color-ink)] mb-[var(--spacing-md)]">{{ $t('rankings.title') }}</h1>
     <p class="subtitle text-[var(--color-steel)] mb-[var(--spacing-xl)]">
-      浏览综合、区域、学科与趋势榜单，查看最新排名数据。
+      {{ $t('rankings.subtitle') }}
     </p>
 
     <!-- Tabs and layout toggle -->
@@ -127,7 +130,7 @@ const sourceDisplay = (source: RankingSource) => {
       <div v-for="i in pageSize" :key="i" class="card-base h-64 animate-pulse" />
     </div>
     <div v-else-if="!result?.list.length" class="card-base text-center py-[var(--spacing-section)] text-[var(--color-steel)]">
-      暂无榜单数据
+      {{ $t('rankings.noData') }}
     </div>
 
     <!-- Table -->
@@ -152,7 +155,7 @@ const sourceDisplay = (source: RankingSource) => {
           >
             <td class="px-[var(--spacing-md)] py-[var(--spacing-md)]">
               <NuxtLink
-                :to="`/rankings/${source.id}`"
+                :to="localePath(`/rankings/${source.id}`)"
                 class="block body-sm-medium text-[var(--color-ink)] hover:underline"
               >
                 {{ sourceDisplay(source).primary }}
@@ -182,18 +185,18 @@ const sourceDisplay = (source: RankingSource) => {
         :color="colorForSource(source, idx)"
         :title="sourceDisplay(source).primary"
         :tagline="sourceDisplay(source).secondary || source.ownerOrg"
-        :to="`/rankings/${source.id}`"
+        :to="localePath(`/rankings/${source.id}`)"
       />
     </div>
 
     <!-- Pagination -->
     <div v-if="totalPages > 1" class="flex items-center justify-center gap-[var(--spacing-md)] mt-[var(--spacing-xl)]">
       <AppButton variant="tertiary" size="sm" :disabled="page <= 1" @click="page = page - 1">
-        上一页
+        {{ $t('common.previousPage') }}
       </AppButton>
       <span class="body-sm text-[var(--color-steel)]">{{ page }} / {{ totalPages }}</span>
       <AppButton variant="tertiary" size="sm" :disabled="page >= totalPages" @click="page = page + 1">
-        下一页
+        {{ $t('common.nextPage') }}
       </AppButton>
     </div>
   </div>

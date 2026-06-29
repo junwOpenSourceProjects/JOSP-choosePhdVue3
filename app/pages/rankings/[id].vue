@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { PageResult, RankingEntryVo, RankingSource } from '~/types'
 
+const localePath = useLocalePath()
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const rankingsStore = useRankingsStore()
@@ -22,7 +24,7 @@ const viewSizes: { label: string; value: ViewSize }[] = [
   { label: 'Top 20', value: 20 },
   { label: 'Top 50', value: 50 },
   { label: 'Top 100', value: 100 },
-  { label: '全部', value: 'all' }
+  { label: t('rankings.all'), value: 'all' }
 ]
 
 const viewSize = computed({
@@ -143,18 +145,18 @@ watch([() => id.value, year, page, viewSize], fetchAll, { immediate: true })
 
 watch([() => entries.value?.list, () => sourceYears.value.length], fetchTrendData, { immediate: true })
 
-useHead({ title: () => source.value ? `${source.value.nameZh} · 榜单详情` : '榜单详情' })
+useHead({ title: () => source.value ? `${source.value.nameZh} · ${t('rankings.detail')}` : t('rankings.detail') })
 
 const columns = computed(() => {
   const base = [
-    { key: 'rankDisplay', label: '排名', align: 'left' as const },
-    { key: 'universityNameZh', label: '大学', align: 'left' as const },
-    { key: 'country', label: '国家', align: 'left' as const }
+    { key: 'rankDisplay', label: t('rankings.rankColumn'), align: 'left' as const },
+    { key: 'universityNameZh', label: t('rankings.universityColumn'), align: 'left' as const },
+    { key: 'country', label: t('rankings.countryColumn'), align: 'left' as const }
   ]
   if (source.value?.ownerOrg === 'CSR') {
-    base.push({ key: 'score', label: '分数', align: 'left' as const })
+    base.push({ key: 'score', label: t('rankings.scoreColumn'), align: 'left' as const })
   }
-  base.push({ key: 'rankDelta', label: '排名变化', align: 'left' as const })
+  base.push({ key: 'rankDelta', label: t('rankings.rankDeltaColumn'), align: 'left' as const })
   return base
 })
 
@@ -207,12 +209,12 @@ const trendOption = computed(() => {
       <div class="h-8 w-1/4 bg-[var(--color-surface)] rounded-[var(--rounded-md)] animate-pulse" />
     </div>
     <div v-else-if="!source" class="card-base text-center py-[var(--spacing-section)] text-[var(--color-steel)]">
-      榜单不存在
+      {{ $t('rankings.notFound') }}
     </div>
     <template v-else>
       <div class="mb-[var(--spacing-xl)]">
-        <NuxtLink to="/rankings" class="body-sm text-[var(--color-steel)] hover:text-[var(--color-ink)]">
-          ← 返回榜单
+        <NuxtLink :to="localePath('/rankings')" class="body-sm text-[var(--color-steel)] hover:text-[var(--color-ink)]">
+          {{ $t('rankings.backToList') }}
         </NuxtLink>
         <h1 class="heading-lg text-[var(--color-ink)] mt-[var(--spacing-sm)]">{{ source.nameZh }}</h1>
         <p class="body-sm text-[var(--color-steel)]">{{ source.nameEn }} · {{ source.ownerOrg }}</p>
@@ -229,7 +231,7 @@ const trendOption = computed(() => {
               : 'bg-[var(--color-canvas)] text-[var(--color-steel)] border-[var(--color-hairline)] hover:text-[var(--color-ink)]'"
             @click="year = ''"
           >
-            全部年份
+            {{ $t('rankings.allYears') }}
           </button>
           <button
             v-for="y in sourceYears"
@@ -262,20 +264,20 @@ const trendOption = computed(() => {
 
       <!-- Top N chart -->
       <div v-if="chartOption" class="card-base mb-[var(--spacing-xl)]">
-        <h3 class="heading-sm text-[var(--color-ink)] mb-[var(--spacing-md)]">Top {{ chartLimit }} 可视化</h3>
+        <h3 class="heading-sm text-[var(--color-ink)] mb-[var(--spacing-md)]">{{ $t('rankings.topN', { n: chartLimit }) }}</h3>
         <LazyChartVChart :option="chartOption" :height="chartHeight" />
       </div>
 
       <!-- Historical trend chart -->
       <div v-if="trendOption" class="card-base mb-[var(--spacing-xl)]">
-        <h3 class="heading-sm text-[var(--color-ink)] mb-[var(--spacing-md)]">历年趋势（Top 10）</h3>
+        <h3 class="heading-sm text-[var(--color-ink)] mb-[var(--spacing-md)]">{{ $t('rankings.historicalTrend') }}</h3>
         <LazyChartVChart :option="trendOption" height="420px" />
       </div>
 
       <!-- Table -->
       <AppDataTable :columns="columns" :rows="entries?.list || []" :loading="loading">
         <template #universityNameZh="{ row }">
-          <NuxtLink :to="`/universities/${row.universityId}`" class="body-sm-medium text-[var(--color-ink)] hover:underline">
+          <NuxtLink :to="localePath(`/universities/${row.universityId}`)" class="body-sm-medium text-[var(--color-ink)] hover:underline">
             {{ row.universityNameZh || row.universityNameEn || '—' }}
           </NuxtLink>
         </template>
@@ -299,11 +301,11 @@ const trendOption = computed(() => {
       <!-- Pagination -->
       <div v-if="viewSize !== 'all' && (entries?.pages || 1) > 1" class="flex items-center justify-center gap-[var(--spacing-md)] mt-[var(--spacing-xl)]">
         <AppButton variant="tertiary" size="sm" :disabled="page <= 1" @click="page = page - 1">
-          上一页
+          {{ $t('common.previousPage') }}
         </AppButton>
         <span class="body-sm text-[var(--color-steel)]">{{ page }} / {{ entries?.pages }}</span>
         <AppButton variant="tertiary" size="sm" :disabled="page >= (entries?.pages || 1)" @click="page = page + 1">
-          下一页
+          {{ $t('common.nextPage') }}
         </AppButton>
       </div>
     </template>

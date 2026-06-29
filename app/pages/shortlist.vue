@@ -1,5 +1,8 @@
 <script setup lang="ts">
-useHead({ title: '我的选校清单' })
+const localePath = useLocalePath()
+const { t } = useI18n()
+
+useHead({ title: () => t('shortlist.title') })
 
 const authStore = useAuthStore()
 const shortlistStore = useShortlistStore()
@@ -12,8 +15,13 @@ onMounted(() => {
 })
 
 const priorityLabel = (priority: number) => {
-  const map: Record<number, string> = { 1: '强意向', 2: '中意向', 3: '弱意向', 4: '不考虑' }
-  return map[priority] || '未知'
+  const map: Record<number, string> = {
+    1: t('universityDetail.priorityStrong'),
+    2: t('universityDetail.priorityMedium'),
+    3: t('universityDetail.priorityWeak'),
+    4: t('universityDetail.priorityNone')
+  }
+  return map[priority] || t('shortlist.unknown')
 }
 
 const priorityVariant = (priority: number): 'success' | 'new' | 'beta' | 'code' => {
@@ -52,22 +60,22 @@ const clearAll = async () => {
 
 const compare = () => {
   const ids = shortlistStore.items.slice(0, 3).map((i) => i.universityId).join(',')
-  router.push(`/compare?ids=${ids}`)
+  router.push(localePath(`/compare?ids=${ids}`))
 }
 </script>
 
 <template>
   <div class="container-page py-[var(--spacing-section)]">
-    <h1 class="heading-lg text-[var(--color-ink)] mb-[var(--spacing-md)]">我的选校清单</h1>
+    <h1 class="heading-lg text-[var(--color-ink)] mb-[var(--spacing-md)]">{{ $t('shortlist.title') }}</h1>
     <p class="subtitle text-[var(--color-steel)] mb-[var(--spacing-xl)]">
-      管理你的目标院校，按优先级分组。
+      {{ $t('shortlist.subtitle') }}
     </p>
 
     <!-- Login CTA -->
     <div v-if="!authStore.isLoggedIn" class="card-base text-center py-[var(--spacing-section)]">
-      <p class="body-md text-[var(--color-charcoal)] mb-[var(--spacing-md)]">请登录后查看选校清单</p>
-      <AppButton variant="primary" to="/login?redirect=/shortlist">
-        前往登录
+      <p class="body-md text-[var(--color-charcoal)] mb-[var(--spacing-md)]">{{ $t('shortlist.loginCTA') }}</p>
+      <AppButton variant="primary" :to="localePath('/login?redirect=/shortlist')">
+        {{ $t('auth.loginButton') }}
       </AppButton>
     </div>
 
@@ -78,9 +86,9 @@ const compare = () => {
 
     <!-- Empty -->
     <div v-else-if="!shortlistStore.items.length" class="card-base text-center py-[var(--spacing-section)] text-[var(--color-steel)]">
-      <p class="body-md text-[var(--color-charcoal)] mb-[var(--spacing-md)]">清单为空</p>
-      <AppButton variant="primary" to="/universities">
-        去院校库添加
+      <p class="body-md text-[var(--color-charcoal)] mb-[var(--spacing-md)]">{{ $t('shortlist.empty') }}</p>
+      <AppButton variant="primary" :to="localePath('/universities')">
+        {{ $t('shortlist.browseUniversities') }}
       </AppButton>
     </div>
 
@@ -92,7 +100,7 @@ const compare = () => {
       >
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-[var(--spacing-md)]">
           <div>
-            <NuxtLink :to="`/universities/${item.universityId}`" class="card-title text-[var(--color-ink)] hover:underline">
+            <NuxtLink :to="localePath(`/universities/${item.universityId}`)" class="card-title text-[var(--color-ink)] hover:underline">
               {{ item.university?.nameZh || item.universityId }}
             </NuxtLink>
             <p class="body-sm text-[var(--color-steel)]">
@@ -105,7 +113,7 @@ const compare = () => {
           <div class="flex items-center gap-[var(--spacing-md)]">
             <AppBadge :variant="priorityVariant(item.priority)" :label="priorityLabel(item.priority)" />
             <AppButton variant="tertiary" size="sm" :disabled="removing[item.universityId]" @click="remove(item.universityId)">
-              {{ removing[item.universityId] ? '移除中…' : '移除' }}
+              {{ removing[item.universityId] ? $t('shortlist.removing') : $t('shortlist.remove') }}
             </AppButton>
           </div>
         </div>
@@ -114,26 +122,26 @@ const compare = () => {
       <!-- Actions -->
       <div class="flex flex-wrap gap-[var(--spacing-md)] pt-[var(--spacing-md)]">
         <AppButton variant="primary" :disabled="shortlistStore.items.length < 2" @click="compare">
-          跳转对比
+          {{ $t('shortlist.jumpCompare') }}
         </AppButton>
         <AppButton variant="secondary" @click="clearConfirmOpen = true">
-          清空清单
+          {{ $t('shortlist.clearAll') }}
         </AppButton>
       </div>
     </div>
 
     <!-- 清空二次确认 — UModal 替代 confirm() -->
-    <UModal v-model:open="clearConfirmOpen" title="清空选校清单">
+    <UModal v-model:open="clearConfirmOpen" :title="$t('shortlist.clearAll')">
       <template #body>
         <p class="body-md text-[var(--color-charcoal)]">
-          清单中所有 {{ shortlistStore.items.length }} 所院校将被移除，此操作不可恢复。
+          {{ $t('shortlist.confirmClear', { count: shortlistStore.items.length }) }}
         </p>
       </template>
       <template #footer>
         <div class="flex justify-end gap-[var(--spacing-md)]">
-          <AppButton variant="tertiary" :disabled="clearing" @click="clearConfirmOpen = false">取消</AppButton>
+          <AppButton variant="tertiary" :disabled="clearing" @click="clearConfirmOpen = false">{{ $t('common.cancel') }}</AppButton>
           <AppButton variant="primary" :disabled="clearing" @click="clearAll">
-            {{ clearing ? '清空中…' : '确认清空' }}
+            {{ clearing ? $t('shortlist.clearing') : $t('shortlist.confirmClearButton') }}
           </AppButton>
         </div>
       </template>

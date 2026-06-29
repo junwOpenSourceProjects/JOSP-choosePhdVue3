@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { RankingSource, Subject } from '~/types'
 
-useHead({ title: '学科排名' })
+const localePath = useLocalePath()
+const { t } = useI18n()
+
+useHead({ title: () => t('subjects.title') })
 
 const $api = useApi()
 const route = useRoute()
@@ -97,9 +100,9 @@ function displayEn(source: RankingSource): string {
 
 <template>
   <div class="container-page py-[var(--spacing-section)]">
-    <h1 class="heading-lg text-[var(--color-ink)] mb-[var(--spacing-md)]">学科排名</h1>
+    <h1 class="heading-lg text-[var(--color-ink)] mb-[var(--spacing-md)]">{{ $t('subjects.title') }}</h1>
     <p class="subtitle text-[var(--color-steel)] mb-[var(--spacing-xl)]">
-      按榜单机构浏览学科排名，找到适合你的研究方向。
+      {{ $t('subjects.subtitle') }}
     </p>
 
     <!-- Owner tabs -->
@@ -120,13 +123,13 @@ function displayEn(source: RankingSource): string {
 
     <!-- Subject grid -->
     <div v-if="!groupedSources.length" class="card-base text-center py-[var(--spacing-section)] text-[var(--color-steel)]">
-      暂无学科数据
+      {{ $t('subjects.noData') }}
     </div>
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-[var(--spacing-md)]">
       <NuxtLink
         v-for="source in groupedSources"
         :key="source.id"
-        :to="`/rankings/${source.id}`"
+        :to="localePath(`/rankings/${source.id}`)"
         class="block group"
       >
         <AppCard class="h-full transition-colors hover:border-[var(--color-ink)] cursor-pointer">

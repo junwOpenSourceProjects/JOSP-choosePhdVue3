@@ -12,7 +12,10 @@
  *
  * <p>AdminInterceptor 兜底（项目 commit 54ffcfd），无 admin 权限返 403。
  */
-useHead({ title: '反爬虫审计' })
+const localePath = useLocalePath()
+const { t } = useI18n()
+
+useHead({ title: () => t('admin.scrapeAudit') })
 
 const $api = useApi()
 const auth = useAuthStore()

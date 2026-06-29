@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { RankingEntryVo, ShortlistItem, University } from '~/types'
 
-useHead({ title: '院校对比' })
+const localePath = useLocalePath()
+const { t } = useI18n()
+
+useHead({ title: () => t('compare.title') })
 
 const $api = useApi()
 const authStore = useAuthStore()
@@ -120,9 +123,9 @@ const compareChartOption = computed(() => {
 
 <template>
   <div class="container-page py-[var(--spacing-section)]">
-    <h1 class="heading-lg text-[var(--color-ink)] mb-[var(--spacing-md)]">院校对比</h1>
+    <h1 class="heading-lg text-[var(--color-ink)] mb-[var(--spacing-md)]">{{ $t('compare.title') }}</h1>
     <p class="subtitle text-[var(--color-steel)] mb-[var(--spacing-xl)]">
-      选择 2-3 所院校，横向对比各榜单排名。
+      {{ $t('compare.subtitle') }}
     </p>
 
     <!-- Search -->
@@ -130,7 +133,7 @@ const compareChartOption = computed(() => {
       <div class="flex gap-[var(--spacing-md)]">
         <AppSearchPill v-model="query" class="flex-1" @search="searchUniversities" />
         <AppButton variant="primary" size="md" @click="searchUniversities">
-          搜索
+          {{ $t('common.search') }}
         </AppButton>
       </div>
       <div v-if="searchResults.length" class="mt-[var(--spacing-md)] card-base space-y-[var(--spacing-xs)]">
@@ -147,13 +150,13 @@ const compareChartOption = computed(() => {
         </button>
       </div>
       <div v-else-if="query && !searching" class="mt-[var(--spacing-md)] body-sm text-[var(--color-steel)]">
-        无搜索结果
+        {{ $t('compare.noResults') }}
       </div>
     </div>
 
     <!-- Shortlist suggestions -->
     <div v-if="authStore.isLoggedIn && shortlistStore.items.length" class="mb-[var(--spacing-xl)]">
-      <h3 class="heading-sm text-[var(--color-ink)] mb-[var(--spacing-md)]">从选校清单添加</h3>
+      <h3 class="heading-sm text-[var(--color-ink)] mb-[var(--spacing-md)]">{{ $t('compare.fromShortlist') }}</h3>
       <div class="flex flex-wrap gap-[var(--spacing-xs)]">
         <button
           v-for="item in shortlistStore.items"
@@ -212,14 +215,14 @@ const compareChartOption = computed(() => {
             : 'bg-[var(--color-canvas)] text-[var(--color-steel)] border-[var(--color-hairline)] hover:text-[var(--color-ink)]'"
           @click="showAllSources = !showAllSources"
         >
-          {{ showAllSources ? '仅看核心' : '查看全部' }}
+          {{ showAllSources ? $t('compare.coreRankingsOnly') : $t('compare.viewAll') }}
         </button>
       </div>
       <div v-if="compareChartOption" class="card-base">
         <LazyChartVChart :option="compareChartOption" height="360px" />
       </div>
       <div v-else class="card-base text-center py-[var(--spacing-xl)] text-[var(--color-steel)]">
-        该榜单暂无足够排名数据绘制趋势
+        {{ $t('compare.noData') }}
       </div>
     </div>
 
@@ -228,7 +231,7 @@ const compareChartOption = computed(() => {
       <table class="data-table min-w-[600px]">
         <thead>
           <tr>
-            <th class="data-table-header px-[var(--spacing-md)] py-[var(--spacing-sm)] text-left">榜单 / 维度</th>
+            <th class="data-table-header px-[var(--spacing-md)] py-[var(--spacing-sm)] text-left">{{ $t('compare.dimensionColumn') }}</th>
             <th
               v-for="uni in selected"
               :key="uni.urlId"
@@ -240,13 +243,13 @@ const compareChartOption = computed(() => {
         </thead>
         <tbody>
           <tr class="border-b border-[var(--color-hairline-soft)]">
-            <td class="px-[var(--spacing-md)] py-[var(--spacing-md)] body-sm-medium text-[var(--color-charcoal)]">国家</td>
+            <td class="px-[var(--spacing-md)] py-[var(--spacing-md)] body-sm-medium text-[var(--color-charcoal)]">{{ $t('compare.country') }}</td>
             <td v-for="uni in selected" :key="uni.urlId" class="px-[var(--spacing-md)] py-[var(--spacing-md)] body-sm text-[var(--color-ink)]">
               {{ uni.country || '—' }}
             </td>
           </tr>
           <tr class="border-b border-[var(--color-hairline-soft)]">
-            <td class="px-[var(--spacing-md)] py-[var(--spacing-md)] body-sm-medium text-[var(--color-charcoal)]">地区</td>
+            <td class="px-[var(--spacing-md)] py-[var(--spacing-md)] body-sm-medium text-[var(--color-charcoal)]">{{ $t('compare.region') }}</td>
             <td v-for="uni in selected" :key="uni.urlId" class="px-[var(--spacing-md)] py-[var(--spacing-md)] body-sm text-[var(--color-ink)]">
               {{ uni.region || '—' }}
             </td>
@@ -262,7 +265,7 @@ const compareChartOption = computed(() => {
     </div>
 
     <div v-else class="card-base text-center py-[var(--spacing-section)] text-[var(--color-steel)]">
-      请选择至少一所院校开始对比
+      {{ $t('compare.selectPrompt') }}
     </div>
   </div>
 </template>

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { PageResult, University, UniversityTag } from '~/types'
 
-useHead({ title: '院校库' })
+const { t } = useI18n()
+const localePath = useLocalePath()
+
+useHead({ title: () => t('universities.title') })
 
 const $api = useApi()
 const authStore = useAuthStore()
@@ -145,9 +148,9 @@ const addToShortlist = async (uni: University) => {
 
 <template>
   <div class="container-page py-[var(--spacing-section)]">
-    <h1 class="heading-lg text-[var(--color-ink)] mb-[var(--spacing-md)]">院校库</h1>
+    <h1 class="heading-lg text-[var(--color-ink)] mb-[var(--spacing-md)]">{{ $t('universities.title') }}</h1>
     <p class="subtitle text-[var(--color-steel)] mb-[var(--spacing-xl)]">
-      搜索并浏览全球大学，按世界排名发现顶尖院校。
+      {{ $t('universities.subtitle') }}
     </p>
 
     <!-- Search -->
@@ -158,7 +161,7 @@ const addToShortlist = async (uni: University) => {
     <!-- Filters -->
     <div class="flex flex-col gap-[var(--spacing-md)] mb-[var(--spacing-xl)]">
       <div class="flex flex-wrap items-center gap-[var(--spacing-xs)]">
-        <span class="body-sm text-[var(--color-steel)] mr-1">大洲</span>
+        <span class="body-sm text-[var(--color-steel)] mr-1">{{ $t('universities.filterContinent') }}</span>
         <button
           v-for="c in continentOptions"
           :key="c.value"
@@ -174,7 +177,7 @@ const addToShortlist = async (uni: University) => {
       </div>
 
       <div v-if="continent && (countryOptions || []).length > 0" class="flex flex-wrap items-center gap-[var(--spacing-xs)]">
-        <span class="body-sm text-[var(--color-steel)] mr-1">国家</span>
+        <span class="body-sm text-[var(--color-steel)] mr-1">{{ $t('universities.filterCountry') }}</span>
         <button
           type="button"
           class="px-[var(--spacing-md)] py-[var(--spacing-xs)] rounded-[var(--rounded-full)] border body-sm-medium transition-colors"
@@ -183,7 +186,7 @@ const addToShortlist = async (uni: University) => {
             : 'bg-[var(--color-canvas)] text-[var(--color-steel)] border-[var(--color-hairline)] hover:text-[var(--color-ink)]'"
           @click="country = ''; page = 1; syncQuery()"
         >
-          全部
+          {{ $t('universities.allCountries') }}
         </button>
         <button
           v-for="c in countryOptions"
@@ -200,7 +203,7 @@ const addToShortlist = async (uni: University) => {
       </div>
 
       <div class="flex flex-wrap items-center gap-[var(--spacing-xs)]">
-        <span class="body-sm text-[var(--color-steel)] mr-1">排序</span>
+        <span class="body-sm text-[var(--color-steel)] mr-1">{{ $t('universities.filterSort') }}</span>
         <button
           v-for="s in sortOptions"
           :key="s.value"
@@ -216,7 +219,7 @@ const addToShortlist = async (uni: University) => {
       </div>
 
       <div v-if="tagOptions && tagOptions.length" class="flex flex-wrap items-center gap-[var(--spacing-xs)]">
-        <span class="body-sm text-[var(--color-steel)] mr-1">标签</span>
+        <span class="body-sm text-[var(--color-steel)] mr-1">{{ $t('universities.filterTag') }}</span>
         <button
           v-for="tag in tagOptions"
           :key="tag.id"
@@ -237,11 +240,11 @@ const addToShortlist = async (uni: University) => {
       <div v-for="i in pageSize" :key="i" class="card-base h-48 animate-pulse" />
     </div>
     <div v-else-if="!result?.list.length" class="card-base text-center py-[var(--spacing-section)] text-[var(--color-steel)]">
-      未找到匹配院校
+      {{ $t('universities.noResults') }}
     </div>
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-[var(--spacing-md)]">
       <AppCard v-for="(uni, idx) in result.list" :key="uni.urlId">
-        <NuxtLink :to="`/universities/${uni.urlId}`">
+        <NuxtLink :to="localePath(`/universities/${uni.urlId}`)">
           <div class="flex items-start justify-between gap-2 mb-1">
             <h3 class="card-title text-[var(--color-ink)]">{{ uni.nameZh }}</h3>
             <span v-if="sortBy === 'bestRank' && page === 1" class="body-sm-bold text-[var(--color-steel)]">#{{ (page - 1) * pageSize + idx + 1 }}</span>
@@ -267,7 +270,7 @@ const addToShortlist = async (uni: University) => {
             :disabled="adding[uni.urlId]"
             @click="addToShortlist(uni)"
           >
-            {{ adding[uni.urlId] ? '添加中…' : '加入清单' }}
+            {{ adding[uni.urlId] ? $t('universities.adding') : $t('universities.addToShortlist') }}
           </button>
         </div>
       </AppCard>
@@ -276,11 +279,11 @@ const addToShortlist = async (uni: University) => {
     <!-- Pagination -->
     <div v-if="totalPages > 1" class="flex items-center justify-center gap-[var(--spacing-md)] mt-[var(--spacing-xl)]">
       <AppButton variant="tertiary" size="sm" :disabled="page <= 1" @click="setPage(page - 1)">
-        上一页
+        {{ $t('common.previousPage') }}
       </AppButton>
       <span class="body-sm text-[var(--color-steel)]">{{ page }} / {{ totalPages }}</span>
       <AppButton variant="tertiary" size="sm" :disabled="page >= totalPages" @click="setPage(page + 1)">
-        下一页
+        {{ $t('common.nextPage') }}
       </AppButton>
     </div>
   </div>

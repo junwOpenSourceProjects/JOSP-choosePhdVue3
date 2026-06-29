@@ -9,7 +9,10 @@ interface ImportStatus {
   message?: string
 }
 
-useHead({ title: '数据导入' })
+const localePath = useLocalePath()
+const { t } = useI18n()
+
+useHead({ title: () => t('admin.import') })
 
 const $api = useApi()
 
@@ -44,22 +47,22 @@ onMounted(() => {
 
 <template>
   <div class="container-page py-[var(--spacing-section)]">
-    <h1 class="heading-lg text-[var(--color-ink)] mb-[var(--spacing-md)]">数据导入</h1>
+    <h1 class="heading-lg text-[var(--color-ink)] mb-[var(--spacing-md)]">{{ $t('admin.import') }}</h1>
     <p class="subtitle text-[var(--color-steel)] mb-[var(--spacing-xl)]">
-      查看后台排名数据导入进度，或手动触发重新导入。
+      {{ $t('admin.importDesc') }}
     </p>
 
     <!-- Status card -->
     <AppCard variant="feature">
       <div v-if="!status && loading" class="text-center py-[var(--spacing-xl)] text-[var(--color-steel)]">
-        加载中…
+        {{ $t('common.loading') }}
       </div>
       <div v-else-if="!status" class="text-center py-[var(--spacing-xl)] text-[var(--color-steel)]">
-        暂无导入状态
+        {{ $t('admin.noImportStatus') }}
       </div>
       <div v-else class="space-y-[var(--spacing-xl)]">
         <div class="flex items-center justify-between">
-          <h2 class="heading-sm text-[var(--color-ink)]">导入状态</h2>
+          <h2 class="heading-sm text-[var(--color-ink)]">{{ $t('admin.importStatus') }}</h2>
           <AppBadge
             :variant="status.status === 'completed' ? 'success' : status.status === 'failed' ? 'new' : 'beta'"
             :label="status.status || 'idle'"
@@ -69,7 +72,7 @@ onMounted(() => {
         <!-- Progress bar -->
         <div>
           <div class="flex justify-between body-sm text-[var(--color-steel)] mb-[var(--spacing-xs)]">
-            <span>进度</span>
+            <span>{{ $t('admin.progress') }}</span>
             <span>{{ status.progress ?? 0 }}%</span>
           </div>
           <div class="h-3 w-full bg-[var(--color-hairline)] rounded-[var(--rounded-full)] overflow-hidden">
@@ -84,19 +87,19 @@ onMounted(() => {
         <div class="grid grid-cols-2 md:grid-cols-4 gap-[var(--spacing-md)]">
           <div class="card-base text-center">
             <div class="heading-sm text-[var(--color-ink)]">{{ status.processedFiles ?? 0 }}</div>
-            <div class="body-sm text-[var(--color-steel)]">已处理文件</div>
+            <div class="body-sm text-[var(--color-steel)]">{{ $t('admin.processedFiles') }}</div>
           </div>
           <div class="card-base text-center">
             <div class="heading-sm text-[var(--color-ink)]">{{ status.totalFiles ?? 0 }}</div>
-            <div class="body-sm text-[var(--color-steel)]">总文件数</div>
+            <div class="body-sm text-[var(--color-steel)]">{{ $t('admin.totalFiles') }}</div>
           </div>
           <div class="card-base text-center">
             <div class="heading-sm text-[var(--color-success-text)]">{{ status.successRecords ?? 0 }}</div>
-            <div class="body-sm text-[var(--color-steel)]">成功记录</div>
+            <div class="body-sm text-[var(--color-steel)]">{{ $t('admin.successRecords') }}</div>
           </div>
           <div class="card-base text-center">
             <div class="heading-sm text-[var(--color-error)]">{{ status.failedRecords ?? 0 }}</div>
-            <div class="body-sm text-[var(--color-steel)]">失败记录</div>
+            <div class="body-sm text-[var(--color-steel)]">{{ $t('admin.failedRecords') }}</div>
           </div>
         </div>
 
@@ -109,7 +112,7 @@ onMounted(() => {
     <!-- Actions -->
     <div class="mt-[var(--spacing-xl)]">
       <AppButton variant="primary" :disabled="running" @click="runImport">
-        {{ running ? '导入中…' : '重新导入' }}
+        {{ running ? $t('admin.importing') : $t('admin.reimport') }}
       </AppButton>
     </div>
   </div>

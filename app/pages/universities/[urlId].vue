@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { PageResult, RankingEntryVo, ShortlistItem, University, UniversityDetail, UniversitySourceSummary } from '~/types'
 
+const localePath = useLocalePath()
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const $api = useApi()
@@ -61,21 +63,21 @@ const fetchRankings = async () => {
 
 watch(urlId, fetchRankings, { immediate: true })
 
-useHead({ title: () => university.value ? `${university.value.nameZh} · 院校详情` : '院校详情' })
+useHead({ title: () => university.value ? `${university.value.nameZh} · ${t('universityDetail.title')}` : t('universityDetail.title') })
 
 const hasScoreData = computed(() => rankings.value.some((r) => r.score != null))
 
 const columns = computed(() => {
   const base = [
-    { key: 'sourceName', label: '榜单', align: 'left' as const },
-    { key: 'subjectName', label: '学科', align: 'left' as const },
-    { key: 'year', label: '年份', align: 'left' as const },
-    { key: 'rankDisplay', label: '排名', align: 'left' as const }
+    { key: 'sourceName', label: t('universityDetail.sourceColumn'), align: 'left' as const },
+    { key: 'subjectName', label: t('universityDetail.subjectColumn'), align: 'left' as const },
+    { key: 'year', label: t('universityDetail.yearColumn'), align: 'left' as const },
+    { key: 'rankDisplay', label: t('universityDetail.rankColumn'), align: 'left' as const }
   ]
   if (hasScoreData.value) {
-    base.push({ key: 'score', label: '分数', align: 'left' as const })
+    base.push({ key: 'score', label: t('universityDetail.scoreColumn'), align: 'left' as const })
   }
-  base.push({ key: 'rankDelta', label: '变化', align: 'left' as const })
+  base.push({ key: 'rankDelta', label: t('universityDetail.changeColumn'), align: 'left' as const })
   return base
 })
 
@@ -127,12 +129,12 @@ const note = ref('')
 const submitting = ref(false)
 const submitted = ref(false)
 
-const priorityOptions = [
-  { value: 1, label: '1 · 强意向' },
-  { value: 2, label: '2 · 中意向' },
-  { value: 3, label: '3 · 弱意向' },
-  { value: 4, label: '4 · 不考虑' }
-]
+const priorityOptions = computed(() => [
+  { value: 1, label: t('universityDetail.priorityStrong') },
+  { value: 2, label: t('universityDetail.priorityMedium') },
+  { value: 3, label: t('universityDetail.priorityWeak') },
+  { value: 4, label: t('universityDetail.priorityNone') }
+])
 
 const submitShortlist = async () => {
   if (!university.value) return
@@ -162,19 +164,19 @@ const submitShortlist = async () => {
       <div class="h-6 w-1/4 bg-[var(--color-surface)] rounded-[var(--rounded-md)] animate-pulse" />
     </div>
     <div v-else-if="!university" class="card-base text-center py-[var(--spacing-section)] text-[var(--color-steel)]">
-      院校不存在
+      {{ $t('universityDetail.notFound') }}
     </div>
     <template v-else>
       <div class="mb-[var(--spacing-xl)]">
-        <NuxtLink to="/universities" class="body-sm text-[var(--color-steel)] hover:text-[var(--color-ink)]">
-          ← 返回院校库
+        <NuxtLink :to="localePath('/universities')" class="body-sm text-[var(--color-steel)] hover:text-[var(--color-ink)]">
+          {{ $t('universityDetail.backToList') }}
         </NuxtLink>
         <div class="flex items-center gap-[var(--spacing-xs)]">
           <h1 class="heading-lg text-[var(--color-ink)] mt-[var(--spacing-sm)]">{{ university.nameZh }}</h1>
           <button
             type="button"
             class="btn-icon-circular w-7 h-7 mt-[var(--spacing-sm)]"
-            title="复制院校名称"
+            :title="$t('universityDetail.copyName')"
             @click="copy(university.nameZh)"
           >
             <Icon name="lucide:copy" class="size-3.5" />
@@ -194,11 +196,11 @@ const submitShortlist = async () => {
         <!-- Basic info -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-[var(--spacing-md)] mt-[var(--spacing-lg)]">
           <div v-if="university.foundedDate" class="body-sm text-[var(--color-charcoal)]">
-            <span class="text-[var(--color-steel)]">建校时间：</span>
+            <span class="text-[var(--color-steel)]">{{ $t('universityDetail.foundedDate') }}：</span>
             <span class="font-medium">{{ university.foundedDate }}</span>
           </div>
           <div v-if="university.website" class="body-sm text-[var(--color-charcoal)]">
-            <span class="text-[var(--color-steel)]">官网：</span>
+            <span class="text-[var(--color-steel)]">{{ $t('universityDetail.website') }}：</span>
             <NuxtLink
               :to="university.website"
               target="_blank"
@@ -209,11 +211,11 @@ const submitShortlist = async () => {
             </NuxtLink>
           </div>
           <div v-if="university.motto" class="body-sm text-[var(--color-charcoal)] sm:col-span-2">
-            <span class="text-[var(--color-steel)]">校训：</span>
+            <span class="text-[var(--color-steel)]">{{ $t('universityDetail.motto') }}：</span>
             <span class="font-medium">{{ university.motto }}</span>
           </div>
           <div v-if="university.address" class="body-sm text-[var(--color-charcoal)] sm:col-span-2">
-            <span class="text-[var(--color-steel)]">地址：</span>
+            <span class="text-[var(--color-steel)]">{{ $t('universityDetail.address') }}：</span>
             <span class="font-medium">{{ university.address }}</span>
           </div>
         </div>
@@ -223,11 +225,11 @@ const submitShortlist = async () => {
       <div v-if="hasLockedData && !isLoggedIn" class="card-base bg-[var(--color-brand-blue-200)] border-[var(--color-brand-blue-deep)] mb-[var(--spacing-lg)]">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-[var(--spacing-md)]">
           <div>
-            <p class="body-md-bold text-[var(--color-brand-blue-deep)]">🔒 排名数据已锁定</p>
-            <p class="body-sm text-[var(--color-brand-blue-deep)] mt-[var(--spacing-xs)]">登录后解锁完整排名详情、历年趋势与对比功能</p>
+            <p class="body-md-bold text-[var(--color-brand-blue-deep)]">{{ $t('universityDetail.lockedTitle') }}</p>
+            <p class="body-sm text-[var(--color-brand-blue-deep)] mt-[var(--spacing-xs)]">{{ $t('universityDetail.lockedDesc') }}</p>
           </div>
-          <NuxtLink to="/login" class="btn-primary btn-md shrink-0">
-            登录解锁
+          <NuxtLink :to="localePath('/login')" class="btn-primary btn-md shrink-0">
+            {{ $t('universityDetail.lockedCTA') }}
           </NuxtLink>
         </div>
       </div>
@@ -242,7 +244,7 @@ const submitShortlist = async () => {
             : 'text-[var(--color-steel)] border-transparent hover:text-[var(--color-ink)]'"
           @click="activeTab = 'rankings'"
         >
-          排名历史
+          {{ $t('universityDetail.tabRankings') }}
         </button>
         <button
           type="button"
@@ -252,7 +254,7 @@ const submitShortlist = async () => {
             : 'text-[var(--color-steel)] border-transparent hover:text-[var(--color-ink)]'"
           @click="activeTab = 'shortlist'"
         >
-          加入清单
+          {{ $t('universityDetail.tabShortlist') }}
         </button>
       </div>
 
@@ -260,7 +262,7 @@ const submitShortlist = async () => {
       <div v-if="activeTab === 'rankings'" class="space-y-[var(--spacing-xl)]">
         <div v-if="trendChartOption" class="card-base">
           <div class="flex items-center justify-between mb-[var(--spacing-md)]">
-            <h3 class="heading-sm text-[var(--color-ink)]">排名趋势</h3>
+            <h3 class="heading-sm text-[var(--color-ink)]">{{ $t('universityDetail.trendTitle') }}</h3>
             <div class="flex gap-[var(--spacing-xs)]">
               <button
                 type="button"
@@ -270,7 +272,7 @@ const submitShortlist = async () => {
                   : 'bg-[var(--color-primary)] text-[var(--color-on-primary)] border-[var(--color-primary)]'"
                 @click="showAllSources = false"
               >
-                核心榜单
+                {{ $t('universityDetail.coreRankings') }}
               </button>
               <button
                 type="button"
@@ -280,7 +282,7 @@ const submitShortlist = async () => {
                   : 'bg-[var(--color-canvas)] text-[var(--color-steel)] border-[var(--color-hairline)] hover:text-[var(--color-ink)]'"
                 @click="showAllSources = true"
               >
-                全部榜单
+                {{ $t('universityDetail.allRankings') }}
               </button>
               <button
                 type="button"
@@ -290,7 +292,7 @@ const submitShortlist = async () => {
                   : 'bg-[var(--color-canvas)] text-[var(--color-steel)] border-[var(--color-hairline)] hover:text-[var(--color-ink)]'"
                 @click="showSubjects = !showSubjects"
               >
-                {{ showSubjects ? '包含学科' : '只看综合' }}
+                {{ showSubjects ? $t('universityDetail.includeSubjects') : $t('universityDetail.comprehensiveOnly') }}
               </button>
             </div>
           </div>
@@ -317,10 +319,10 @@ const submitShortlist = async () => {
 
       <!-- Shortlist tab -->
       <AppCard v-else variant="feature">
-        <h3 class="heading-sm text-[var(--color-ink)] mb-[var(--spacing-md)]">加入选校清单</h3>
+        <h3 class="heading-sm text-[var(--color-ink)] mb-[var(--spacing-md)]">{{ $t('universityDetail.tabShortlist') }}</h3>
         <form class="space-y-[var(--spacing-md)] max-w-xl" @submit.prevent="submitShortlist">
           <div>
-            <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">意向优先级</label>
+            <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">{{ $t('shortlist.priority') }}</label>
             <USelectMenu
               v-model="priority"
               :items="priorityOptions"
@@ -329,19 +331,19 @@ const submitShortlist = async () => {
             />
           </div>
           <div>
-            <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">备注</label>
+            <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">{{ $t('universityDetail.noteLabel') }}</label>
             <textarea
               v-model="note"
               rows="4"
               class="text-input h-auto py-[var(--spacing-md)]"
-              placeholder="记录你的选校理由、导师方向或申请进度…"
+              :placeholder="$t('universityDetail.notePlaceholder')"
             />
           </div>
           <div class="flex items-center gap-[var(--spacing-md)]">
             <AppButton variant="primary" type="submit" :disabled="submitting">
-              {{ submitting ? '提交中…' : '加入清单' }}
+              {{ submitting ? $t('universityDetail.submitting') : $t('universityDetail.submitShortlist') }}
             </AppButton>
-            <AppBadge v-if="submitted" variant="success" label="已添加" />
+            <AppBadge v-if="submitted" variant="success" :label="$t('universityDetail.added')" />
           </div>
         </form>
       </AppCard>

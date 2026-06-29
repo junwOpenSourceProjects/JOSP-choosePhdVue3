@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { UniversityDetail, UniversityTag } from '~/types'
 
-useHead({ title: '标签管理' })
+const localePath = useLocalePath()
+const { t } = useI18n()
+
+useHead({ title: () => t('admin.universityTags') })
 
 const $api = useApi()
 
@@ -85,7 +88,7 @@ const cancelEdit = () => {
 
 const saveTag = async () => {
   if (!form.value.slug.trim() || !form.value.nameZh.trim()) {
-    error.value = '标识和中文名称不能为空'
+    error.value = t('admin.validationSlugNameRequired')
     return
   }
   saving.value = true
@@ -168,9 +171,9 @@ onMounted(fetchTags)
 
 const categoryLabel = (category?: string) => {
   const map: Record<string, string> = {
-    domestic: '国内',
-    foreign: '国外',
-    other: '其他'
+    domestic: t('admin.categoryDomestic'),
+    foreign: t('admin.categoryForeign'),
+    other: t('admin.categoryOther')
   }
   return map[category || 'other'] || category
 }
@@ -178,30 +181,30 @@ const categoryLabel = (category?: string) => {
 
 <template>
   <div class="container-page py-[var(--spacing-section)]">
-    <h1 class="heading-lg text-[var(--color-ink)] mb-[var(--spacing-md)]">院校标签管理</h1>
+    <h1 class="heading-lg text-[var(--color-ink)] mb-[var(--spacing-md)]">{{ $t('admin.tagManagement') }}</h1>
     <p class="subtitle text-[var(--color-steel)] mb-[var(--spacing-xl)]">
-      管理院校标签、颜色、排序，以及为单个院校设置标签。
+      {{ $t('admin.tagManagementDesc') }}
     </p>
 
     <AppCard variant="feature" class="mb-[var(--spacing-xl)]">
       <h2 class="heading-sm text-[var(--color-ink)] mb-[var(--spacing-md)]">
-        {{ editingId == null ? '新建标签' : '编辑标签' }}
+        {{ editingId == null ? $t('admin.createTag') : $t('admin.editTag') }}
       </h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[var(--spacing-md)] mb-[var(--spacing-md)]">
         <div>
-          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">标识 slug</label>
+          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">{{ $t('admin.tagSlug') }}</label>
           <input v-model="form.slug" class="text-input" placeholder="例如 985">
         </div>
         <div>
-          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">中文名称</label>
+          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">{{ $t('admin.tagNameZh') }}</label>
           <input v-model="form.nameZh" class="text-input" placeholder="例如 985">
         </div>
         <div>
-          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">英文名称</label>
+          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">{{ $t('admin.tagNameEn') }}</label>
           <input v-model="form.nameEn" class="text-input" placeholder="Project 985">
         </div>
         <div>
-          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">分类</label>
+          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">{{ $t('admin.tagCategory') }}</label>
           <select v-model="form.category" class="text-input">
             <option value="domestic">国内</option>
             <option value="foreign">国外</option>
@@ -209,42 +212,42 @@ const categoryLabel = (category?: string) => {
           </select>
         </div>
         <div>
-          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">颜色</label>
+          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">{{ $t('admin.tagColor') }}</label>
           <div class="flex gap-2">
             <input v-model="form.color" class="text-input flex-1" placeholder="#C8102E">
             <input v-model="form.color" type="color" class="h-10 w-10 p-0 border-0 rounded-[var(--rounded-md)] cursor-pointer">
           </div>
         </div>
         <div class="sm:col-span-2 lg:col-span-4">
-          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">简介</label>
+          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">{{ $t('admin.tagDescription') }}</label>
           <textarea v-model="form.description" rows="3" class="text-input h-auto py-[var(--spacing-md)]" placeholder="标签的简短介绍，用于前端展示"></textarea>
         </div>
         <div>
-          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">排序</label>
+          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">{{ $t('admin.tagSortOrder') }}</label>
           <input v-model.number="form.sortOrder" type="number" class="text-input" placeholder="0">
         </div>
         <div>
-          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">状态</label>
+          <label class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">{{ $t('admin.tagStatus') }}</label>
           <select v-model.number="form.active" class="text-input">
-            <option :value="1">启用</option>
-            <option :value="0">禁用</option>
+            <option :value="1">{{ $t('admin.enabled') }}</option>
+            <option :value="0">{{ $t('admin.disabled') }}</option>
           </select>
         </div>
       </div>
       <p v-if="error" class="body-sm text-[var(--color-error)] mb-[var(--spacing-md)]">{{ error }}</p>
       <div class="flex gap-[var(--spacing-md)]">
         <AppButton variant="primary" :disabled="saving" @click="saveTag">
-          {{ saving ? '保存中…' : '保存' }}
+          {{ saving ? $t('admin.saving') : $t('admin.save') }}
         </AppButton>
         <AppButton v-if="editingId != null" variant="tertiary" @click="cancelEdit">
-          取消
+          {{ $t('admin.cancel') }}
         </AppButton>
       </div>
     </AppCard>
 
     <ClientOnly>
       <AppCard class="mb-[var(--spacing-xl)]">
-        <h2 class="heading-sm text-[var(--color-ink)] mb-[var(--spacing-md)]">为院校设置标签</h2>
+        <h2 class="heading-sm text-[var(--color-ink)] mb-[var(--spacing-md)]">{{ $t('admin.assignTag') }}</h2>
       <div class="flex flex-col sm:flex-row gap-[var(--spacing-md)] mb-[var(--spacing-md)]">
         <input
           v-model="assignUrlId"
@@ -253,7 +256,7 @@ const categoryLabel = (category?: string) => {
           @blur="loadUniversityTags"
         >
         <AppButton variant="secondary" :disabled="!assignUrlId.trim()" @click="loadUniversityTags">
-          加载现有标签
+          {{ $t('admin.loadTags') }}
         </AppButton>
       </div>
       <div v-if="tags.length" class="flex flex-wrap gap-[var(--spacing-xs)] mb-[var(--spacing-md)]">
@@ -278,22 +281,22 @@ const categoryLabel = (category?: string) => {
         {{ assignMessage }}
       </p>
       <AppButton variant="primary" :disabled="assigning || !assignUrlId.trim()" @click="saveUniversityTags">
-        {{ assigning ? '保存中…' : '保存院校标签' }}
+        {{ assigning ? $t('admin.saving') : $t('admin.saveUniversityTags') }}
       </AppButton>
     </AppCard>
 
     <AppCard>
-      <h2 class="heading-sm text-[var(--color-ink)] mb-[var(--spacing-md)]">标签列表</h2>
+      <h2 class="heading-sm text-[var(--color-ink)] mb-[var(--spacing-md)]">{{ $t('admin.tagList') }}</h2>
       <AppDataTable
         :columns="[
-          { key: 'id', label: 'ID' },
-          { key: 'slug', label: '标识' },
-          { key: 'nameZh', label: '中文名称' },
-          { key: 'category', label: '分类' },
-          { key: 'color', label: '颜色' },
-          { key: 'sortOrder', label: '排序' },
-          { key: 'active', label: '状态' },
-          { key: 'actions', label: '操作' }
+          { key: 'id', label: t('admin.tagId') },
+          { key: 'slug', label: t('admin.tagSlug') },
+          { key: 'nameZh', label: t('admin.tagNameZh') },
+          { key: 'category', label: t('admin.tagCategory') },
+          { key: 'color', label: t('admin.tagColor') },
+          { key: 'sortOrder', label: t('admin.tagSortOrder') },
+          { key: 'active', label: t('admin.tagStatus') },
+          { key: 'actions', label: t('admin.tagActions') }
         ]"
         :rows="tags"
         :loading="loading"
@@ -311,30 +314,30 @@ const categoryLabel = (category?: string) => {
         <template #active="{ row }">
           <AppBadge
             :variant="row.active === 1 ? 'success' : 'new'"
-            :label="row.active === 1 ? '启用' : '禁用'"
+            :label="row.active === 1 ? $t('admin.enabled') : $t('admin.disabled')"
           />
         </template>
         <template #actions="{ row }">
           <div class="flex gap-[var(--spacing-md)]">
-            <AppButton variant="link" @click="startEdit(row)">编辑</AppButton>
-            <AppButton variant="link" @click="deleteTag(row)">删除</AppButton>
+            <AppButton variant="link" @click="startEdit(row)">{{ $t('common.edit') }}</AppButton>
+            <AppButton variant="link" @click="deleteTag(row)">{{ $t('common.delete') }}</AppButton>
           </div>
         </template>
       </AppDataTable>
     </AppCard>
 
     <!-- 删除二次确认 — UModal 替代 confirm() -->
-    <UModal v-model:open="deleteConfirmOpen" :title="`删除标签「${deleteTarget?.nameZh ?? ''}」`">
+    <UModal v-model:open="deleteConfirmOpen" :title="$t('admin.deleteConfirm') + `「${deleteTarget?.nameZh ?? ''}」`">
       <template #body>
         <p class="body-md text-[var(--color-charcoal)]">
-          关联关系（院校-标签映射）也会被清除，且不可恢复。确认删除吗？
+          {{ $t('admin.deleteConfirmDesc') }}
         </p>
       </template>
       <template #footer>
         <div class="flex justify-end gap-[var(--spacing-md)]">
-          <AppButton variant="tertiary" :disabled="deleting" @click="deleteConfirmOpen = false">取消</AppButton>
+          <AppButton variant="tertiary" :disabled="deleting" @click="deleteConfirmOpen = false">{{ $t('common.cancel') }}</AppButton>
           <AppButton variant="primary" :disabled="deleting" @click="confirmDelete">
-            {{ deleting ? '删除中…' : '确认删除' }}
+            {{ deleting ? $t('admin.deleting') : $t('admin.confirmDelete') }}
           </AppButton>
         </div>
       </template>
