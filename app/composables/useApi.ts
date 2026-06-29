@@ -37,6 +37,11 @@ function handleResponseError(ctx: { response?: { status: number } }) {
   }
 }
 
+/**
+ * 通用 API 调用。
+ * 后端 ResponseObfuscationFilter 对所有非 AI 爬虫请求混淆响应体（XOR+Base64），
+ * 此处自动检测 X-Obfuscated 头并在客户端解码，用户无感知。
+ */
 export function useApi() {
   const config = useRuntimeConfig()
   const token = useCookie<string | null>('choosephd_token', { default: () => null })
@@ -59,39 +64,30 @@ export function useApi() {
       }
     }
 
-    // 正常 JSON 路径
-    try {
-      const res = await $fetch<ApiResult<T>>(cleanUrl, {
-        baseURL: config.public.apiBase,
-        ...options,
-        headers,
-        onResponseError: handleResponseError,
-      })
+    // 用 responseType: 'text' 拿原始字符串，检测 X-Obfuscated 头决定是否解码
+    let obfuscated = false
+    const raw = await $fetch<string>(cleanUrl, {
+      baseURL: config.public.apiBase,
+      ...options,
+      headers,
+      responseType: 'text',
+      onResponse(ctx) {
+        obfuscated = ctx.response.headers.get('X-Obfuscated') === '1'
+      },
+      onResponseError: handleResponseError,
+    })
 
-      if (res.code !== 0) {
-        throw new Error(res.message || 'API error')
-      }
-      return res.data as T
-    } catch (err: any) {
-      // 混淆响应（base64 blob）→ JSON.parse 失败 → 重试 text 解码
-      try {
-        const rawText = await $fetch<string>(cleanUrl, {
-          baseURL: config.public.apiBase,
-          ...options,
-          headers,
-          responseType: 'text',
-          onResponseError: handleResponseError,
-        })
-
-        const decoded = xorDecode(rawText)
-        const parsed: ApiResult<T> = JSON.parse(decoded)
-        if (parsed.code !== 0) {
-          throw new Error(parsed.message || 'API error')
-        }
-        return parsed.data as T
-      } catch {
-        throw err
-      }
+    if (!raw || raw.trim().length === 0) {
+      return undefined as unknown as T
     }
+
+    const jsonText = obfuscated ? xorDecode(raw) : raw
+    const parsed: ApiResult<T> = JSON.parse(jsonText)
+
+    if (parsed.code !== 0) {
+      throw new Error(parsed.message || 'API error')
+    }
+
+    return parsed.data as T
   }
 }
