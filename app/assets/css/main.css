@@ -389,3 +389,25 @@
   .scramble-text::before { content: attr(data-pre); }
   .scramble-text::after { content: attr(data-post); }
 }
+
+/* Print protection: reduce contrast, hide key data tables */
+@media print {
+  body {
+    filter: contrast(0.6) brightness(1.1);
+    -webkit-filter: contrast(0.6) brightness(1.1);
+  }
+
+  /* 隐藏排名数据表格 — 核心敏感数据 */
+  .data-table,
+  table,
+  .card-base {
+    filter: blur(1px);
+    -webkit-filter: blur(1px);
+  }
+
+  /* 确保水印可见 */
+  #anti-print-watermark {
+    display: flex !important;
+    color: rgba(0, 0, 0, 0.18) !important;
+  }
+}
