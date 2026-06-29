@@ -15,6 +15,16 @@ const goSearch = () => {
 const switchLocale = (code: string) => {
   setLocale(code)
 }
+
+const mobileMenuOpen = ref(false)
+
+const toggleMobileMenu = () => {
+  mobileMenuOpen.value = !mobileMenuOpen.value
+}
+
+const closeMobileMenu = () => {
+  mobileMenuOpen.value = false
+}
 </script>
 
 <template>
@@ -58,6 +68,24 @@ const switchLocale = (code: string) => {
         </div>
 
         <div class="flex items-center gap-3">
+          <!-- Hamburger menu button (mobile) -->
+          <button
+            type="button"
+            class="md:hidden btn-icon-circular"
+            aria-label="菜单"
+            @click="toggleMobileMenu"
+          >
+            <svg v-if="!mobileMenuOpen" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="18" x2="20" y2="18" />
+            </svg>
+            <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+
           <!-- Language switcher -->
           <select
             :value="locale"
@@ -102,6 +130,38 @@ const switchLocale = (code: string) => {
         </div>
       </div>
     </header>
+
+    <!-- Mobile menu overlay -->
+    <div
+      v-if="mobileMenuOpen"
+      class="md:hidden fixed inset-0 z-40"
+      @click="closeMobileMenu"
+    >
+      <div class="absolute inset-0 bg-black/40" />
+      <div class="absolute top-16 left-0 right-0 bg-[var(--color-canvas)] border-b border-[var(--color-hairline)] shadow-2" @click.stop>
+        <nav class="container-page py-[var(--spacing-lg)] flex flex-col gap-[var(--spacing-md)]">
+          <NuxtLink :to="localePath('/')" class="body-md text-[var(--color-ink)] py-[var(--spacing-xs)]" @click="closeMobileMenu">{{ $t('nav.home') }}</NuxtLink>
+          <NuxtLink :to="localePath('/rankings')" class="body-md text-[var(--color-ink)] py-[var(--spacing-xs)]" @click="closeMobileMenu">{{ $t('nav.rankings') }}</NuxtLink>
+          <NuxtLink :to="localePath('/universities')" class="body-md text-[var(--color-ink)] py-[var(--spacing-xs)]" @click="closeMobileMenu">{{ $t('nav.universities') }}</NuxtLink>
+          <NuxtLink :to="localePath('/subjects')" class="body-md text-[var(--color-ink)] py-[var(--spacing-xs)]" @click="closeMobileMenu">{{ $t('nav.subjects') }}</NuxtLink>
+          <NuxtLink :to="localePath('/compare')" class="body-md text-[var(--color-ink)] py-[var(--spacing-xs)]" @click="closeMobileMenu">{{ $t('nav.compare') }}</NuxtLink>
+          <NuxtLink :to="localePath('/shortlist')" class="body-md text-[var(--color-ink)] py-[var(--spacing-xs)]" @click="closeMobileMenu">{{ $t('nav.shortlist') }}</NuxtLink>
+          <template v-if="auth.isAdmin">
+            <div class="border-t border-[var(--color-hairline)] pt-[var(--spacing-md)]">
+              <NuxtLink :to="localePath('/admin/scrape-audit')" class="body-sm text-[var(--color-steel)] py-[var(--spacing-xs)] block" @click="closeMobileMenu">{{ $t('admin.scrapeAudit') }}</NuxtLink>
+              <NuxtLink :to="localePath('/admin/university-tags')" class="body-sm text-[var(--color-steel)] py-[var(--spacing-xs)] block" @click="closeMobileMenu">标签管理</NuxtLink>
+              <NuxtLink :to="localePath('/admin/import')" class="body-sm text-[var(--color-steel)] py-[var(--spacing-xs)] block" @click="closeMobileMenu">数据导入</NuxtLink>
+            </div>
+          </template>
+          <template v-if="!auth.isLoggedIn">
+            <div class="border-t border-[var(--color-hairline)] pt-[var(--spacing-md)] flex gap-[var(--spacing-sm)]">
+              <AppButton variant="secondary" size="sm" :to="localePath('/login')" @click="closeMobileMenu">{{ $t('nav.login') }}</AppButton>
+              <AppButton variant="primary" size="sm" :to="localePath('/register')" @click="closeMobileMenu">{{ $t('nav.register') }}</AppButton>
+            </div>
+          </template>
+        </nav>
+      </div>
+    </div>
 
     <!-- Page content -->
     <main class="flex-1">
