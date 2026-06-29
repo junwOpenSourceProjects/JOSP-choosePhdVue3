@@ -91,6 +91,7 @@ export interface User {
   id: number
   username: string
   role: string
+  membership?: string
 }
 
 export interface AuthResponse {

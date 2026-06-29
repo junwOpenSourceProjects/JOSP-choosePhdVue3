@@ -114,6 +114,15 @@ const closeMobileMenu = () => {
               {{ $t('nav.shortlist') }}
             </NuxtLink>
             <div class="flex items-center gap-2 ml-2">
+              <span
+                class="hidden sm:inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                :class="{
+                  'bg-[var(--color-brand-blue-200)] text-[var(--color-brand-blue-deep)]': auth.user?.membership === 'standard' || auth.user?.membership === 'premium',
+                  'bg-[var(--color-surface)] text-[var(--color-steel)]': !auth.user?.membership || auth.user?.membership === 'free'
+                }"
+              >
+                {{ auth.user?.membership === 'premium' ? '高级版' : auth.user?.membership === 'standard' ? '标准版' : '免费版' }}
+              </span>
               <div class="w-8 h-8 rounded-full bg-[var(--color-surface)] flex items-center justify-center text-xs font-semibold border border-[var(--color-hairline)]">
                 {{ auth.user?.username?.slice(0, 2).toUpperCase() || 'ME' }}
               </div>
