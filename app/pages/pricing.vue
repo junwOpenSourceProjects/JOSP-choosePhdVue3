@@ -22,21 +22,37 @@ const plans = [
     ]
   },
   {
-    name: '专业版',
-    nameEn: 'Pro',
+    name: '标准版',
+    nameEn: 'Standard',
     price: '¥29',
     period: '/月',
-    cta: authStore.isLoggedIn ? '升级专业版' : '注册后升级',
-    ctaVariant: 'primary' as const,
-    highlight: true,
+    cta: authStore.isLoggedIn ? '升级标准版' : '注册后升级',
+    ctaVariant: 'secondary' as const,
+    highlight: false,
     features: [
       '每页 100 条院校',
       '每日 5,000 次查询',
       '10 所院校对比',
       '完整排名直接查看',
       '按年精度趋势图',
-      'CSV 数据导出',
       '无 IP 限制',
+      '不含导出功能',
+    ]
+  },
+  {
+    name: '高级版',
+    nameEn: 'Premium',
+    price: '¥49',
+    period: '/月',
+    cta: authStore.isLoggedIn ? '升级高级版' : '注册后升级',
+    ctaVariant: 'primary' as const,
+    highlight: true,
+    features: [
+      '标准版全部功能',
+      '选校清单 CSV 导出',
+      '每月 20 次导出',
+      '导出含：院校名、国家、各榜单排名、优先级、备注',
+      '适合机构顾问批量整理选校方案',
     ]
   }
 ]
@@ -51,7 +67,7 @@ const plans = [
       </p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-[var(--spacing-lg)] max-w-3xl mx-auto">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-[var(--spacing-lg)] max-w-5xl mx-auto">
       <div
         v-for="plan in plans"
         :key="plan.name"

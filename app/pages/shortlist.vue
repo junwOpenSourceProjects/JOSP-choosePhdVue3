@@ -62,6 +62,42 @@ const compare = () => {
   const ids = shortlistStore.items.slice(0, 3).map((i) => i.universityId).join(',')
   router.push(localePath(`/compare?ids=${ids}`))
 }
+
+// CSV 导出（Premium 专属）
+const $api = useApi()
+const exporting = ref(false)
+const usage = ref<{ membership: string; exportMonthlyLimit: number } | null>(null)
+
+const fetchUsage = async () => {
+  try {
+    usage.value = await $api<{ membership: string; exportMonthlyLimit: number }>('/api/v1/usage/me')
+  } catch { /* ignore */ }
+}
+onMounted(() => { if (authStore.isLoggedIn) fetchUsage() })
+
+const exportCsv = async () => {
+  exporting.value = true
+  try {
+    const config = useRuntimeConfig()
+    const token = useCookie<string | null>('choosephd_token', { default: () => null })
+    const res = await fetch(`${config.public.apiBase}/shortlist/export`, {
+      headers: { Authorization: `Bearer ${token.value}` }
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      const toast = useToast()
+      toast.add({ title: err.message || '导出失败', color: 'error', timeout: 5000 })
+      return
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `choosephd-shortlist-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click(); URL.revokeObjectURL(url)
+  } finally {
+    exporting.value = false
+  }
+}
 </script>
 
 <template>
@@ -120,9 +156,24 @@ const compare = () => {
       </AppCard>
 
       <!-- Actions -->
-      <div class="flex flex-wrap gap-[var(--spacing-md)] pt-[var(--spacing-md)]">
+      <div class="flex flex-wrap items-center gap-[var(--spacing-md)] pt-[var(--spacing-md)]">
         <AppButton variant="primary" :disabled="shortlistStore.items.length < 2" @click="compare">
           {{ $t('shortlist.jumpCompare') }}
+        </AppButton>
+        <AppButton
+          v-if="usage?.membership === 'premium'"
+          variant="secondary"
+          :disabled="exporting || !shortlistStore.items.length"
+          @click="exportCsv"
+        >
+          {{ exporting ? '导出中…' : `导出 CSV (${usage.exportMonthlyLimit}次/月)` }}
+        </AppButton>
+        <AppButton
+          v-else-if="authStore.isLoggedIn && usage?.membership !== 'premium'"
+          variant="secondary"
+          :to="localePath('/pricing')"
+        >
+          升级导出
         </AppButton>
         <AppButton variant="secondary" @click="clearConfirmOpen = true">
           {{ $t('shortlist.clearAll') }}
