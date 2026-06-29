@@ -1,7 +1,6 @@
 import { useCookie, useRuntimeConfig, navigateTo } from '#imports'
 import type { ApiResult } from '~/types'
 
-// XOR key — 与后端 ResponseObfuscationFilter 保持一致
 const XOR_KEY = 'JOSP-choosePhd-2026-net-tab-obfuscation-v1'
 
 function xorDecode(base64: string): string {
@@ -36,34 +35,57 @@ export function useApi() {
       }
     }
 
-    // 用 responseType: 'text' 拿原始字符串，自行解析 JSON，以便支持混淆解码
-    let obfuscated = false
-    const rawText = await $fetch<string>(cleanUrl, {
-      baseURL: config.public.apiBase,
-      ...options,
-      headers,
-      responseType: 'text',
-      onResponse(ctx) {
-        obfuscated = ctx.response.headers.get('X-Obfuscated') === '1'
-      },
-      onResponseError(ctx) {
-        if (ctx.response?.status === 401) {
-          token.value = null
-          if (process.client) {
-            navigateTo('/login')
+    // 先尝试走正常 JSON 路径
+    try {
+      const res = await $fetch<ApiResult<T>>(cleanUrl, {
+        baseURL: config.public.apiBase,
+        ...options,
+        headers,
+        onResponseError(ctx: { response?: { status: number } }) {
+          if (ctx.response?.status === 401) {
+            token.value = null
+            if (process.client) {
+              navigateTo('/login')
+            }
           }
+        },
+      })
+
+      if (res.code !== 0) {
+        throw new Error(res.message || 'API error')
+      }
+      return res.data as T
+    } catch (err: any) {
+      // 如果后端返回了混淆响应（base64 文本），$fetch 尝试 JSON.parse 会失败
+      // 此时用 responseType: 'text' 重试，手动 XOR 解码
+      if (err?.message?.includes('JSON') || err?.cause || true) {
+        try {
+          const rawText = await $fetch<string>(cleanUrl, {
+            baseURL: config.public.apiBase,
+            ...options,
+            headers,
+            responseType: 'text',
+            onResponseError(ctx: { response?: { status: number } }) {
+              if (ctx.response?.status === 401) {
+                token.value = null
+                navigateTo('/login')
+              }
+            },
+          })
+
+          // 尝试 XOR 解码
+          const decoded = xorDecode(rawText)
+          const parsed: ApiResult<T> = JSON.parse(decoded)
+          if (parsed.code !== 0) {
+            throw new Error(parsed.message || 'API error')
+          }
+          return parsed.data as T
+        } catch (retryErr: any) {
+          // 重试也失败，抛出原始错误
+          throw err
         }
-      },
-    })
-
-    // 解码混淆响应
-    const jsonText = obfuscated ? xorDecode(rawText) : rawText
-    const parsed: ApiResult<T> = JSON.parse(jsonText)
-
-    if (parsed.code !== 0) {
-      throw new Error(parsed.message || 'API error')
+      }
+      throw err
     }
-
-    return parsed.data as T
   }
 }
