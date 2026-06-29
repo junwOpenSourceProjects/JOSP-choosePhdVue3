@@ -1,6 +1,19 @@
 import { useCookie, useRuntimeConfig, navigateTo } from '#imports'
 import type { ApiResult } from '~/types'
 
+// XOR key — 与后端 ResponseObfuscationFilter 保持一致
+const XOR_KEY = 'JOSP-choosePhd-2026-net-tab-obfuscation-v1'
+
+function xorDecode(base64: string): string {
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+  const keyBytes = new TextEncoder().encode(XOR_KEY)
+  const decoded = new Uint8Array(bytes.length)
+  for (let i = 0; i < bytes.length; i++) {
+    decoded[i] = bytes[i] ^ keyBytes[i % keyBytes.length]
+  }
+  return new TextDecoder().decode(decoded)
+}
+
 export function useApi() {
   const config = useRuntimeConfig()
   const token = useCookie<string | null>('choosephd_token', { default: () => null })
@@ -12,27 +25,28 @@ export function useApi() {
       headers.Authorization = `Bearer ${token.value}`
     }
 
-    // 兼容旧调用: 传入的 url 若已含 baseURL 路径段 (如 /api/v1/...), 剥掉避免 $fetch 拼出 /api/v1/api/v1/...
-    // 跨 JOSP-* 通用反模式修复 (memory §fetch-string-body-json-stringify-quote-bug 同根)
     const baseURL = config.public.apiBase as string
-    // 1) 完整 URL 匹配 (http://localhost:8080/api/v1 + /xxx)
-    // 2) 路径段匹配 (/api/v1 + /xxx) — 兼容老调用直接传 /api/v1/xxx
     let cleanUrl = url
     if (url.startsWith(baseURL)) {
       cleanUrl = url.slice(baseURL.length)
     } else {
-      // 尝试用 baseURL 路径段 (如 /api/v1) 剥前缀
       const basePath = new URL(baseURL).pathname.replace(/\/$/, '')
       if (url.startsWith(basePath)) {
         cleanUrl = url.slice(basePath.length) || '/'
       }
     }
 
-    const res = await $fetch<ApiResult<T>>(cleanUrl, {
+    // 用 responseType: 'text' 拿原始字符串，自行解析 JSON，以便支持混淆解码
+    let obfuscated = false
+    const rawText = await $fetch<string>(cleanUrl, {
       baseURL: config.public.apiBase,
       ...options,
       headers,
-      onResponseError(ctx: { response?: { status: number } }) {
+      responseType: 'text',
+      onResponse(ctx) {
+        obfuscated = ctx.response.headers.get('X-Obfuscated') === '1'
+      },
+      onResponseError(ctx) {
         if (ctx.response?.status === 401) {
           token.value = null
           if (process.client) {
@@ -42,10 +56,14 @@ export function useApi() {
       },
     })
 
-    if (res.code !== 0) {
-      throw new Error(res.message || 'API error')
+    // 解码混淆响应
+    const jsonText = obfuscated ? xorDecode(rawText) : rawText
+    const parsed: ApiResult<T> = JSON.parse(jsonText)
+
+    if (parsed.code !== 0) {
+      throw new Error(parsed.message || 'API error')
     }
 
-    return res.data as T
+    return parsed.data as T
   }
 }
