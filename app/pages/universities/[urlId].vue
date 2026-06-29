@@ -11,6 +11,8 @@ const { isCoreRanking } = useCoreRankings()
 
 const urlId = computed(() => String(route.params.urlId))
 
+const { copy } = useCopyToClipboard()
+
 const activeTab = computed({
   get: () => (route.query.tab as string) || 'rankings',
   set: (v) => router.push({ query: { ...route.query, tab: v } })
@@ -161,7 +163,17 @@ const submitShortlist = async () => {
         <NuxtLink to="/universities" class="body-sm text-[var(--color-steel)] hover:text-[var(--color-ink)]">
           ← 返回院校库
         </NuxtLink>
-        <h1 class="heading-lg text-[var(--color-ink)] mt-[var(--spacing-sm)]">{{ university.nameZh }}</h1>
+        <div class="flex items-center gap-[var(--spacing-xs)]">
+          <h1 class="heading-lg text-[var(--color-ink)] mt-[var(--spacing-sm)]">{{ university.nameZh }}</h1>
+          <button
+            type="button"
+            class="btn-icon-circular w-7 h-7 mt-[var(--spacing-sm)]"
+            title="复制院校名称"
+            @click="copy(university.nameZh)"
+          >
+            <Icon name="lucide:copy" class="size-3.5" />
+          </button>
+        </div>
         <p class="subtitle text-[var(--color-steel)]">{{ university.nameEn }}</p>
         <div class="flex flex-wrap gap-[var(--spacing-xs)] mt-[var(--spacing-md)]">
           <AppBadge variant="code" :label="university.country || '—'" />

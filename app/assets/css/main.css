@@ -20,6 +20,14 @@
   body {
     min-height: 100vh;
     line-height: 1.5;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+  }
+
+  input, textarea, [contenteditable], code, pre, .allow-select {
+    user-select: text;
   }
 
   a {
@@ -375,4 +383,8 @@
   .shadow-4 {
     box-shadow: var(--shadow-level-4);
   }
+
+  /* Anti-scrape: CSS pseudo-element text scrambling */
+  .scramble-text::before { content: attr(data-pre); }
+  .scramble-text::after { content: attr(data-post); }
 }
