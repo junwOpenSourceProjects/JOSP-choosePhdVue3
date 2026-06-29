@@ -1,5 +1,8 @@
 <script setup lang="ts">
-useHead({ title: '注册' })
+const { t } = useI18n()
+const localePath = useLocalePath()
+
+useHead({ title: t('auth.register') })
 
 definePageMeta({ layout: 'centered' })
 
@@ -7,7 +10,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 if (authStore.isLoggedIn) {
-  await navigateTo('/')
+  await navigateTo(localePath('/'))
 }
 
 const username = ref('')
@@ -18,7 +21,7 @@ const error = ref('')
 
 const submit = async () => {
   if (!username.value || !password.value) {
-    error.value = '请输入用户名和密码'
+    error.value = t('auth.registerError')
     return
   }
   if (password.value !== confirmPassword.value) {
@@ -29,11 +32,10 @@ const submit = async () => {
   error.value = ''
   try {
     await authStore.register({ username: username.value, password: password.value })
-    // Auto-login after registration
     await authStore.login({ username: username.value, password: password.value })
-    await router.push('/')
+    await router.push(localePath('/'))
   } catch (err: any) {
-    error.value = err?.message || err?.data?.message || '注册失败，请重试'
+    error.value = err?.message || err?.data?.message || t('auth.registerError')
   } finally {
     loading.value = false
   }
@@ -42,33 +44,33 @@ const submit = async () => {
 
 <template>
   <div class="text-center mb-[var(--spacing-xl)]">
-    <NuxtLink to="/" class="inline-flex items-center gap-[var(--spacing-xs)] text-[var(--color-ink)] font-semibold text-xl tracking-tight mb-[var(--spacing-md)]">
+    <NuxtLink :to="localePath('/')" class="inline-flex items-center gap-[var(--spacing-xs)] text-[var(--color-ink)] font-semibold text-xl tracking-tight mb-[var(--spacing-md)]">
       <svg width="24" height="24" viewBox="0 0 32 32" fill="none" aria-hidden="true">
         <rect width="32" height="32" rx="6" fill="#0A0A0A" />
         <path d="M8 12L16 8L24 12L16 16L8 12Z" fill="#1456F0" />
       </svg>
       choosePhd
     </NuxtLink>
-    <h1 class="heading-md text-[var(--color-ink)]">注册</h1>
+    <h1 class="heading-md text-[var(--color-ink)]">{{ $t('auth.register') }}</h1>
     <p class="body-sm text-[var(--color-steel)] mt-1">创建 choosePhd 账号</p>
   </div>
 
   <form class="space-y-[var(--spacing-md)]" @submit.prevent="submit">
     <div>
-      <label for="username" class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">用户名</label>
+      <label for="username" class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">{{ $t('auth.username') }}</label>
       <input
         id="username"
         v-model="username"
         type="text"
         class="text-input"
-        placeholder="用户名"
+        :placeholder="$t('auth.username')"
         autocomplete="username"
         required
       >
     </div>
 
     <div>
-      <label for="password" class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">密码</label>
+      <label for="password" class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">{{ $t('auth.password') }}</label>
       <input
         id="password"
         v-model="password"
@@ -81,7 +83,7 @@ const submit = async () => {
     </div>
 
     <div>
-      <label for="confirmPassword" class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">确认密码</label>
+      <label for="confirmPassword" class="body-sm-medium text-[var(--color-charcoal)] block mb-[var(--spacing-xs)]">{{ $t('auth.confirmPassword') }}</label>
       <input
         id="confirmPassword"
         v-model="confirmPassword"
@@ -98,12 +100,12 @@ const submit = async () => {
     </div>
 
     <AppButton variant="primary" type="submit" class="w-full justify-center" :disabled="loading">
-      {{ loading ? '注册中…' : '注册' }}
+      {{ loading ? '...' : $t('auth.registerButton') }}
     </AppButton>
   </form>
 
   <div class="mt-[var(--spacing-xl)] text-center body-sm text-[var(--color-steel)]">
-    已有账号？
-    <NuxtLink to="/login" class="text-[var(--color-brand-blue-deep)] hover:underline">立即登录</NuxtLink>
+    {{ $t('auth.hasAccount') }}
+    <NuxtLink :to="localePath('/login')" class="text-[var(--color-brand-blue-deep)] hover:underline">{{ $t('auth.goLogin') }}</NuxtLink>
   </div>
 </template>
