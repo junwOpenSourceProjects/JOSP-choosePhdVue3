@@ -25,7 +25,7 @@ export default defineNuxtConfig({
       { code: 'ja-JP', name: '日本語', file: 'ja-JP.json' },
       { code: 'ko-KR', name: '한국어', file: 'ko-KR.json' }
     ],
-    langDir: 'i18n/locales',
+    langDir: 'locales',
     lazy: true,
     detectBrowserLanguage: {
       useCookie: true,
