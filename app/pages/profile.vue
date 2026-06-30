@@ -9,7 +9,7 @@ const router = useRouter()
 
 onMounted(() => {
   if (!authStore.isLoggedIn) {
-    navigateTo('/login?redirect=/profile')
+    navigateTo(localePath('/login?redirect=/profile'))
   }
 })
 

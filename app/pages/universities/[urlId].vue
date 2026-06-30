@@ -139,7 +139,7 @@ const priorityOptions = computed(() => [
 const submitShortlist = async () => {
   if (!university.value) return
   if (!authStore.isLoggedIn) {
-    await navigateTo('/login?redirect=' + encodeURIComponent(route.fullPath))
+    await navigateTo(localePath('/login?redirect=' + encodeURIComponent(route.fullPath)))
     return
   }
   submitting.value = true

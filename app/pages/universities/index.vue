@@ -134,7 +134,7 @@ const adding = ref<Record<string, boolean>>({})
 
 const addToShortlist = async (uni: University) => {
   if (!authStore.isLoggedIn) {
-    await navigateTo('/login?redirect=' + encodeURIComponent(route.fullPath))
+    await navigateTo(localePath('/login?redirect=' + encodeURIComponent(route.fullPath)))
     return
   }
   adding.value[uni.urlId] = true

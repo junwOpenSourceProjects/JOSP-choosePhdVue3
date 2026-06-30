@@ -4,6 +4,7 @@ import type { ShortlistItem } from '~/types'
 export const useShortlistStore = defineStore('shortlist', () => {
   const $api = useApi()
   const auth = useAuth()
+  const localePath = useLocalePath()
 
   const items = ref<ShortlistItem[]>([])
   const loading = ref(false)
@@ -11,7 +12,7 @@ export const useShortlistStore = defineStore('shortlist', () => {
   const requireLogin = () => {
     if (!auth.isLoggedIn.value) {
       if (process.client) {
-        navigateTo('/login')
+        navigateTo(localePath('/login'))
       }
       return false
     }
