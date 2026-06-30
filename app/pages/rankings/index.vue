@@ -168,7 +168,7 @@ const sourceDisplay = (source: RankingSource) => {
               {{ source.ownerOrg || '—' }}
             </td>
             <td class="px-[var(--spacing-md)] py-[var(--spacing-md)]">
-              <span class="inline-flex px-[var(--spacing-sm)] py-[2px] rounded-[var(--rounded-full)] bg-[var(--color-surface)] text-[var(--color-steel)] body-xs-medium">
+              <span class="inline-flex px-[var(--spacing-sm)] py-[2px] rounded-[var(--rounded-full)] bg-[var(--color-surface)] text-[var(--color-steel)] caption-bold">
                 {{ kindLabel(source.kind) }}
               </span>
             </td>

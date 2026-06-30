@@ -28,7 +28,7 @@ const component = computed(() => (props.to ? resolveComponent('NuxtLink') : 'div
     :is="component"
     :to="to"
     :class="[
-      'relative overflow-hidden rounded-[var(--rounded-xxxl)] p-[var(--spacing-xl)] text-[var(--color-on-dark)] min-h-[220px] flex flex-col justify-between',
+      'relative overflow-hidden rounded-[var(--rounded-hero)] p-[var(--spacing-xxl)] text-[var(--color-on-dark)] min-h-[220px] flex flex-col justify-between',
       colorClass,
     ]"
   >
@@ -37,8 +37,8 @@ const component = computed(() => (props.to ? resolveComponent('NuxtLink') : 'div
     </div>
 
     <div class="min-w-0">
-      <h3 class="heading-sm break-words line-clamp-3 mb-2">{{ title }}</h3>
-      <p class="caption opacity-80 line-clamp-2">{{ tagline }}</p>
+      <h3 class="display-lg break-words line-clamp-3 mb-2">{{ title }}</h3>
+      <p class="body-sm opacity-80 line-clamp-2">{{ tagline }}</p>
     </div>
 
     <div v-if="$slots.action" class="mt-4">

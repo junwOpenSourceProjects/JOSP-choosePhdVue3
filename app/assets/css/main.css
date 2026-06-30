@@ -138,6 +138,12 @@
     line-height: 1.5;
   }
 
+  .body-sm-bold {
+    font-size: var(--text-body-sm);
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
   .body-sm-medium {
     font-size: var(--text-body-sm);
     font-weight: 500;
