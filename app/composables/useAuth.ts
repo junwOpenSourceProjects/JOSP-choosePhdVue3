@@ -1,4 +1,4 @@
-import { useCookie, useState } from '#imports'
+import { useCookie, useState, useLocalePath, navigateTo } from '#imports'
 import type { User } from '~/types'
 
 export function useAuth() {
@@ -6,6 +6,7 @@ export function useAuth() {
   const user = useState<User | null>('auth-user', () => null)
   const isLoggedIn = computed(() => !!token.value && !!user.value)
   const $api = useApi()
+  const localePath = useLocalePath()
 
   const login = (newToken: string, newUser: User) => {
     token.value = newToken
@@ -16,7 +17,7 @@ export function useAuth() {
     token.value = null
     user.value = null
     if (process.client) {
-      navigateTo('/login')
+      navigateTo(localePath('/login'))
     }
   }
 

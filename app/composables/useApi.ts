@@ -1,4 +1,4 @@
-import { useCookie, useRuntimeConfig, navigateTo } from '#imports'
+import { useCookie, useRuntimeConfig, navigateTo, useLocalePath } from '#imports'
 import type { ApiResult } from '~/types'
 
 const XOR_KEY = 'JOSP-choosePhd-2026-net-tab-obfuscation-v1'
@@ -8,33 +8,9 @@ function xorDecode(base64: string): string {
   const keyBytes = new TextEncoder().encode(XOR_KEY)
   const decoded = new Uint8Array(bytes.length)
   for (let i = 0; i < bytes.length; i++) {
-    decoded[i] = bytes[i] ^ keyBytes[i % keyBytes.length]
+    decoded[i] = bytes[i]! ^ keyBytes[i % keyBytes.length]!
   }
   return new TextDecoder().decode(decoded)
-}
-
-function handleResponseError(ctx: { response?: { status: number } }) {
-  const status = ctx.response?.status
-  if (status === 401) {
-    const token = useCookie<string | null>('choosephd_token', { default: () => null })
-    token.value = null
-    if (process.client) {
-      navigateTo('/login')
-    }
-  }
-  if (status === 429 && process.client) {
-    const toast = useToast()
-    toast.add({
-      title: '今日使用额度已用完',
-      description: '升级专业版解锁更高额度、每页100条、无日限额。',
-      color: 'warning',
-      timeout: 8000,
-      actions: [{
-        label: '查看升级方案',
-        click: () => navigateTo('/pricing')
-      }]
-    })
-  }
 }
 
 /**
@@ -44,7 +20,31 @@ function handleResponseError(ctx: { response?: { status: number } }) {
  */
 export function useApi() {
   const config = useRuntimeConfig()
+  const localePath = useLocalePath()
   const token = useCookie<string | null>('choosephd_token', { default: () => null })
+
+  function handleResponseError(ctx: { response?: { status: number } }) {
+    const status = ctx.response?.status
+    if (status === 401) {
+      token.value = null
+      if (process.client) {
+        navigateTo(localePath('/login'))
+      }
+    }
+    if (status === 429 && process.client) {
+      const toast = useToast()
+      toast.add({
+        title: '今日使用额度已用完',
+        description: '升级专业版解锁更高额度、每页100条、无日限额。',
+        color: 'warning',
+        duration: 8000,
+        actions: [{
+          label: '查看升级方案',
+          onClick: () => navigateTo(localePath('/pricing'))
+        }]
+      })
+    }
+  }
 
   return async function $api<T>(url: string, options: Record<string, any> = {}): Promise<T> {
     const headers: Record<string, string> = { ...(options.headers || {}) }

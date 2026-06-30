@@ -36,6 +36,7 @@ export function useClientFetch<T = unknown>(
   const loaded = ref(false)
 
   const config = useRuntimeConfig()
+  const localePath = useLocalePath()
   const token = useCookie<string | null>('choosephd_token', { default: () => null })
 
   async function refresh() {
@@ -64,8 +65,8 @@ export function useClientFetch<T = unknown>(
       const e = err as { statusCode?: number }
       if (e.statusCode === 401) {
         token.value = null
-        if (import.meta.client && window.location.pathname !== '/login') {
-          await navigateTo('/login')
+        if (import.meta.client && !window.location.pathname.endsWith('/login')) {
+          await navigateTo(localePath('/login'))
         }
       }
     } finally {
