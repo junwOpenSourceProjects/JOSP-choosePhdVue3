@@ -40,7 +40,7 @@ export function useApi() {
         duration: 8000,
         actions: [{
           label: '查看升级方案',
-          onClick: () => navigateTo(localePath('/pricing'))
+          onClick: async () => { await navigateTo(localePath('/pricing')) }
         }]
       })
     }
