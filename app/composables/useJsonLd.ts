@@ -3,7 +3,7 @@ export function useJsonLd(script: Record<string, any>) {
     script: [
       {
         type: 'application/ld+json',
-        children: JSON.stringify(script, null, 2)
+        innerHTML: JSON.stringify(script, null, 2)
       }
     ]
   })
